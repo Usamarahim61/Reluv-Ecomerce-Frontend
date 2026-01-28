@@ -27,10 +27,13 @@ export default function ProductCard({ id, brand, size, condition, price, totalPr
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           {/* Like Button Overlay */}
-          <button className="absolute bottom-2 right-2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-sm flex items-center gap-1 text-xs">
+          {/* <button className="absolute bottom-2 right-2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-sm flex items-center gap-1 text-xs">
             <Heart size={14} />
             <span>{likes}</span>
-          </button>
+          </button> */}
+                            <button className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 px-2 py-1 rounded-full text-xs font-bold border border-gray-200">
+                     <Heart size={12} className="text-gray-400" /> {likes}
+                  </button>
         </div>
 
         {/* Product Details */}
