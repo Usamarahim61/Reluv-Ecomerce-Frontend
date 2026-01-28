@@ -3,7 +3,7 @@ import { Search, Camera } from 'lucide-react';
 
 export default function Navbar() {
   return (
-    <nav className="w-full border-b bg-white">
+    <nav className="w-full  bg-white">
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto flex items-center justify-between p-4 gap-4">
         <h1 className="text-2xl font-bold text-[#007782]">Reluv</h1>
