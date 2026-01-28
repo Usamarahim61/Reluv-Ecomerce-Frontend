@@ -44,14 +44,14 @@ export default function HelpComp({ onClose }: { onClose: () => void }) {
             <p className="text-gray-600 mb-2">Tu as une question générale</p>
 
             {/* Search Bar */}
-            <div className="flex items-center bg-gray-100 rounded-md px-3 py-2 mb-4 border">
-              <Search className="text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Pose ta question..."
-                className="bg-transparent outline-none flex-1 px-2"
-              />
-            </div>
+             <div className="hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 sm:ml-2">
+            <Search className="text-[#007782] w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search for items"
+              className="bg-transparent outline-none flex-1 px-2"
+            />
+          </div>
             <div className="text-gray-600 mb-2 font-bold">Thèmes généraux</div>
 
             {/* Card with boxes */}
