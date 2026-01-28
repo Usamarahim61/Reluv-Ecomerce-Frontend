@@ -3,6 +3,7 @@ import { Search, Camera, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import SignUpLogin from "./signUp-login";
 import HelpComp from './helpComp';
+import Link from "next/link";
 
 export default function Navbar() {
   const [openSign, setOpenSign] = useState(false);
@@ -21,7 +22,9 @@ export default function Navbar() {
     <>
       <nav className="w-full bg-white">
         <div className="max-w-7xl mx-auto flex items-center justify-between p-4 gap-4">
+          <Link href="/">
           <h1 className="text-2xl font-bold text-[#007782]">Reluv</h1>
+          </Link>
 
           {/* Search Bar */}
           <div className="flex-1 flex items-center bg-gray-100 rounded-md px-3 py-2 border focus-within:border-gray-400">
