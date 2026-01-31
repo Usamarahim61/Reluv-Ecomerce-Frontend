@@ -54,10 +54,10 @@ export function SubMenus({ subCategories }: SubMenusProps) {
 
       {/* MegaMenu panel */}
       {activeCategory && activeCategory.children && (
-        <div className="absolute left-0 top-full w-full bg-white shadow-lg border-t border-gray-200 z-50 py-4 px-6 flex gap-6">
+        <div className="absolute left-0 top-full w-full bg-white shadow-lg border-t border-gray-200 z-50 py-4 px-6 flex gap-6 h-[320px]">
           
           {/* Children Column */}
-          <div className="flex flex-col gap-2 min-w-[180px]">
+          <div className="flex flex-col gap-2 min-w-[200px]">
             {activeCategory.children.map((child) => (
               <div
                 key={child.label}
@@ -78,7 +78,7 @@ export function SubMenus({ subCategories }: SubMenusProps) {
           <div className="w-[1px] bg-gray-200"></div>
 
           {/* Items Column */}
-          <div className="flex-1 flex flex-wrap gap-2">
+          <div className="flex flex-col flex-wrap gap-5">
             {activeCategory.children
               .filter((child) => child.label === selectedChild)
               .flatMap((child) => child.items)
