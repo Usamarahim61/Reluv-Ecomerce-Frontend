@@ -1,11 +1,22 @@
 "use client";
-import { Search, Camera, HelpCircle, Menu, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Search,
+  Camera,
+  HelpCircle,
+  Menu,
+  X,
+  Mail,
+  Bell,
+  Heart,
+  User,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
 import HelpComp from "./helpComp";
-import { SubMenus } from "./SubMenus"; 
-import { subCategories, SubCategoryItem } from "../constants/subCatagories"; 
+import { SubMenus } from "./SubMenus";
+import { subCategories, SubCategoryItem } from "../constants/subCatagories";
 import Link from "next/link";
+import SettingsComp from "./setting";
 
 export default function Navbar() {
   const [openSign, setOpenSign] = useState(false);
@@ -15,6 +26,38 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedLang, setSelectedLang] = useState("EN");
   const [selectedCata, setSelectedCata] = useState("Catalogue");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement | null>(null);
+  const notificationRef = useRef<HTMLDivElement | null>(null);
+  const LangRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        setProfileOpen(false);
+      }
+
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(target)
+      ) {
+        setNotificationOpen(false);
+      }
+      if (LangRef.current && !LangRef.current.contains(target)) {
+        setLangOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const languages = [
     { code: "ES", label: "Español (Spanish)" },
@@ -33,10 +76,10 @@ export default function Navbar() {
         {/* Top bar */}
         <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-3">
           {/* Logo */}
-           <Link href="/">
-          <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#007782]">
-            Reluv
-          </h1>
+          <Link href="/">
+            <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#007782]">
+              Reluv
+            </h1>
           </Link>
           {/* Catalog dropdown (desktop + tablet) */}
           <div className="relative hidden sm:flex md:flex">
@@ -66,7 +109,9 @@ export default function Navbar() {
               <div className="absolute right-0 mt-10 w-44 bg-white border border-gray-200 rounded shadow-lg z-20 py-2">
                 {Catagory.map((cat, idx) => (
                   <div key={cat.code}>
-                    {idx !== 0 && <div className="border-t border-gray-100 mx-2" />}
+                    {idx !== 0 && (
+                      <div className="border-t border-gray-100 mx-2" />
+                    )}
                     <div
                       className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                       onClick={() => {
@@ -106,7 +151,100 @@ export default function Navbar() {
                 <Menu className="w-6 h-6 text-gray-700" />
               )}
             </button>
+            {/* Email */}
+            <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+              <Mail className="w-6 h-6 text-gray-600" />
+            </button>
 
+            {/* Notifications */}
+            {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+              <Bell className="w-6 h-6 text-gray-600" />
+            </button> */}
+            <div ref={notificationRef} className="relative">
+              <button
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
+              >
+                {/* Avatar / fallback icon */}
+                <Bell className="w-6 h-6 text-gray-600" />
+              </button>
+
+              {notificationOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                  {/* Profile */}
+                  <div className="px-4 py-6 cursor-pointer flex items-center gap-2">
+                    <span>Profile</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Likes */}
+            <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+              <Heart className="w-6 h-6 text-gray-600" />
+            </button>
+
+            {/* Profile Dropdown */}
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
+              >
+                {/* Avatar / fallback icon */}
+                <User className="w-5 h-5 text-gray-600" />
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                  {/* Profile */}
+                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    <span>Profile</span>
+                  </div>
+
+                  {/* Invite friends */}
+                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    <span>Invite friends</span>
+                  </div>
+
+                  {/* Settings */}
+                  {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    <span>Settings</span>
+                  </div> */}
+                  {/* Settings */}
+                  <div
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                    onClick={() => {
+                      setSettingsOpen(!settingsOpen); // toggle component
+                      setProfileOpen(false); // optional: close profile dropdown
+                    }}
+                  >
+                    <span>Settings</span>
+                  </div>
+
+                  {/* Personalization */}
+                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    <span>Personalization</span>
+                  </div>
+                  {/* Balance */}
+                  <div className="px-4 py-2 flex items-center justify-between">
+                    <span className="flex items-center gap-2">Balance</span>
+                    <span className="font-semibold text-sm">$0.00</span>
+                  </div>
+
+                  {/* My orders */}
+                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    <span>My orders</span>
+                  </div>
+
+                  <div className="border-t border-gray-200 my-1" />
+
+                  {/* Logout */}
+                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                    <span>Log out</span>
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Desktop + Tablet Auth buttons */}
             <button
               onClick={() => setOpenSign(true)}
@@ -130,7 +268,7 @@ export default function Navbar() {
             </button>
 
             {/* Desktop + Tablet Language */}
-            <div className="relative hidden sm:block">
+            <div ref={LangRef} className="relative hidden sm:block">
               <button
                 onClick={() => setLangOpen(!langOpen)}
                 className="px-2 py-1 border cursor-pointer border-gray-200 rounded text-md hover:bg-gray-100"
@@ -141,7 +279,9 @@ export default function Navbar() {
                 <div className="absolute left-0 mt-1 w-44 cursor-pointer bg-white border border-gray-300 rounded shadow-lg z-20 py-2">
                   {languages.map((lang, idx) => (
                     <div key={lang.code}>
-                      {idx !== 0 && <div className="border-t border-gray-100 mx-2" />}
+                      {idx !== 0 && (
+                        <div className="border-t border-gray-100 mx-2" />
+                      )}
                       <div
                         className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                         onClick={() => {
@@ -280,7 +420,7 @@ export default function Navbar() {
 
       {openSign && <SignUpLogin onClose={() => setOpenSign(false)} />}
       {openHelp && <HelpComp onClose={() => setOpenHelp(false)} />}
+      {settingsOpen && <SettingsComp />}
     </>
   );
 }
-
