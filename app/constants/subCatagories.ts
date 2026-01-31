@@ -16,6 +16,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Women",
     icon: "👗",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👚", items: ["Outerwear", "Dresses", "Formal", "Casual", "Jeans", "Skirts", "Tops", "Blazers", "Jackets", "Sweaters"] },
       { label: "Shoes", icon: "👠", items: ["Heels", "Flats", "Boots", "Sneakers", "Sandals", "Loafers", "Wedges", "Pumps", "Slippers", "Mules"] },
       { label: "Bags", icon: "👜", items: ["Handbags", "Clutches", "Backpacks", "Totes", "Crossbody", "Wallets", "Satchels", "Hobos", "Bucket Bags", "Messenger Bags"] },
@@ -27,6 +28,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Men",
     icon: "👔",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👕", items: ["Shirts", "Trousers", "Suits", "Jackets", "Sweaters", "Jeans", "Polos", "Shorts", "T-shirts", "Coats"] },
       { label: "Shoes", icon: "👞", items: ["Sneakers", "Formal", "Boots", "Loafers", "Sandals", "Running Shoes", "Dress Shoes", "Slippers", "Moccasins", "Espadrilles"] },
       { label: "Accessories", icon: "⌚", items: ["Watches", "Belts", "Sunglasses", "Wallets", "Ties", "Hats", "Cufflinks", "Bags", "Scarves", "Gloves"] },
@@ -38,6 +40,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Designer",
     icon: "👜",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Brands", icon: "💼", items: ["Gucci", "Prada", "LV", "Chanel", "Dior", "Versace", "Fendi", "Balenciaga", "Hermes", "YSL"] },
       { label: "Collections", icon: "🧵", items: ["Spring", "Summer", "Autumn", "Winter", "Resort", "Capsule", "Limited", "Streetwear", "Haute Couture", "Collaborations"] },
       { label: "Shoes", icon: "👟", items: ["Sneakers", "Boots", "Loafers", "Heels", "Sandals", "Flats", "Pumps", "Mules", "Wedges", "Slides"] },
@@ -49,6 +52,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Kids",
     icon: "🧸",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👕", items: ["T-Shirts", "Pants", "Jackets", "Sweaters", "Dresses", "Skirts", "Shorts", "Jeans", "Coats", "Hoodies"] },
       { label: "Shoes", icon: "👟", items: ["Sneakers", "Boots", "Flats", "Sandals", "Slippers", "Loafers", "Moccasins", "Sports Shoes", "Slip-ons", "Heels"] },
       { label: "Toys", icon: "🧸", items: ["Action Figures", "Dolls", "Puzzles", "Board Games", "Building Blocks", "Plush Toys", "Vehicles", "Educational", "Musical", "Outdoor Toys"] },
@@ -60,6 +64,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Home",
     icon: "🏠",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Furniture", icon: "🛋️", items: ["Chairs", "Tables", "Beds", "Sofas", "Dressers", "Desks", "Nightstands", "Cabinets", "Benches", "Shelves"] },
       { label: "Decor", icon: "🖼️", items: ["Lamps", "Vases", "Frames", "Candles", "Clocks", "Mirrors", "Wall Art", "Rugs", "Curtains", "Cushions"] },
       { label: "Bedding", icon: "🛏️", items: ["Sheets", "Pillows", "Duvets", "Blankets", "Mattress Covers", "Comforters", "Throws", "Bedspreads", "Quilts", "Pillowcases"] },
@@ -71,6 +76,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Electronics",
     icon: "📱",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Mobile", icon: "📱", items: ["Smartphones", "Cases", "Chargers", "Screen Protectors", "Accessories", "Power Banks", "Earphones", "Cables", "Adapters", "Smartwatches"] },
       { label: "Computers", icon: "💻", items: ["Laptops", "Desktops", "Monitors", "Keyboards", "Mice", "Headsets", "Storage", "Printers", "Cables", "Accessories"] },
       { label: "TV & Audio", icon: "📺", items: ["Televisions", "Speakers", "Soundbars", "Headphones", "Home Theater", "Subwoofers", "Receivers", "Streaming Devices", "Cables", "Accessories"] },
@@ -82,6 +88,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Entertainment",
     icon: "🎬",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Movies", icon: "🎥", items: ["Action", "Comedy", "Drama", "Horror", "Romance", "Thriller", "Sci-Fi", "Documentary", "Animation", "Fantasy"] },
       { label: "Music", icon: "🎵", items: ["Pop", "Rock", "Jazz", "Classical", "Hip-Hop", "Electronic", "Country", "R&B", "Reggae", "Blues"] },
       { label: "TV Shows", icon: "📺", items: ["Reality", "Drama", "Comedy", "Documentary", "Animation", "News", "Talk Shows", "Sports Shows", "Game Shows", "Miniseries"] },
@@ -93,6 +100,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Hobbies & Collectables",
     icon: "🎨",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Art", icon: "🖌️", items: ["Painting", "Sketching", "Sculpture", "Digital Art", "Printmaking", "Calligraphy", "Photography", "Crafts", "Ceramics", "Watercolor"] },
       { label: "Collectables", icon: "🧩", items: ["Coins", "Stamps", "Cards", "Figurines", "Posters", "Books", "Comics", "Toys", "Memorabilia", "Autographs"] },
       { label: "Music Instruments", icon: "🎹", items: ["Piano", "Guitar", "Violin", "Drums", "Flute", "Saxophone", "Trumpet", "Ukulele", "Bass", "Harmonica"] },
@@ -104,6 +112,7 @@ export const subCategories: SubCategoryItem[] = [
     label: "Sports",
     icon: "🏀",
     children: [
+      {label: "ALL", icon: "::",items: []},
       { label: "Team Sports", icon: "⚽", items: ["Football", "Basketball", "Baseball", "Hockey", "Volleyball", "Rugby", "Cricket", "Handball", "Water Polo", "Lacrosse"] },
       { label: "Individual Sports", icon: "🏃", items: ["Tennis", "Golf", "Boxing", "Swimming", "Martial Arts", "Gymnastics", "Running", "Cycling", "Skiing", "Skating"] },
       { label: "Fitness", icon: "🏋️", items: ["Yoga", "Pilates", "Weightlifting", "Cardio", "CrossFit", "HIIT", "Aerobics", "Stretching", "Spin Class", "Bootcamp"] },
