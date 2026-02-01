@@ -7,14 +7,13 @@ export interface ChildItem {
 
 export interface SubCategoryItem {
   label: string;
-  icon: string;
   children: ChildItem[];
 }
 
 export const subCategories: SubCategoryItem[] = [
   {
     label: "Women",
-    icon: "👗",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👚", items: ["Outerwear", "Dresses", "Formal", "Casual", "Jeans", "Skirts", "Tops", "Blazers", "Jackets", "Sweaters"] },
@@ -26,7 +25,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Men",
-    icon: "👔",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👕", items: ["Shirts", "Trousers", "Suits", "Jackets", "Sweaters", "Jeans", "Polos", "Shorts", "T-shirts", "Coats"] },
@@ -38,7 +37,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Designer",
-    icon: "👜",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Brands", icon: "💼", items: ["Gucci", "Prada", "LV", "Chanel", "Dior", "Versace", "Fendi", "Balenciaga", "Hermes", "YSL"] },
@@ -50,7 +49,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Kids",
-    icon: "🧸",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Clothing", icon: "👕", items: ["T-Shirts", "Pants", "Jackets", "Sweaters", "Dresses", "Skirts", "Shorts", "Jeans", "Coats", "Hoodies"] },
@@ -62,7 +61,6 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Home",
-    icon: "🏠",
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Furniture", icon: "🛋️", items: ["Chairs", "Tables", "Beds", "Sofas", "Dressers", "Desks", "Nightstands", "Cabinets", "Benches", "Shelves"] },
@@ -74,7 +72,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Electronics",
-    icon: "📱",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Mobile", icon: "📱", items: ["Smartphones", "Cases", "Chargers", "Screen Protectors", "Accessories", "Power Banks", "Earphones", "Cables", "Adapters", "Smartwatches"] },
@@ -86,7 +84,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Entertainment",
-    icon: "🎬",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Movies", icon: "🎥", items: ["Action", "Comedy", "Drama", "Horror", "Romance", "Thriller", "Sci-Fi", "Documentary", "Animation", "Fantasy"] },
@@ -98,7 +96,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Hobbies & Collectables",
-    icon: "🎨",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Art", icon: "🖌️", items: ["Painting", "Sketching", "Sculpture", "Digital Art", "Printmaking", "Calligraphy", "Photography", "Crafts", "Ceramics", "Watercolor"] },
@@ -110,7 +108,7 @@ export const subCategories: SubCategoryItem[] = [
   },
   {
     label: "Sports",
-    icon: "🏀",
+    
     children: [
       {label: "ALL", icon: "::",items: []},
       { label: "Team Sports", icon: "⚽", items: ["Football", "Basketball", "Baseball", "Hockey", "Volleyball", "Rugby", "Cricket", "Handball", "Water Polo", "Lacrosse"] },
