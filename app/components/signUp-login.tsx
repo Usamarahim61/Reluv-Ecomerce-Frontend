@@ -14,7 +14,7 @@ export default function SignUpLogin({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md bg-white rounded-xl p-7 shadow-xl"
+        className="relative w-full max-w-md  bg-white rounded-xl px-10 py-15 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}

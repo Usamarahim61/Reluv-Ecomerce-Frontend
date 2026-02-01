@@ -17,9 +17,15 @@ import { SubMenus } from "./SubMenus";
 import { subCategories, SubCategoryItem } from "../constants/subCatagories";
 import Link from "next/link";
 import SettingsComp from "./setting";
+import UploadItem from "./UplaodItems";
+import Messages from "./Messages";
+import Referrals from "./Referrals";
+import ProfilePage from "../member/[id]/page";
 
 export default function Navbar() {
   const [openSign, setOpenSign] = useState(false);
+  const [openSellNow, setOpenSellNow] = useState(false);
+  const [openInBox, setOpenInBox] = useState(false);
   const [openHelp, setOpenHelp] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -29,6 +35,8 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [ReferralsOpen, setReferralsOpen] = useState(false);
+  const [SellerProfileOpen, setSellerProfileOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -74,227 +82,237 @@ export default function Navbar() {
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
         {/* Top bar */}
-        <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-3">
-          {/* Logo */}
-          <Link href="/">
-            <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#007782]">
-              Reluv
-            </h1>
-          </Link>
-          {/* Catalog dropdown (desktop + tablet) */}
-          <div className="relative hidden sm:flex md:flex">
-            <button
-              onClick={() => setCataOpen(!cataOpen)}
-              className="flex items-center font-semibold justify-between cursor-pointer bg-gray-100 px-4 py-2 border border-gray-200 rounded text-sm sm:w-36 md:w-44 hover:bg-gray-100"
-            >
-              <span>{selectedCata}</span>
-              <svg
-                className={`w-5 h-5 ml-2 transition-transform duration-200 ${
-                  cataOpen ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            {cataOpen && (
-              <div className="absolute right-0 mt-10 w-44 bg-white border border-gray-200 rounded shadow-lg z-20 py-2">
-                {Catagory.map((cat, idx) => (
-                  <div key={cat.code}>
-                    {idx !== 0 && (
-                      <div className="border-t border-gray-100 mx-2" />
-                    )}
-                    <div
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        setSelectedCata(cat.code);
-                        setCataOpen(false);
-                      }}
-                    >
-                      {cat.label}
-                    </div>
+        <div className="border-b border-gray-300">
+          <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-2 ">
+            {/* Logo */}
+            <Link href="/">
+              <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#007782]">
+                Reluv
+              </h1>
+            </Link>
+            {/* Catalog dropdown (desktop + tablet) */}
+            <div className="flex gap-0 w-[620px]">
+              <div className="relative hidden sm:flex md:flex">
+                <button
+                  onClick={() => setCataOpen(!cataOpen)}
+                  className="flex items-center font-semibold justify-between cursor-pointer bg-gray-100 px-4 py-2 border border-gray-200 rounded text-sm sm:w-36  hover:bg-gray-100"
+                >
+                  <span>{selectedCata}</span>
+                  <svg
+                    className={`w-5 h-5 ml-2 transition-transform duration-200 ${
+                      cataOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {cataOpen && (
+                  <div className="absolute right-0 mt-10 w-44 bg-white border border-gray-200 rounded shadow-lg z-20 py-2">
+                    {Catagory.map((cat, idx) => (
+                      <div key={cat.code}>
+                        {idx !== 0 && (
+                          <div className="border-t border-gray-100 mx-2" />
+                        )}
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            setSelectedCata(cat.code);
+                            setCataOpen(false);
+                          }}
+                        >
+                          {cat.label}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Search bar (tablet + desktop) */}
-          <div className="hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 sm:ml-2">
-            <Search className="text-[#007782] w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for items"
-              className="bg-transparent outline-none flex-1 px-2"
-            />
-            <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
-          </div>
+              {/* Search bar (tablet + desktop) */}
+              <div className="hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
+                <Search className="text-[#007782] w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search for items"
+                  className="bg-transparent outline-none flex-1 px-2"
+                />
+                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+              </div>
+            </div>
 
-          {/* Right actions */}
-          <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
-            {/* Hamburger for mobile only */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-gray-700" />
-              ) : (
-                <Menu className="w-6 h-6 text-gray-700" />
-              )}
-            </button>
-            {/* Email */}
-            <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-              <Mail className="w-6 h-6 text-gray-600" />
-            </button>
+            {/* Right actions */}
+            <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
+              {/* Hamburger for mobile only */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6 text-gray-700" />
+                ) : (
+                  <Menu className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
+              {/* Email */}
+              <button  onClick={() => setOpenInBox(true)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                <Mail className="w-6 h-6 text-gray-600" />
+              </button>
 
-            {/* Notifications */}
-            {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+              {/* Notifications */}
+              {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
               <Bell className="w-6 h-6 text-gray-600" />
             </button> */}
-            <div ref={notificationRef} className="relative">
-              <button
-                onClick={() => setNotificationOpen(!notificationOpen)}
-                className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
-              >
-                {/* Avatar / fallback icon */}
-                <Bell className="w-6 h-6 text-gray-600" />
+              <div ref={notificationRef} className="relative">
+                <button
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
+                >
+                  {/* Avatar / fallback icon */}
+                  <Bell className="w-6 h-6 text-gray-600" />
+                </button>
+
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                    {/* Profile */}
+                    <div className="px-4 py-6 cursor-pointer flex items-center gap-2">
+                      <span>Profile</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Likes */}
+              <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                <Heart className="w-6 h-6 text-gray-600" />
               </button>
 
-              {notificationOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                  {/* Profile */}
-                  <div className="px-4 py-6 cursor-pointer flex items-center gap-2">
-                    <span>Profile</span>
-                  </div>
-                </div>
-              )}
-            </div>
+              {/* Profile Dropdown */}
+              <div ref={profileRef} className="relative">
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
+                >
+                  {/* Avatar / fallback icon */}
+                  <User className="w-5 h-5 text-gray-600" />
+                </button>
 
-            {/* Likes */}
-            <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-              <Heart className="w-6 h-6 text-gray-600" />
-            </button>
+                {profileOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                    {/* Profile */}
+                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"  onClick={() => {
+                        setSellerProfileOpen(!SellerProfileOpen); // toggle component
+                        setProfileOpen(false); // optional: close profile dropdown
+                      }}>
+                      <span>Profile</span>
+                    </div>
 
-            {/* Profile Dropdown */}
-            <div ref={profileRef} className="relative">
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
-              >
-                {/* Avatar / fallback icon */}
-                <User className="w-5 h-5 text-gray-600" />
-              </button>
+                    {/* Invite friends */}
+                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"   onClick={() => {
+                        setReferralsOpen(!ReferralsOpen); // toggle component
+                        setProfileOpen(false); // optional: close profile dropdown
+                      }}>
+                      <span>Invite friends</span>
+                    </div>
 
-              {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                  {/* Profile */}
-                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>Profile</span>
-                  </div>
-
-                  {/* Invite friends */}
-                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>Invite friends</span>
-                  </div>
-
-                  {/* Settings */}
-                  {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    {/* Settings */}
+                    {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                     <span>Settings</span>
                   </div> */}
-                  {/* Settings */}
-                  <div
-                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                    onClick={() => {
-                      setSettingsOpen(!settingsOpen); // toggle component
-                      setProfileOpen(false); // optional: close profile dropdown
-                    }}
-                  >
-                    <span>Settings</span>
-                  </div>
-
-                  {/* Personalization */}
-                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>Personalization</span>
-                  </div>
-                  {/* Balance */}
-                  <div className="px-4 py-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2">Balance</span>
-                    <span className="font-semibold text-sm">$0.00</span>
-                  </div>
-
-                  {/* My orders */}
-                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>My orders</span>
-                  </div>
-
-                  <div className="border-t border-gray-200 my-1" />
-
-                  {/* Logout */}
-                  <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
-                    <span>Log out</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Desktop + Tablet Auth buttons */}
-            <button
-              onClick={() => setOpenSign(true)}
-              className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
-            >
-              Sign up | Log in
-            </button>
-            <button
-              onClick={() => setOpenSign(true)}
-              className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm"
-            >
-              Sell
-            </button>
-
-            {/* Desktop + Tablet Help */}
-            <button
-              onClick={() => setOpenHelp(true)}
-              className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100"
-            >
-              <HelpCircle className="w-7 h-7 text-gray-600" />
-            </button>
-
-            {/* Desktop + Tablet Language */}
-            <div ref={LangRef} className="relative hidden sm:block">
-              <button
-                onClick={() => setLangOpen(!langOpen)}
-                className="px-2 py-1 border cursor-pointer border-gray-200 rounded text-md hover:bg-gray-100"
-              >
-                {selectedLang}
-              </button>
-              {langOpen && (
-                <div className="absolute left-0 mt-1 w-44 cursor-pointer bg-white border border-gray-300 rounded shadow-lg z-20 py-2">
-                  {languages.map((lang, idx) => (
-                    <div key={lang.code}>
-                      {idx !== 0 && (
-                        <div className="border-t border-gray-100 mx-2" />
-                      )}
-                      <div
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                        onClick={() => {
-                          setSelectedLang(lang.code);
-                          setLangOpen(false);
-                        }}
-                      >
-                        {lang.label}
-                      </div>
+                    {/* Settings */}
+                    <div
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                      onClick={() => {
+                        setSettingsOpen(!settingsOpen); // toggle component
+                        setProfileOpen(false); // optional: close profile dropdown
+                      }}
+                    >
+                      <span>Settings</span>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Personalization */}
+                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                      <span>Personalization</span>
+                    </div>
+                    {/* Balance */}
+                    <div className="px-4 py-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2">Balance</span>
+                      <span className="font-semibold text-sm">$0.00</span>
+                    </div>
+
+                    {/* My orders */}
+                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                      <span>My orders</span>
+                    </div>
+
+                    <div className="border-t border-gray-200 my-1" />
+
+                    {/* Logout */}
+                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                      <span>Log out</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Desktop + Tablet Auth buttons */}
+              <button
+                onClick={() => setOpenSign(true)}
+                className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
+              >
+                Sign up | Log in
+              </button>
+              <button
+                onClick={() => setOpenSellNow(true)}
+                className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm"
+              >
+                Sell Now
+              </button>
+
+              {/* Desktop + Tablet Help */}
+              <button
+                onClick={() => setOpenHelp(true)}
+                className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100"
+              >
+                <HelpCircle className="w-7 h-7 text-gray-600" />
+              </button>
+
+              {/* Desktop + Tablet Language */}
+              <div ref={LangRef} className="relative hidden sm:block">
+                <button
+                  onClick={() => setLangOpen(!langOpen)}
+                  className="px-2 py-1 border cursor-pointer border-gray-200 rounded text-md hover:bg-gray-100"
+                >
+                  {selectedLang}
+                </button>
+                {langOpen && (
+                  <div className="absolute left-0 mt-1 w-44 cursor-pointer bg-white border border-gray-300 rounded shadow-lg z-20 py-2">
+                    {languages.map((lang, idx) => (
+                      <div key={lang.code}>
+                        {idx !== 0 && (
+                          <div className="border-t border-gray-100 mx-2" />
+                        )}
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            setSelectedLang(lang.code);
+                            setLangOpen(false);
+                          }}
+                        >
+                          {lang.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -383,7 +401,6 @@ export default function Navbar() {
                   key={cat.label}
                   className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:bg-gray-100 rounded"
                 >
-                  <span>{cat.icon}</span>
                   <span>{cat.label}</span>
                 </div>
               ))}
@@ -419,8 +436,12 @@ export default function Navbar() {
       </nav>
 
       {openSign && <SignUpLogin onClose={() => setOpenSign(false)} />}
+      {openSellNow && <UploadItem />}
       {openHelp && <HelpComp onClose={() => setOpenHelp(false)} />}
+      {SellerProfileOpen && <ProfilePage />}
+      {ReferralsOpen && <Referrals />}
       {settingsOpen && <SettingsComp />}
+      {openInBox && <Messages />}
     </>
   );
 }
