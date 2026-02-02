@@ -8,10 +8,11 @@ import { useState } from "react";
 
 export default function Home() {
   const [showBanner, setShowBanner] = useState(true);
+  const [openInBox, setOpenInBox] =useState(false);
   return (
     <div className="">
-      <Navbar />
-      <section className="relative h-150 w-full bg-gray-200">
+      {!openInBox && <Navbar />}
+      {!openInBox && <section className="relative h-150 w-full bg-gray-200">
         {/* Background Image */}
         <Image
           src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
@@ -35,7 +36,7 @@ export default function Home() {
             Learn how it works
           </a>
         </div>
-      </section>
+      </section>}
     <section className="max-w-7xl mx-auto px-4 py-6">
       {showBanner && (
         <div className="flex justify-between items-center border border-gray-100 rounded-sm p-4 mb-8 bg-white shadow-sm">

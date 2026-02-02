@@ -78,6 +78,10 @@ export default function Navbar() {
     { code: "Catalogue", label: "Catalogue" },
     { code: "Members", label: "Members" },
   ];
+  const [activePanel, setActivePanel] = useState<
+    null | "notifications" | "profile" | "invite" | "settings"
+  >(null);
+
   return (
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
@@ -163,7 +167,16 @@ export default function Navbar() {
                 )}
               </button>
               {/* Email */}
-              <button  onClick={() => setOpenInBox(true)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+              <button
+                onClick={() => {
+                  setOpenInBox((prev) => !prev);
+                  setReferralsOpen(false); // toggle component
+                  setProfileOpen(false); // optional: close profile dropdown
+                  setSellerProfileOpen(false);
+                  setSettingsOpen(false);
+                }}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
+              >
                 <Mail className="w-6 h-6 text-gray-600" />
               </button>
 
@@ -208,18 +221,30 @@ export default function Navbar() {
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                     {/* Profile */}
-                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"  onClick={() => {
-                        setSellerProfileOpen(!SellerProfileOpen); // toggle component
+                    <div
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                      onClick={() => {
+                        setSellerProfileOpen((prev) => !prev); // toggle component
                         setProfileOpen(false); // optional: close profile dropdown
-                      }}>
+                        setReferralsOpen(false);
+                        setSettingsOpen(false);
+                        setOpenInBox(false);
+                      }}
+                    >
                       <span>Profile</span>
                     </div>
 
                     {/* Invite friends */}
-                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"   onClick={() => {
+                    <div
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                      onClick={() => {
                         setReferralsOpen(!ReferralsOpen); // toggle component
                         setProfileOpen(false); // optional: close profile dropdown
-                      }}>
+                        setSellerProfileOpen(false);
+                        setSettingsOpen(false);
+                        setOpenInBox(false);
+                      }}
+                    >
                       <span>Invite friends</span>
                     </div>
 
@@ -232,7 +257,10 @@ export default function Navbar() {
                       className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
                       onClick={() => {
                         setSettingsOpen(!settingsOpen); // toggle component
+                        setSellerProfileOpen(false);
+                        setReferralsOpen(false);
                         setProfileOpen(false); // optional: close profile dropdown
+                        setOpenInBox(false);
                       }}
                     >
                       <span>Settings</span>
@@ -270,7 +298,14 @@ export default function Navbar() {
                 Sign up | Log in
               </button>
               <button
-                onClick={() => setOpenSellNow(true)}
+                onClick={() => {
+                  setOpenSellNow((prev) => !prev);
+                  setReferralsOpen(false); // toggle component
+                  setProfileOpen(false); // optional: close profile dropdown
+                  setSellerProfileOpen(false);
+                  setSettingsOpen(false);
+                  setOpenInBox(false);
+                }}
                 className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm"
               >
                 Sell Now
@@ -278,7 +313,15 @@ export default function Navbar() {
 
               {/* Desktop + Tablet Help */}
               <button
-                onClick={() => setOpenHelp(true)}
+                onClick={() => {
+                  setOpenHelp((prev) => !prev);
+                  setReferralsOpen(false); // toggle component
+                  setProfileOpen(false); // optional: close profile dropdown
+                  setSellerProfileOpen(false);
+                  setSettingsOpen(false);
+                  setOpenInBox(false);
+                  setOpenSellNow(false);
+                }}
                 className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100"
               >
                 <HelpCircle className="w-7 h-7 text-gray-600" />
@@ -437,8 +480,8 @@ export default function Navbar() {
 
       {openSign && <SignUpLogin onClose={() => setOpenSign(false)} />}
       {openSellNow && <UploadItem />}
-      {openHelp && <HelpComp onClose={() => setOpenHelp(false)} />}
-      {SellerProfileOpen && <ProfilePage />}
+      {openHelp && <HelpComp />}
+      {SellerProfileOpen && <ProfilePage showNavbar={false} />}
       {ReferralsOpen && <Referrals />}
       {settingsOpen && <SettingsComp />}
       {openInBox && <Messages />}

@@ -1,29 +1,29 @@
 "use client";
-
 import { X, Search } from "lucide-react";
+import { JSX } from "react";
 
-export default function HelpComp({ onClose }: { onClose: () => void }) {
+export default function HelpComp(): JSX.Element{
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-auto"
-      onClick={onClose} // close when clicking overlay
-    >
+    // <div
+    //   className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-auto"
+    //   // onClick={onClose} // close when clicking overlay
+    // >
       <div
-        className="relative w-full max-w-4xl bg-white rounded-xl p-6 shadow-xl mt-20"
+        className="relative w-full mx-auto max-w-7xl border border-gray-300 bg-white rounded-xl p-6   mt-10 mb-10"
         onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
       >
         {/* Close Button */}
-        <button
+        {/* <button
           onClick={onClose}
           className="absolute cursor-pointer right-6 top-4 text-gray-400 hover:text-black"
         >
           <X size={20} />
-        </button>
+        </button> */}
 
         <div className="flex gap-6">
           {/* Left Side */}
           <div className="flex-1">
-            <ul className="space-y-3 text-gray-700">
+            <ul className="space-y-8 text-gray-700">
               <li className="cursor-pointer hover:underline">
                 <h2 className="text-xl font-semibold  mb-6">Centre d'aide</h2>
               </li>
@@ -37,7 +37,7 @@ export default function HelpComp({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Right Side */}
-          <div className="flex-1">
+          <div className="flex-1  flex flex-col gap-3">
             <h3 className="font-semibold mb-3">
               Comment pouvons-nous t'aider ?
             </h3>
@@ -51,7 +51,7 @@ export default function HelpComp({ onClose }: { onClose: () => void }) {
               placeholder="Search for items"
               className="bg-transparent outline-none flex-1 px-2"
             />
-          </div>
+           </div>
             <div className="text-gray-600 mb-2 font-bold">Thèmes généraux</div>
 
             {/* Card with boxes */}
@@ -77,6 +77,5 @@ export default function HelpComp({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>
   );
 }
