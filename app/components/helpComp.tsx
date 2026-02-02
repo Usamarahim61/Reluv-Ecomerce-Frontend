@@ -4,22 +4,10 @@ import { JSX } from "react";
 
 export default function HelpComp(): JSX.Element{
   return (
-    // <div
-    //   className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-auto"
-    //   // onClick={onClose} // close when clicking overlay
-    // >
       <div
         className="relative w-full mx-auto max-w-7xl border border-gray-300 bg-white rounded-xl p-6   mt-10 mb-10"
         onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
       >
-        {/* Close Button */}
-        {/* <button
-          onClick={onClose}
-          className="absolute cursor-pointer right-6 top-4 text-gray-400 hover:text-black"
-        >
-          <X size={20} />
-        </button> */}
-
         <div className="flex gap-6">
           {/* Left Side */}
           <div className="flex-1">
