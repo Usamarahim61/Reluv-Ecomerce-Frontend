@@ -24,7 +24,6 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
   const sellerProducts = items.filter((item) => item.seller.id === sellerId);
   const seller = sellerProducts[0]?.seller;
 
-  // Mock reviews data
   const mockReviews = [
     {
       id: 1,
