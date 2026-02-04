@@ -1,6 +1,7 @@
 "use client";
 import  { useState, useRef, ChangeEvent, JSX } from "react";
 import { Plus, Camera, X } from "lucide-react";
+import Navbar from "../components/navbar";
 
 export default function UploadItem(): JSX.Element {
   const [images, setImages] = useState<string[]>([]);
@@ -29,8 +30,8 @@ export default function UploadItem(): JSX.Element {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4 bg-gray-50 min-h-screen pb-20">
-      
+    <><Navbar /><div className="max-w-4xl mx-auto p-4 space-y-4 bg-white min-h-screen pb-20">
+
       {/* Photo Upload Section */}
       <div className="bg-white border border-gray-200 rounded-sm p-6 border-dashed border-2 min-h-[250px]">
         {/* Hidden File Input */}
@@ -40,8 +41,7 @@ export default function UploadItem(): JSX.Element {
           accept="image/*"
           className="hidden"
           ref={fileInputRef}
-          onChange={handleFileChange}
-        />
+          onChange={handleFileChange} />
 
         <div className="flex flex-col items-center justify-center py-6">
           {/* Preview Grid */}
@@ -50,7 +50,7 @@ export default function UploadItem(): JSX.Element {
               {images.map((src, index) => (
                 <div key={index} className="relative aspect-square border rounded-md overflow-hidden group">
                   <img src={src} alt={`Upload ${index}`} className="object-cover w-full h-full" />
-                  <button 
+                  <button
                     onClick={() => removeImage(index)}
                     className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -61,7 +61,7 @@ export default function UploadItem(): JSX.Element {
             </div>
           )}
 
-          <button 
+          <button
             onClick={handleUploadClick}
             className="flex items-center gap-2 px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50 transition-colors"
           >
@@ -69,7 +69,7 @@ export default function UploadItem(): JSX.Element {
             <span>Upload photos</span>
           </button>
         </div>
-        
+
         {/* Quality Tip */}
         <div className="mt-4 w-full bg-[#f0f9f9] border border-[#d0f0f0] rounded-md p-3 flex items-center gap-3">
           <div className="p-1 bg-white rounded border border-[#b0e0e0]">
@@ -89,16 +89,14 @@ export default function UploadItem(): JSX.Element {
           <input
             type="text"
             placeholder="Tell buyers what you're selling"
-            className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300"
-          />
+            className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300" />
         </div>
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <label className="font-semibold text-gray-900 min-w-[150px]">Describe your item</label>
           <textarea
             placeholder="Tell buyers more about it"
             rows={4}
-            className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300 resize-none"
-          />
+            className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300 resize-none" />
         </div>
       </div>
       {/* Price Section */}
@@ -112,8 +110,7 @@ export default function UploadItem(): JSX.Element {
               placeholder="0.00"
               className="w-full ml-1 focus:outline-none text-gray-800 placeholder-gray-300"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
+              onChange={(e) => setPrice(e.target.value)} />
           </div>
         </div>
       </div>
@@ -135,6 +132,6 @@ export default function UploadItem(): JSX.Element {
           Upload
         </button>
       </div>
-    </div>
+    </div></>
   );
 }

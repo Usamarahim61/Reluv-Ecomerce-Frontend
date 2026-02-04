@@ -1,12 +1,13 @@
 "use client";
 import React, { JSX } from "react";
 import { Mail } from "lucide-react";
+import Navbar from "../components/navbar";
 
 export default function Messages(): JSX.Element {
   return (
-    <div className="flex flex-col h-[88vh] max-w-7xl mx-auto  bg-white font-sans text-[#111111] border border-gray-300">
+    <><Navbar /><div className="mt-5 flex flex-col h-[85vh] max-w-7xl mx-auto  bg-white font-sans text-[#111111] border border-gray-300">
       <div className="flex flex-1 overflow-hidden border-t border-gray-200">
-        
+
         {/* Sidebar - Message List */}
         <aside className="w-full md:w-80 border-r border-gray-200 flex flex-col bg-white">
           <div className="p-4 border-b border-gray-200">
@@ -29,7 +30,7 @@ export default function Messages(): JSX.Element {
                 <Mail className="w-16 h-16 text-[#007782] stroke-[1.25]" />
               </div>
             </div>
-            
+
             <h3 className="text-xl font-bold text-gray-900">No messages yet</h3>
             <p className="text-gray-500 text-[15px]">
               When someone sends a message to you, it will appear here
@@ -49,6 +50,6 @@ export default function Messages(): JSX.Element {
           <a href="#" className="hover:underline transition-all">Our Platform</a>
         </nav>
       </footer>
-    </div>
+    </div></>
   );
 }
