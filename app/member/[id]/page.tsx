@@ -14,6 +14,7 @@ import { items } from "@/app/dataCenter";
 import { useParams } from "next/navigation";
 import Navbar from "@/app/components/navbar";
 import ProductCard from "@/app/components/ProductCard";
+import Footer from "@/app/components/Footer";
 
 const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
   const params = useParams();
@@ -230,6 +231,7 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
           </>
         )}
       </div>
+      <Footer />
     </>
   );
 };
