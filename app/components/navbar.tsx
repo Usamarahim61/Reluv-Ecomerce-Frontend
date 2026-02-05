@@ -200,7 +200,8 @@ export default function Navbar() {
               </div>
 
               {/* Likes */}
-              <Link href={`/Products/2`}>
+              
+              <Link href={`/products/2`}>
                 <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                   <Heart className="w-6 h-6 text-gray-600" />
                 </button>
