@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
+import Image from "next/image";
 
 const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
   const [showZoom, setShowZoom] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [showModal, setShowModal] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLDivElement>(null);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!imgRef.current) return;
@@ -29,16 +30,17 @@ const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
       <div className="group relative overflow-hidden bg-gray-50 aspect-[3/4]">
         {/* Zoom Area */}
         <div
+          ref={imgRef}
           className="w-full h-full cursor-crosshair"
           onMouseEnter={() => setShowZoom(true)}
           onMouseLeave={() => setShowZoom(false)}
           onMouseMove={handleMouseMove}
         >
-          <img
-            ref={imgRef}
+          <Image
             src={src}
-            alt={alt}
-            className="w-full h-full object-cover"
+            alt={alt || 'Product image'}
+            fill
+            style={{ objectFit: 'cover' }}
           />
 
           {showZoom && (
@@ -111,12 +113,16 @@ const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
-          <img
-            src={src}
-            alt={alt}
-            className="max-w-full max-h-full object-contain select-none"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative w-full h-full max-w-full max-h-full">
+            <Image
+              src={src}
+              alt={alt || 'Product image'}
+              fill
+              style={{ objectFit: 'contain' }}
+              className="select-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
-"use client";
-import React, { useState } from "react";
+ "use client";
+import { useState } from "react";
+import Image from "next/image";
 import {
   Star,
   MapPin,
@@ -57,11 +58,14 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
         <div className="flex flex-col md:flex-row gap-8 items-start mb-12">
           {/* Profile Image */}
           <div className="relative shrink-0">
-            <img
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
-              alt="Profile"
-              className="w-32 h-32 md:w-48 md:h-48 rounded-full object-cover shadow-sm"
-            />
+            <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden shadow-sm">
+              <Image
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
+                alt="Profile"
+                fill
+                className="object-cover rounded-full"
+              />
+            </div>
           </div>
 
           {/* Profile Info */}
