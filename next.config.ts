@@ -2,7 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['static.vinted.com', 'images1.vinted.net'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'static.vinted.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images1.vinted.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
 };
 

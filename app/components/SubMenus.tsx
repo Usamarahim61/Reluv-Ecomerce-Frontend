@@ -1,17 +1,8 @@
 import { useState } from "react";
+import { SubCategoryItem } from "../constants/subCatagories";
 
 interface SubMenusProps {
   subCategories: SubCategoryItem[];
-}
-
-export interface SubCategoryItem {
-  label: string;
-  icon: string;
-  children?: {
-    icon: any;
-    label: string;
-    items: string[];
-  }[];
 }
 
 export function SubMenus({ subCategories }: SubMenusProps) {
@@ -46,7 +37,7 @@ export function SubMenus({ subCategories }: SubMenusProps) {
             className="flex items-center cursor-pointer py-2 px-1 hover:text-[#007782]"
             onMouseEnter={() => handleCategoryHover(cat)}
           >
-            <span className="text-lg">{cat.icon}</span>
+            {/* <span className="text-lg">{cat.icon}</span> */}
             <span className="ml-2">{cat.label}</span>
           </div>
         ))}
