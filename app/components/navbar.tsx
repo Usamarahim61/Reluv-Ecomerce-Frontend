@@ -21,8 +21,10 @@ import UploadItem from "./UplaodItems";
 import Messages from "./Messages";
 import Referrals from "./Referrals";
 import ProfilePage from "../member/[id]/page";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
+    const { user, logout } = useAuth();
   const [openSign, setOpenSign] = useState(false);
   const [openSellNow, setOpenSellNow] = useState(false);
   const [openInBox, setOpenInBox] = useState(false);
@@ -285,7 +287,7 @@ export default function Navbar() {
 
                     {/* Logout */}
                     <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
-                      <span>Log out</span>
+                      <span onClick={logout}>Log out</span>
                     </div>
                   </div>
                 )}

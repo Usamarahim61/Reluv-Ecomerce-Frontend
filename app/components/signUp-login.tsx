@@ -1,13 +1,62 @@
 'use client';
 
-import { X } from 'lucide-react';
-import Image from 'next/image';
+import { X, EyeOff } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
+import { login, register } from "../../services/auth-service";
+import { useAuth } from "../../context/AuthContext";
 
-export default function SignUpLogin({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+export default function SignUpLogin({ onClose }: { onClose: () => void }) {
+  const { login: setAuthLogin } = useAuth();
+  // Added 'register' view
+  const [view, setView] = useState<"initial" | "login" | "register">("initial");
+
+  // Form States
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
+
+  try {
+    const data = await login(email, password);
+
+    // ✅ DO NOT TOUCH localStorage HERE
+    setAuthLogin(data.jwt, data.user);
+
+    alert("Login successful");
+    onClose();
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+async function handleRegister(e: React.FormEvent) {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
+
+  try {
+    const data = await register(username, email, password);
+
+    // ✅ Context handles storage + state
+    setAuthLogin(data.jwt, data.user);
+
+    alert("Registration successful");
+    onClose();
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
