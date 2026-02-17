@@ -14,46 +14,11 @@ import {
 import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
-import { SubCategoryItem } from "../constants/subCatagories";
-import { API_BASE_URL } from "../constants/api";
 import Link from "next/link";
-import { useAuth } from "../../context/AuthContext";
-
-type CategoryNode = {
-  id: number;
-  name: string;
-  slug: string;
-  isActive: boolean;
-  sortOrder: number;
-  categories: CategoryNode[];
-};
-
-type CategoryTreeApiResponse = {
-  data: CategoryNode[];
-};
-
-const sortCategoryTree = (nodes: CategoryNode[]): CategoryNode[] => {
-  return [...nodes]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((node) => ({
-      ...node,
-      categories: sortCategoryTree(node.categories || []),
-    }));
-};
-
-const mapTreeToSubCategories = (tree: CategoryNode[]): SubCategoryItem[] => {
-  return tree.map((root) => ({
-    label: root.name,
-    children: [
-      { label: "ALL", icon: "::", items: [] },
-      ...(root.categories || []).map((child) => ({
-        label: child.name,
-        icon: "::",
-        items: (child.categories || []).map((leaf) => leaf.name),
-      })),
-    ],
-  }));
-};
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
+import { mapTreeToSubCategories } from "@/lib/categoryUtils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -65,8 +30,11 @@ export default function Navbar() {
   const [selectedCata, setSelectedCata] = useState("Catalogue");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [menuCategories, setMenuCategories] = useState<SubCategoryItem[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+  const dispatch = useAppDispatch();
+  const categoryTree = useAppSelector((state) => state.categories.tree);
+  const categoriesStatus = useAppSelector((state) => state.categories.status);
+  const categoriesLoading = categoriesStatus === "idle" || categoriesStatus === "loading";
+  const menuCategories = categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -98,46 +66,10 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchMenuCategories = async () => {
-      if (isMounted) {
-        setCategoriesLoading(true);
-      }
-
-
-      // for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/categories/catalog-tree`);
-          // if (!response.ok) {
-          //   continue;
-          // }
-
-          const payload: CategoryTreeApiResponse = await response.json();
-          const activeTree = sortCategoryTree((payload.data || []).filter((node) => node.isActive));
-          const mapped = mapTreeToSubCategories(activeTree);
-
-          if (mapped.length > 0 && isMounted) {
-            setMenuCategories(mapped);
-            setCategoriesLoading(false);
-            return;
-          }
-        } catch {
-          // keep trying fallback endpoint; skeleton stays visible while loading
-        }
-      // }
-
-      if (isMounted) {
-        setCategoriesLoading(false);
-      }
-    };
-
-    fetchMenuCategories();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    if (categoriesStatus === "idle") {
+      dispatch(fetchCatalogTree());
+    }
+  }, [categoriesStatus, dispatch]);
 
   const languages = [
     { code: "ES", label: "Español (Spanish)" },

@@ -3,20 +3,9 @@ import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX } from "react";
 import { Plus, Camera, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from "lucide-react";
 import Navbar from "../components/navbar";
 import { API_BASE_URL } from "../constants/api";
-
-type CategoryNode = {
-  id: number;
-  documentId: string;
-  name: string;
-  slug: string;
-  isActive: boolean;
-  sortOrder: number;
-  categories: CategoryNode[];
-};
-
-type CategoryApiResponse = {
-  data: CategoryNode[];
-};
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
+import { CategoryNode } from "@/lib/categoryUtils";
 
 type LeafCategoryEntry = {
   node: CategoryNode;
@@ -36,15 +25,6 @@ type DynamicField = {
   placeholder?: string;
   unit?: string;
   options?: DynamicFieldOption[];
-};
-
-const sortCategoryTree = (nodes: CategoryNode[]): CategoryNode[] => {
-  return [...nodes]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((node) => ({
-      ...node,
-      categories: sortCategoryTree(node.categories || []),
-    }));
 };
 
 const getLeafCategoryEntries = (nodes: CategoryNode[], parentPath: CategoryNode[] = []): LeafCategoryEntry[] => {
@@ -137,13 +117,15 @@ const normalizeDynamicFields = (payload: unknown): DynamicField[] => {
 };
 
 export default function UploadItem(): JSX.Element {
+  const dispatch = useAppDispatch();
+  const categoryTree = useAppSelector((state) => state.categories.tree);
+  const categoryStatus = useAppSelector((state) => state.categories.status);
+  const categoryError = useAppSelector((state) => state.categories.error);
+  const categoryLoading = categoryStatus === "idle" || categoryStatus === "loading";
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [price, setPrice] = useState<string>("");
 
-  const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
-  const [categoryLoading, setCategoryLoading] = useState<boolean>(false);
-  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false);
   const [categorySearch, setCategorySearch] = useState<string>("");
   const [activeCategoryPath, setActiveCategoryPath] = useState<CategoryNode[]>([]);
@@ -155,55 +137,10 @@ export default function UploadItem(): JSX.Element {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchCategoryTree = async () => {
-      setCategoryLoading(true);
-      setCategoryError(null);
-
-      const endpoints = [
-        `${API_BASE_URL}/api/categories/catalog-tree`,
-        `${API_BASE_URL}/api/category/catalog-tree`,
-      ];
-
-      let loaded = false;
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint);
-          if (!response.ok) {
-            continue;
-          }
-
-          const payload: CategoryApiResponse = await response.json();
-          if (!isMounted) {
-            return;
-          }
-
-          const onlyActive = (payload.data || []).filter((node) => node.isActive);
-          setCategoryTree(sortCategoryTree(onlyActive));
-          loaded = true;
-          break;
-        } catch {
-          // try next endpoint
-        }
-      }
-
-      if (isMounted && !loaded) {
-        setCategoryError("Failed to load categories");
-      }
-
-      if (isMounted) {
-        setCategoryLoading(false);
-      }
-    };
-
-    fetchCategoryTree();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    if (categoryStatus === "idle") {
+      dispatch(fetchCatalogTree());
+    }
+  }, [categoryStatus, dispatch]);
 
   useEffect(() => {
     let isMounted = true;
