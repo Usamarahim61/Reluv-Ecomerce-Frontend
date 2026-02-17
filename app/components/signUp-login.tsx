@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { login, register } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
+import { API_BASE_URL } from "../constants/api";
 
 export default function SignUpLogin({ onClose }: { onClose: () => void }) {
   const { login: setAuthLogin } = useAuth();
