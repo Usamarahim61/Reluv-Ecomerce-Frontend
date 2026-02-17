@@ -1,6 +1,6 @@
 'use client';
 
-import { X, EyeOff } from "lucide-react";
+import { X, EyeOff, Eye } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { login, register } from "../../services/auth-service";
@@ -8,8 +8,10 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function SignUpLogin({ onClose }: { onClose: () => void }) {
   const { login: setAuthLogin } = useAuth();
-  // Added 'register' view
   const [view, setView] = useState<"initial" | "login" | "register">("initial");
+  
+  // New State for Password Visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form States
   const [username, setUsername] = useState("");
@@ -18,163 +20,180 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-async function handleLogin(e: React.FormEvent) {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
-  try {
-    const data = await login(email, password);
-
-    // ✅ DO NOT TOUCH localStorage HERE
-    setAuthLogin(data.jwt, data.user);
-
-    alert("Login successful");
-    onClose();
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const data = await login(email, password);
+      setAuthLogin(data.jwt, data.user);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   }
-}
-async function handleRegister(e: React.FormEvent) {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
 
-  try {
-    const data = await register(username, email, password);
-
-    // ✅ Context handles storage + state
-    setAuthLogin(data.jwt, data.user);
-
-    alert("Registration successful");
-    onClose();
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const data = await register(username, email, password);
+      setAuthLogin(data.jwt, data.user);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center p-0 sm:p-4"
       onClick={onClose}
     >
+      {/* Modal Container */}
       <div
-        className="relative w-full max-w-md bg-white rounded-xl px-10 py-10 shadow-xl overflow-y-auto max-h-[90vh]"
+        className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-y-auto max-h-[92vh] transition-all duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="absolute cursor-pointer right-6 top-4 text-gray-400 hover:text-black">
-          <X size={20} />
+        {/* Mobile "Pull-down" Handle Indicator */}
+        <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-1 sm:hidden" />
+
+        <button 
+          onClick={onClose} 
+          className="absolute right-4 top-4 sm:right-6 sm:top-6 text-gray-400 hover:text-black p-1"
+        >
+          <X size={24} />
         </button>
 
-        {view === "initial" && (
-          <>
-            <h2 className="text-xl font-semibold text-center">Join and sell pre-loved clothes with no fees</h2>
-            <div className="mt-6 space-y-3">
-              <button className="w-full flex items-center justify-center gap-3 border rounded-md py-2 font-medium hover:bg-gray-50">
-                <Image src="/icons/google.svg" alt="Google" width={20} height={20} /> Continue with Google
+        <div className="px-6 py-8 sm:px-10 sm:py-10">
+          {view === "initial" && (
+            <>
+              <h2 className="text-xl sm:text-2xl font-bold text-center leading-tight mb-8">
+                Join and sell pre-loved clothes with no fees
+              </h2>
+              <div className="space-y-3">
+                <SocialButton icon="/icons/google.svg" text="Continue with Google" />
+                <SocialButton icon="/icons/facebook.svg" text="Continue with Facebook" />
+                <SocialButton icon="/icons/apple.svg" text="Continue with Apple" />
+              </div>
+              
+              <div className="flex items-center my-6">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="px-3 text-xs text-gray-400 font-bold uppercase">OR</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              <button
+                onClick={() => setView("register")}
+                className="w-full bg-[#007782] text-white rounded-md py-3 font-semibold hover:bg-[#00656f]"
+              >
+                Register with email
               </button>
-              <button className="w-full flex items-center justify-center gap-3 border rounded-md py-2 font-medium hover:bg-gray-50">
-                <Image src="/icons/facebook.svg" alt="Facebook" width={20} height={20} /> Continue with Facebook
-              </button>
-              <button className="w-full flex items-center justify-center gap-3 border rounded-md py-2 font-medium hover:bg-gray-50">
-                <Image src="/icons/apple.svg" alt="Apple" width={20} height={20} /> Continue with Apple
+              <p className="mt-6 text-center text-sm text-gray-600">
+                Already have an account?{" "}
+                <span onClick={() => setView("login")} className="text-[#007782] cursor-pointer hover:underline font-bold">Log in</span>
+              </p>
+            </>
+          )}
+
+          {(view === "login" || view === "register") && (
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-semibold text-center mb-8">
+                {view === "login" ? "Log in" : "Sign up with email"}
+              </h2>
+              
+              <form onSubmit={view === "login" ? handleLogin : handleRegister} className="space-y-5">
+                {view === "register" && (
+                  <div>
+                    <input 
+                      type="text" 
+                      placeholder="Username" 
+                      value={username} 
+                      onChange={(e) => setUsername(e.target.value)} 
+                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]" 
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">Visible to other users.</p>
+                  </div>
+                )}
+
+                <input 
+                  type="email" 
+                  placeholder="Email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]" 
+                />
+
+                <div className="relative border-b border-gray-300 focus-within:border-[#007782]">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full py-3 outline-none pr-10" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+
+                {view === "register" && (
+                  <div className="space-y-4 pt-2">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
+                      <span className="text-xs text-gray-600">I want to receive personalized offers and updates.</span>
+                    </label>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input required type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
+                      <span className="text-xs text-gray-600">
+                        I accept the <span className="text-[#007782] font-medium">Terms & Conditions</span> and <span className="text-[#007782] font-medium">Privacy Policy</span>.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
+
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="w-full bg-[#007782] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#005f68]"
+                >
+                  {loading ? "Please wait..." : "Continue"}
+                </button>
+              </form>
+              
+              <button 
+                onClick={() => setView("initial")} 
+                className="mt-6 text-[#007782] text-sm font-medium hover:underline self-center"
+              >
+                 {view === "register" && (<span> Already have an account? Log In</span>)}{view === "login" && (<span> Don'ts have an account? Register</span>)}
               </button>
             </div>
-            <div className="flex items-center my-5">
-              <div className="flex-1 h-px bg-gray-300" />
-              <span className="px-3 text-sm text-gray-500">OR</span>
-              <div className="flex-1 h-px bg-gray-300" />
-            </div>
-            <button
-              onClick={() => setView("register")}
-              className="w-full bg-[#007782] text-white rounded-md py-2 font-medium hover:bg-[#00656f]"
-            >
-              Register with email
-            </button>
-            <p className="mt-4 text-center text-sm text-gray-600">
-              Already have an account?{" "}
-              <span onClick={() => setView("login")} className="text-[#007782] cursor-pointer hover:underline font-medium">Log in</span>
-            </p>
-          </>
-        )}
-
-        {view === "login" && (
-          <div className="flex flex-col">
-            <h2 className="text-2xl font-medium text-center mb-8">Log in</h2>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="border-b border-gray-300 focus-within:border-[#007782]">
-                <input type="text" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full py-2 outline-none" />
-              </div>
-              <div className="border-b border-gray-300 focus-within:border-[#007782] flex items-center">
-                <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full py-2 outline-none" />
-                <EyeOff size={20} className="text-gray-400" />
-              </div>
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-              <button type="submit" disabled={loading} className="w-full bg-[#007782] text-white rounded-md py-3 font-bold disabled:opacity-50">
-                {loading ? "Please wait..." : "Continue"}
-              </button>
-            </form>
-            <button onClick={() => setView("initial")} className="mt-6 text-[#007782] text-sm text-center">Having trouble?</button>
-          </div>
-        )}
-
-        {view === "register" && (
-          <div className="flex flex-col">
-            <h2 className="text-2xl font-medium text-center mb-8">Sign up with email</h2>
-            <form onSubmit={handleRegister} className="space-y-4">
-              {/* Username Field */}
-              <div className="space-y-1">
-                <div className="border-b border-gray-300 focus-within:border-[#007782]">
-                  <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full py-2 outline-none" />
-                </div>
-                <p className="text-[11px] text-gray-500 leading-tight">Use letters, numbers, or both. Other Vinted users will see this name on your account.</p>
-              </div>
-
-              {/* Email Field */}
-              <div className="space-y-1">
-                <div className="border-b border-gray-300 focus-within:border-[#007782]">
-                  <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full py-2 outline-none" />
-                </div>
-                <p className="text-[11px] text-gray-500 leading-tight">Enter the email you want to use on Vinted</p>
-              </div>
-
-              {/* Password Field */}
-              <div className="space-y-1">
-                <div className="border-b border-gray-300 focus-within:border-[#007782] flex items-center">
-                  <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full py-2 outline-none" />
-                  <EyeOff size={20} className="text-gray-400 ml-2" />
-                </div>
-                <p className="text-[11px] text-gray-500 leading-tight">Enter at least 7 characters, including at least 1 letter and at least 1 number</p>
-              </div>
-
-              {/* Checkboxes */}
-              <div className="space-y-4 pt-4">
-                <label className="flex gap-3 cursor-pointer group">
-                  <input type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782]" />
-                  <span className="text-sm text-gray-600 leading-snug">I'd like to receive personalised offers and be the first to know about the latest updates via email.</span>
-                </label>
-                <label className="flex gap-3 cursor-pointer">
-                  <input required type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782]" />
-                  <span className="text-sm text-gray-600 leading-snug">
-                    By registering, I confirm that I accept <span className="text-[#007782] hover:underline cursor-pointer">Vinted's Terms and Conditions</span>, have read the <span className="text-[#007782] hover:underline cursor-pointer">Privacy Policy</span>, and am at least 18 years old.
-                  </span>
-                </label>
-              </div>
-
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-
-              <button type="submit" disabled={loading} className="w-full bg-[#007782] text-white rounded-md py-3 font-bold text-lg mt-4 disabled:opacity-50">
-                {loading ? "Registering..." : "Continue"}
-              </button>
-            </form>
-            <button onClick={() => setView("initial")} className="mt-6 text-[#007782] text-sm text-center">Having trouble?</button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+// Helper component for Social Buttons
+function SocialButton({ icon, text }: { icon: string, text: string }) {
+  return (
+    <button className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2.5 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors">
+      <Image src={icon} alt="" width={20} height={20} />
+      <span className="text-sm">{text}</span>
+    </button>
   );
 }

@@ -14,9 +14,8 @@ import {
 import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
-import { subCategories, SubCategoryItem } from "../constants/subCatagories";
+import { subCategories } from "../constants/subCatagories";
 import Link from "next/link";
-import ProfilePage from "../member/[id]/page";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
@@ -70,10 +69,6 @@ export default function Navbar() {
     { code: "Catalogue", label: "Catalogue" },
     { code: "Members", label: "Members" },
   ];
-  const [activePanel, setActivePanel] = useState<
-    null | "notifications" | "profile" | "invite" | "settings"
-  >(null);
-
   return (
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
@@ -87,7 +82,7 @@ export default function Navbar() {
               </h1>
             </Link>
             {/* Catalog dropdown (desktop + tablet) */}
-            <div className="flex gap-0 w-[620px]">
+            <div className="flex gap-0 w-[750px]">
               <div className="relative hidden sm:flex md:flex">
                 <button
                   onClick={() => setCataOpen(!cataOpen)}
@@ -147,27 +142,19 @@ export default function Navbar() {
 
             {/* Right actions */}
             <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
-              {/* Hamburger for mobile only */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-gray-700" />
-                ) : (
-                  <Menu className="w-6 h-6 text-gray-700" />
-                )}
-              </button>
               {/* Email */}
+              {user && (
               <Link href={`/Messages`}>
                 <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                   <Mail className="w-6 h-6 text-gray-600" />
                 </button>
               </Link>
+              )}
               {/* Notifications */}
               {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
               <Bell className="w-6 h-6 text-gray-600" />
-            </button> */}
+             </button> */}
+              {user && (
               <div ref={notificationRef} className="relative">
                 <button
                   onClick={() => setNotificationOpen(!notificationOpen)}
@@ -201,15 +188,18 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Likes */}
-              
+               {user && (
               <Link href={`/products/2`}>
                 <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                   <Heart className="w-6 h-6 text-gray-600" />
                 </button>
               </Link>
+              )}
               {/* Profile Dropdown */}
+              {user && (
               <div ref={profileRef} className="relative">
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
@@ -268,13 +258,16 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+              )}
               {/* Desktop + Tablet Auth buttons */}
+              {!user && (
               <button
                 onClick={() => setOpenSign(true)}
                 className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
               >
                 Sign up | Log in
               </button>
+              )}
               <Link href={`/SellNow`}>
                 <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
                   Sell Now
@@ -316,6 +309,17 @@ export default function Navbar() {
                 )}
               </div>
             </div>
+              {/* Hamburger for mobile only */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6 text-gray-700" />
+                ) : (
+                  <Menu className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
           </div>
         </div>
 
@@ -382,8 +386,8 @@ export default function Navbar() {
                 <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
               </div>
             </div>
-
             {/* Auth buttons */}
+            {user && (
             <div className="flex flex-col gap-2 mb-3">
               <button
                 onClick={() => setOpenSign(true)}
@@ -395,24 +399,12 @@ export default function Navbar() {
                 Sell
               </button>
             </div>
-
-            {/* Sub Categories with icons */}
-            <div className="flex flex-col gap-2 mb-3">
-              {subCategories.map((cat) => (
-                <div
-                  key={cat.label}
-                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:bg-gray-100 rounded"
-                >
-                  <span>{cat.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Language selector */}
+            )}
+               {/* Language selector */}
             <div className="relative mt-2">
               <button
                 onClick={() => setLangOpen(!langOpen)}
-                className="w-full px-4 py-2 border border-gray-200 rounded text-sm text-left"
+                className="w-full px-4 py-2 border border-gray-200 rounded text-sm text-center"
               >
                 Language: {selectedLang}
               </button>
@@ -427,23 +419,27 @@ export default function Navbar() {
                         setLangOpen(false);
                       }}
                     >
-                      {lang.label}
+                      {lang.label} 
                     </div>
                   ))}
                 </div>
               )}
             </div>
+            {/* Sub Categories with icons */}
+            <div className="flex flex-col gap-2 mb-3">
+              {subCategories.map((cat) => (
+                <div
+                  key={cat.label}
+                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:bg-gray-100 rounded"
+                >
+                  <span>{cat.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </nav>
-
       {openSign && <SignUpLogin onClose={() => setOpenSign(false)} />}
-      {/* {openSellNow && <UploadItem />}
-      {openHelp && <HelpComp />} */}
-      {/* {SellerProfileOpen && <ProfilePage showNavbar={false} />} */}
-      {/* {ReferralsOpen && <Referrals />} */}
-      {/* {settingsOpen && <SettingsComp />} */}
-      {/* {openInBox && <Messages />} */}
     </>
   );
 }
