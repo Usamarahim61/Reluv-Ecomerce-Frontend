@@ -1,6 +1,8 @@
 "use client";
 import React, { JSX, useState } from "react";
 import { Users, Mail, Smartphone, Ticket, ChevronRight } from "lucide-react";
+import Navbar from "../components/navbar";
+import Footer from "../components/Footer";
 
 export default function Referrals(): JSX.Element {
   const [inviteLink] = useState("https://www.vinted.es/invite/rajaabad835");
@@ -11,16 +13,15 @@ export default function Referrals(): JSX.Element {
   };
 
   return (
-    <div className="w-full bg-white font-sans text-[#111111]">
+    <><Navbar /><div className="w-full bg-white font-sans text-[#111111]">
       {/* Hero Section */}
       <div className="relative h-[500px] w-full overflow-hidden">
         {/* Background Image - Replace src with your actual asset path */}
-        <img 
+        <img
           src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
-          alt="Friends laughing" 
-          className="w-full h-full object-cover"
-        />
-        
+          alt="Friends laughing"
+          className="w-full h-full object-cover" />
+
         {/* Invitation Card */}
         <div className="absolute top-1/2 left-4 md:left-20 -translate-y-1/2 bg-white p-6 rounded-md shadow-lg w-full max-w-[360px] space-y-4">
           <h1 className="text-2xl font-bold leading-tight">
@@ -32,12 +33,12 @@ export default function Referrals(): JSX.Element {
           <p className="text-[11px] text-gray-500">
             The referral program is subject to <a href="#" className="text-[#007782] underline">terms</a>.
           </p>
-          
+
           <div className="space-y-3">
             <div className="bg-gray-50 border border-gray-200 p-2 text-xs text-gray-500 rounded truncate">
               {inviteLink}
             </div>
-            <button 
+            <button
               onClick={copyToClipboard}
               className="w-full bg-[#007782] text-white font-bold py-2.5 rounded hover:bg-[#005f68] transition-colors"
             >
@@ -58,7 +59,7 @@ export default function Referrals(): JSX.Element {
       {/* How it Works Section */}
       <section className="max-w-6xl mx-auto py-16 px-4">
         <h2 className="text-center text-2xl font-bold mb-12">How referrals work</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
           {/* Step 1 */}
           <div className="flex flex-col items-center space-y-4">
@@ -95,5 +96,7 @@ export default function Referrals(): JSX.Element {
         </div>
       </section>
     </div>
+    <Footer />
+    </>
   );
 }

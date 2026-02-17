@@ -9,26 +9,19 @@ import {
   Bell,
   Heart,
   User,
+  BellOff,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
-import HelpComp from "./helpComp";
 import { SubMenus } from "./SubMenus";
 import { subCategories, SubCategoryItem } from "../constants/subCatagories";
 import Link from "next/link";
-import SettingsComp from "./setting";
-import UploadItem from "./UplaodItems";
-import Messages from "./Messages";
-import Referrals from "./Referrals";
 import ProfilePage from "../member/[id]/page";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
   const [openSign, setOpenSign] = useState(false);
-  const [openSellNow, setOpenSellNow] = useState(false);
-  const [openInBox, setOpenInBox] = useState(false);
-  const [openHelp, setOpenHelp] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -36,9 +29,6 @@ export default function Navbar() {
   const [selectedCata, setSelectedCata] = useState("Catalogue");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [ReferralsOpen, setReferralsOpen] = useState(false);
-  const [SellerProfileOpen, setSellerProfileOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -169,19 +159,11 @@ export default function Navbar() {
                 )}
               </button>
               {/* Email */}
-              <button
-                onClick={() => {
-                  setOpenInBox((prev) => !prev);
-                  setReferralsOpen(false); // toggle component
-                  setProfileOpen(false); // optional: close profile dropdown
-                  setSellerProfileOpen(false);
-                  setSettingsOpen(false);
-                }}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
-              >
-                <Mail className="w-6 h-6 text-gray-600" />
-              </button>
-
+              <Link href={`/Messages`}>
+                <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                  <Mail className="w-6 h-6 text-gray-600" />
+                </button>
+              </Link>
               {/* Notifications */}
               {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
               <Bell className="w-6 h-6 text-gray-600" />
@@ -196,20 +178,37 @@ export default function Navbar() {
                 </button>
 
                 {notificationOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                  <div className="absolute left-[-100] mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                     {/* Profile */}
-                    <div className="px-4 py-6 cursor-pointer flex items-center gap-2">
-                      <span>Profile</span>
+                    <div className="cursor-pointer flex items-center gap-2">
+                      <div className="flex flex-col items-center justify-center min-h-[80px] p-8 text-center">
+                        {/* Icon Container */}
+                        <div className="relative mb-4">
+                          <div className="absolute inset-0 bg-indigo-100 rounded-full blur-2xl opacity-50" />
+                          <BellOff
+                            size={40}
+                            strokeWidth={1}
+                            className="relative text-indigo-500 animate-pulse"
+                          />
+                        </div>
+
+                        {/* Text Content */}
+                        <p className="text-xl font-semibold text-gray-900">
+                          No notifications yet
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Likes */}
-              <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-                <Heart className="w-6 h-6 text-gray-600" />
-              </button>
-
+              
+              <Link href={`/products/2`}>
+                <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                  <Heart className="w-6 h-6 text-gray-600" />
+                </button>
+              </Link>
               {/* Profile Dropdown */}
               <div ref={profileRef} className="relative">
                 <button
@@ -223,51 +222,28 @@ export default function Navbar() {
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                     {/* Profile */}
-                    <div
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                      onClick={() => {
-                        setSellerProfileOpen((prev) => !prev); // toggle component
-                        setProfileOpen(false); // optional: close profile dropdown
-                        setReferralsOpen(false);
-                        setSettingsOpen(false);
-                        setOpenInBox(false);
-                      }}
-                    >
-                      <span>Profile</span>
-                    </div>
-
+                    <Link href={`/member/1`}>
+                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <span>Profile</span>
+                      </div>
+                    </Link>
                     {/* Invite friends */}
-                    <div
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                      onClick={() => {
-                        setReferralsOpen(!ReferralsOpen); // toggle component
-                        setProfileOpen(false); // optional: close profile dropdown
-                        setSellerProfileOpen(false);
-                        setSettingsOpen(false);
-                        setOpenInBox(false);
-                      }}
-                    >
-                      <span>Invite friends</span>
-                    </div>
+                    <Link href={`/Referrals`}>
+                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <span>Invite friends</span>
+                      </div>
+                    </Link>
 
                     {/* Settings */}
                     {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                     <span>Settings</span>
                   </div> */}
                     {/* Settings */}
-                    <div
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                      onClick={() => {
-                        setSettingsOpen(!settingsOpen); // toggle component
-                        setSellerProfileOpen(false);
-                        setReferralsOpen(false);
-                        setProfileOpen(false); // optional: close profile dropdown
-                        setOpenInBox(false);
-                      }}
-                    >
-                      <span>Settings</span>
-                    </div>
-
+                    <Link href={`/setting`}>
+                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <span>Settings</span>
+                      </div>
+                    </Link>
                     {/* Personalization */}
                     <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                       <span>Personalization</span>
@@ -299,36 +275,17 @@ export default function Navbar() {
               >
                 Sign up | Log in
               </button>
-              <button
-                onClick={() => {
-                  setOpenSellNow((prev) => !prev);
-                  setReferralsOpen(false); // toggle component
-                  setProfileOpen(false); // optional: close profile dropdown
-                  setSellerProfileOpen(false);
-                  setSettingsOpen(false);
-                  setOpenInBox(false);
-                }}
-                className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm"
-              >
-                Sell Now
-              </button>
-
+              <Link href={`/SellNow`}>
+                <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
+                  Sell Now
+                </button>
+              </Link>
               {/* Desktop + Tablet Help */}
-              <button
-                onClick={() => {
-                  setOpenHelp((prev) => !prev);
-                  setReferralsOpen(false); // toggle component
-                  setProfileOpen(false); // optional: close profile dropdown
-                  setSellerProfileOpen(false);
-                  setSettingsOpen(false);
-                  setOpenInBox(false);
-                  setOpenSellNow(false);
-                }}
-                className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100"
-              >
-                <HelpCircle className="w-7 h-7 text-gray-600" />
-              </button>
-
+              <Link href={`/help`}>
+                <button className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100">
+                  <HelpCircle className="w-7 h-7 text-gray-600" />
+                </button>
+              </Link>
               {/* Desktop + Tablet Language */}
               <div ref={LangRef} className="relative hidden sm:block">
                 <button
@@ -481,12 +438,12 @@ export default function Navbar() {
       </nav>
 
       {openSign && <SignUpLogin onClose={() => setOpenSign(false)} />}
-      {openSellNow && <UploadItem />}
-      {openHelp && <HelpComp />}
-      {SellerProfileOpen && <ProfilePage showNavbar={false} />}
-      {ReferralsOpen && <Referrals />}
-      {settingsOpen && <SettingsComp />}
-      {openInBox && <Messages />}
+      {/* {openSellNow && <UploadItem />}
+      {openHelp && <HelpComp />} */}
+      {/* {SellerProfileOpen && <ProfilePage showNavbar={false} />} */}
+      {/* {ReferralsOpen && <Referrals />} */}
+      {/* {settingsOpen && <SettingsComp />} */}
+      {/* {openInBox && <Messages />} */}
     </>
   );
 }
