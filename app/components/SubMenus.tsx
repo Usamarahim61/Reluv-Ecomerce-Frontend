@@ -1,11 +1,14 @@
+"use client";
 import { useState } from "react";
 import { SubCategoryItem } from "../constants/subCatagories";
 
 interface SubMenusProps {
-  subCategories: SubCategoryItem[];
+  subCategories?: SubCategoryItem[];
+  loading?: boolean;
 }
 
-export function SubMenus({ subCategories }: SubMenusProps) {
+export function SubMenus({ subCategories = [], loading = false }: SubMenusProps) {
+  const safeSubCategories = Array.isArray(subCategories) ? subCategories : [];
   const [activeCategory, setActiveCategory] = useState<SubCategoryItem | null>(null);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
 
@@ -28,10 +31,23 @@ export function SubMenus({ subCategories }: SubMenusProps) {
         setActiveCategory(null);
         setSelectedChild(null);
       }}
-    >
+      >
       {/* Main Subcategory Row */}
-      <div className="flex gap-6">
-        {subCategories.map((cat) => (
+      <div className="flex gap-6 items-center min-h-[44px]">
+        {loading &&
+          Array.from({ length: 7 }).map((_, index) => (
+            <div
+              key={`category-skeleton-${index}`}
+              className="flex items-center py-2 px-1"
+            >
+              <span
+                className={`ml-2 h-[16px] rounded bg-gray-200/90 animate-pulse ${
+                  index % 3 === 0 ? "w-20" : index % 3 === 1 ? "w-24" : "w-16"
+                }`}
+              />
+            </div>
+          ))}
+        {!loading && safeSubCategories.map((cat) => (
           <div
             key={cat.label}
             className="flex items-center cursor-pointer py-2 px-1 hover:text-[#007782]"

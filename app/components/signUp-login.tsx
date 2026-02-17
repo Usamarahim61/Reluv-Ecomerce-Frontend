@@ -3,6 +3,7 @@
 import { X, EyeOff } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { API_BASE_URL } from "../constants/api";
 
 export default function SignUpLogin({ onClose }: { onClose: () => void }) {
   // Added 'register' view
@@ -21,7 +22,7 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:1337/api/auth/local", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/local`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: email, password }),
@@ -46,7 +47,7 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:1337/api/auth/local/register", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/local/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),

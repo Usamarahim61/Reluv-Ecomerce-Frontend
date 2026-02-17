@@ -14,8 +14,45 @@ import {
 import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
-import { subCategories, SubCategoryItem } from "../constants/subCatagories";
+import { SubCategoryItem } from "../constants/subCatagories";
+import { API_BASE_URL } from "../constants/api";
 import Link from "next/link";
+
+type CategoryNode = {
+  id: number;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+  categories: CategoryNode[];
+};
+
+type CategoryTreeApiResponse = {
+  data: CategoryNode[];
+};
+
+const sortCategoryTree = (nodes: CategoryNode[]): CategoryNode[] => {
+  return [...nodes]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((node) => ({
+      ...node,
+      categories: sortCategoryTree(node.categories || []),
+    }));
+};
+
+const mapTreeToSubCategories = (tree: CategoryNode[]): SubCategoryItem[] => {
+  return tree.map((root) => ({
+    label: root.name,
+    children: [
+      { label: "ALL", icon: "::", items: [] },
+      ...(root.categories || []).map((child) => ({
+        label: child.name,
+        icon: "::",
+        items: (child.categories || []).map((leaf) => leaf.name),
+      })),
+    ],
+  }));
+};
 
 export default function Navbar() {
   const [openSign, setOpenSign] = useState(false);
@@ -26,6 +63,8 @@ export default function Navbar() {
   const [selectedCata, setSelectedCata] = useState("Catalogue");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [menuCategories, setMenuCategories] = useState<SubCategoryItem[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +92,48 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchMenuCategories = async () => {
+      if (isMounted) {
+        setCategoriesLoading(true);
+      }
+
+
+      // for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/categories/catalog-tree`);
+          // if (!response.ok) {
+          //   continue;
+          // }
+
+          const payload: CategoryTreeApiResponse = await response.json();
+          const activeTree = sortCategoryTree((payload.data || []).filter((node) => node.isActive));
+          const mapped = mapTreeToSubCategories(activeTree);
+
+          if (mapped.length > 0 && isMounted) {
+            setMenuCategories(mapped);
+            setCategoriesLoading(false);
+            return;
+          }
+        } catch {
+          // keep trying fallback endpoint; skeleton stays visible while loading
+        }
+      // }
+
+      if (isMounted) {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchMenuCategories();
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -318,7 +399,7 @@ export default function Navbar() {
 
         {/* Mega Menu */}
         <div className="hidden sm:block max-w-7xl mx-auto px-4">
-          <SubMenus subCategories={subCategories} />
+          <SubMenus subCategories={menuCategories} loading={categoriesLoading} />
         </div>
 
         {/* Mobile menu */}
@@ -395,7 +476,7 @@ export default function Navbar() {
 
             {/* Sub Categories with icons */}
             <div className="flex flex-col gap-2 mb-3">
-              {subCategories.map((cat) => (
+              {menuCategories.map((cat) => (
                 <div
                   key={cat.label}
                   className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:bg-gray-100 rounded"
