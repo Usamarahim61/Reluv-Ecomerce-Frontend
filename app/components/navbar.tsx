@@ -14,9 +14,11 @@ import {
 import { useState, useEffect, useRef } from "react";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
-import { subCategories } from "../constants/subCatagories";
 import Link from "next/link";
-import { useAuth } from "../../context/AuthContext";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
+import { mapTreeToSubCategories } from "@/lib/categoryUtils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -28,6 +30,11 @@ export default function Navbar() {
   const [selectedCata, setSelectedCata] = useState("Catalogue");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const categoryTree = useAppSelector((state) => state.categories.tree);
+  const categoriesStatus = useAppSelector((state) => state.categories.status);
+  const categoriesLoading = categoriesStatus === "idle" || categoriesStatus === "loading";
+  const menuCategories = categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -57,6 +64,12 @@ export default function Navbar() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (categoriesStatus === "idle") {
+      dispatch(fetchCatalogTree());
+    }
+  }, [categoriesStatus, dispatch]);
 
   const languages = [
     { code: "ES", label: "Español (Spanish)" },
@@ -325,7 +338,7 @@ export default function Navbar() {
 
         {/* Mega Menu */}
         <div className="hidden sm:block max-w-7xl mx-auto px-4">
-          <SubMenus subCategories={subCategories} />
+          <SubMenus subCategories={menuCategories} loading={categoriesLoading} />
         </div>
 
         {/* Mobile menu */}
@@ -426,7 +439,7 @@ export default function Navbar() {
               )}
             </div>
             {/* Sub Categories with icons */}
-            <div className="flex flex-col gap-2 mb-3">
+            {/* <div className="flex flex-col gap-2 mb-3">
               {subCategories.map((cat) => (
                 <div
                   key={cat.label}
@@ -435,7 +448,7 @@ export default function Navbar() {
                   <span>{cat.label}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         )}
       </nav>
