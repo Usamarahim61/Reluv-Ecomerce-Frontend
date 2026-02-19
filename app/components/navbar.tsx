@@ -31,8 +31,8 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const dispatch = useAppDispatch();
-  const categoryTree = useAppSelector((state) => state.categories.tree);
-  const categoriesStatus = useAppSelector((state) => state.categories.status);
+  const categoryTree = useAppSelector((state : any) => state.categories.tree);
+  const categoriesStatus = useAppSelector((state : any) => state.categories.status);
   const categoriesLoading = categoriesStatus === "idle" || categoriesStatus === "loading";
   const menuCategories = categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
 
