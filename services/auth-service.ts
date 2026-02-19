@@ -13,6 +13,15 @@ export function register(username: string, email: string, password: string) {
     body: JSON.stringify({ username, email, password }),
   });
 }
+export function getUser(id: number) {
+  // &populate[avatar]=*&populate[received_reviews][populate]=author
+  return apiRequest(
+    `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=author&populate[following][populate]=*&populate[followers][populate]=*`, 
+    {
+      method: "GET",
+    }
+  );
+}
 
 export function logout() {
   localStorage.removeItem("jwt");
