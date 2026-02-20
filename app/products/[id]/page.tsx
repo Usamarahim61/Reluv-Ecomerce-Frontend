@@ -210,7 +210,7 @@ export default function ProductDetail() {
                 <div className="w-full  border border-gray-200 rounded-md bg-white shadow-sm h-fit">
                   {/* Header Section: User Info */}
                   <Link
-                    href={`/member/${product.seller?.id || defaultProduct.seller.id}`}
+                    href={`/member/${1 || product.seller?.id || defaultProduct.seller.id}`}
                     className="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
