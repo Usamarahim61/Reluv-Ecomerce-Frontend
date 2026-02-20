@@ -18,7 +18,7 @@ export default function Referrals(): JSX.Element {
       <div className="relative h-[500px] w-full overflow-hidden">
         {/* Background Image - Replace src with your actual asset path */}
         <img
-          src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
+          src="/referrals_updated_phones_2x.png"
           alt="Friends laughing"
           className="w-full h-full object-cover" />
 

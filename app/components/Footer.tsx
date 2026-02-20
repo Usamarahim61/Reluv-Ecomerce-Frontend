@@ -57,11 +57,11 @@ export default function Footer() {
           {/* App Badges - Centered row */}
           <div className="flex flex-row justify-center gap-4 w-full md:w-auto">
             <button className="transition-transform active:scale-95">
-              <img src="/app-store.svg" alt="App Store" className="h-10 w-auto" />
+              <img src="https://marketplace-web-assets.vinted.com/assets/app-badges/ios/en.svg" alt="App Store" className="h-10 w-auto" />
             </button>
             <button className="transition-transform active:scale-95">
               <img 
-                src="https://tse4.mm.bing.net/th/id/OIP.tMkAAu0j6IOyh_6d1XWOhgHaHa?rs=1&pid=ImgDetMain&o=7&rm=3" 
+                src="https://marketplace-web-assets.vinted.com/assets/app-badges/android/en.svg"
                 alt="Google Play" 
                 className="h-10 w-auto rounded-md shadow-sm" 
               />

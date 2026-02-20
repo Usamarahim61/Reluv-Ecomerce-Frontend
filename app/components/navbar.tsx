@@ -258,10 +258,11 @@ export default function Navbar() {
                     </div>
 
                     {/* My orders */}
+                    <Link href={`/Orders`}>
                     <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                       <span>My orders</span>
                     </div>
-
+                    </Link>
                     <div className="border-t border-gray-200 my-1" />
 
                     {/* Logout */}
