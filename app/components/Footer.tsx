@@ -13,10 +13,10 @@ export default function Footer() {
       title: 'Reluv',
       links: [
         { label: 'About us', href: '/aboutUs' },
-        { label: 'Sustainability', href: '/' },
-        { label: 'Press', href: '/' },
+        { label: 'Sustainability', href: '/sustainability' },
+        { label: 'Press', href: '/newsroom' },
         { label: 'Advertising', href: '/advertisment' },
-        { label: 'Accessibility', href: '/accessibility' },
+        { label: 'Accessibility', href: '/Accessibility' },
       ],
     },
     {
