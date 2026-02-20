@@ -441,16 +441,16 @@ export default function Navbar() {
               )}
             </div>
             {/* Sub Categories with icons */}
-            {/* <div className="flex flex-col gap-2 mb-3">
-              {subCategories.map((cat) => (
+            <div className="flex flex-col gap-2 mb-3">
+              {menuCategories.map((cat) => (
                 <div
                   key={cat.label}
-                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:bg-gray-100 rounded"
+                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#007782] rounded"
                 >
                   <span>{cat.label}</span>
                 </div>
               ))}
-            </div> */}
+            </div>
           </div>
         )}
       </nav>
