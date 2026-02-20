@@ -248,15 +248,16 @@ export default function Navbar() {
                       </div>
                     </Link>
                     {/* Personalization */}
-                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                    {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                       <span>Personalization</span>
-                    </div>
+                    </div> */}
                     {/* Balance */}
+                    <Link href={`/Balance`}>
                     <div className="px-4 py-2 flex items-center justify-between">
                       <span className="flex items-center gap-2">Balance</span>
                       <span className="font-semibold text-sm">$0.00</span>
                     </div>
-
+                    </Link>
                     {/* My orders */}
                     <Link href={`/Orders`}>
                     <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
@@ -401,7 +402,7 @@ export default function Navbar() {
               </div>
             </div>
             {/* Auth buttons */}
-            {user && (
+            {!user && (
             <div className="flex flex-col gap-2 mb-3">
               <button
                 onClick={() => setOpenSign(true)}
