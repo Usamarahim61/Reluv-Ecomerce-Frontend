@@ -145,7 +145,7 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-sm">
-                  {userData.is_pro ? "Vinted Pro" : "Active Seller"}
+                  {userData.is_pro ? "Reluv Pro" : "Active Seller"}
                 </p>
                 <p className="text-gray-500 text-xs">
                   {listings.length > 5 ? "Regularly lists items." : "Verified member."}

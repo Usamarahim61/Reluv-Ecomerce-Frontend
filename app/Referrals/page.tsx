@@ -28,7 +28,7 @@ export default function Referrals(): JSX.Element {
             Tell a friend—help them sell!
           </h1>
           <p className="text-gray-600 text-[13px] leading-relaxed">
-            Get 5 € to shop on Vinted when your friend lists 3 items within 7 days of signing up. Get 10 € more when they sell an item within the first 30 days.
+            Get 5 € to shop on Reluv when your friend lists 3 items within 7 days of signing up. Get 10 € more when they sell an item within the first 30 days.
           </p>
           <p className="text-[11px] text-gray-500">
             The referral program is subject to <a href="#" className="text-[#007782] underline">terms</a>.
@@ -79,7 +79,7 @@ export default function Referrals(): JSX.Element {
             </div>
             <h3 className="font-bold text-lg">Wait for friends to list</h3>
             <p className="text-sm text-gray-500 leading-relaxed px-4">
-              You'll receive a 5 € voucher to shop on Vinted when your friend lists 3 items within 7 days of signing up. You'll also get an extra 10 € when they make a sale within the first 30 days.
+              You'll receive a 5 € voucher to shop on Reluv when your friend lists 3 items within 7 days of signing up. You'll also get an extra 10 € when they make a sale within the first 30 days.
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export default function Referrals(): JSX.Element {
             <div className="w-24 h-24 bg-[#f0f9f9] rounded-full flex items-center justify-center mb-2">
               <Ticket className="w-10 h-10 text-[#007782]" />
             </div>
-            <h3 className="font-bold text-lg">Spend vouchers on Vinted</h3>
+            <h3 className="font-bold text-lg">Spend vouchers on Reluv</h3>
             <p className="text-sm text-gray-500 leading-relaxed px-4">
               Your voucher will automatically apply to your next order of 15 € or more (excluding shipping, Buyer Protection, and optional service fees).
             </p>

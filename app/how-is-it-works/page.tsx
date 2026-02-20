@@ -28,7 +28,7 @@ export default function ReluvHowItWorks() {
         <div className="max-w-[1250px] mx-auto px-6 relative z-10 pt-16 pb-24">
           <div className="md:w-[50%] text-left">
 <h1 className="text-[50px] md:text-[48px] font-medium mb-6 leading-[1.3] tracking-normal text-[#111111]">
-  Vinted is your platform for <br/>
+  Reluv is your platform for <br/>
   <span className="reluv-underline">
     pre-owned pieces
   </span> you’ll love

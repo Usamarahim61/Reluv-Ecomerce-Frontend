@@ -158,7 +158,7 @@ const SettingsView = () => (
 
     <div className="flex flex-col lg:flex-row justify-between items-start gap-6 pt-4">
       <div className="text-[13px] text-slate-500 leading-relaxed max-w-2xl">
-        Your Vinted Balance is managed by Mangopay SA... <a href="#" className="text-teal-600 underline">terms</a>.
+        Your Reluv Balance is managed by Mangopay SA... <a href="#" className="text-teal-600 underline">terms</a>.
         <p className="mt-4">For more information, visit our <a href="#" className="text-teal-600 underline">Help Center</a>.</p>
       </div>
       <button className="w-full lg:w-auto bg-[#007b7b] hover:bg-[#006666] text-white px-8 py-3 rounded-md font-bold text-sm">

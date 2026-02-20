@@ -10,7 +10,7 @@ type FooterLink = {
 export default function Footer() {
   const sections: { title: string; links: FooterLink[] }[] = [
     {
-      title: 'Vinted',
+      title: 'Reluv',
       links: [
         { label: 'About us', href: '/aboutUs' },
         { label: 'Sustainability', href: '/' },

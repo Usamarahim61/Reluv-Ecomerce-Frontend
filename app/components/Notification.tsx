@@ -47,7 +47,7 @@ export default function Notification(): JSX.Element {
         <h3 className="text-xs text-gray-500 uppercase font-medium ml-1">News</h3>
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <NotificationRow
-            title="Vinted Updates"
+            title="Reluv Updates"
             description="Be the first to know about our newest features, updates, and changes"
             active={settings.updates}
             onToggle={() => toggle("updates")}
