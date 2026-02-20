@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+            {
+        protocol: 'https',
+        hostname: 'marketplace-web-assets.vinted.com',
+      },
+            {
+        protocol: 'https',
+        hostname: 'static-assets.vinted.com',
+      },
     ],
   },
 };

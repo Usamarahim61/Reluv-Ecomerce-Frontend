@@ -42,7 +42,7 @@ export default function PrivacySettings(): JSX.Element {
         {/* Feature Items */}
         <PrivacyRow
           title="Feature my items in marketing campaigns for a chance to sell faster"
-          description="This allows Vinted to showcase my items on social media and other websites. The increased visibility could lead to quicker sales."
+          description="This allows Reluv to showcase my items on social media and other websites. The increased visibility could lead to quicker sales."
           active={settings.featureItems}
           onToggle={() => toggle("featureItems")}
         />
@@ -63,7 +63,7 @@ export default function PrivacySettings(): JSX.Element {
 
         {/* Personalise Feed */}
         <PrivacyRow
-          title="Allow Vinted to personalise my feed and search results by evaluating my preferences, settings, previous purchases and usage of Vinted website and app"
+          title="Allow Reluv to personalise my feed and search results by evaluating my preferences, settings, previous purchases and usage of Reluv website and app"
           active={settings.personaliseFeed}
           onToggle={() => toggle("personaliseFeed")}
           isLast
@@ -73,7 +73,7 @@ export default function PrivacySettings(): JSX.Element {
       {/* Second Section: Recently Viewed */}
       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">
         <PrivacyRow
-          title="Allow Vinted to display my recently viewed items on my Homepage."
+          title="Allow Reluv to display my recently viewed items on my Homepage."
           description="If you turn this option off but allow personalised content, these items will still be used to personalise your Feed."
           active={settings.displayRecentlyViewed}
           onToggle={() => toggle("displayRecentlyViewed")}
@@ -86,7 +86,7 @@ export default function PrivacySettings(): JSX.Element {
         <button className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left">
           <div>
             <p className="font-medium text-gray-900 text-[15px]">Manage account data</p>
-            <p className="text-sm text-gray-500 mt-0.5">Request and download a copy of your Vinted account data.</p>
+            <p className="text-sm text-gray-500 mt-0.5">Request and download a copy of your Reluv account data.</p>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
         </button>

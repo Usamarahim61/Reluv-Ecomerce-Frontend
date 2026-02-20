@@ -19,6 +19,7 @@ import { useState } from "react";
 import Navbar from "@/app/components/navbar";
 import ProductFeed from "@/app/Shop/page";
 import Link from "next/link";
+import Footer from "@/app/components/Footer";
 
 const defaultProduct = {
   id: "",
@@ -210,7 +211,7 @@ export default function ProductDetail() {
                 <div className="w-full  border border-gray-200 rounded-md bg-white shadow-sm h-fit">
                   {/* Header Section: User Info */}
                   <Link
-                    href={`/member/${product.seller?.id || defaultProduct.seller.id}`}
+                    href={`/member/${1 || product.seller?.id || defaultProduct.seller.id}`}
                     className="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
@@ -329,6 +330,10 @@ export default function ProductDetail() {
           isOpen={showCarousel}
           onClose={() => setShowCarousel(false)}
         />
+
+         <div className="hidden md:block">
+        <Footer />
+      </div>
       </div>
     </>
   );
