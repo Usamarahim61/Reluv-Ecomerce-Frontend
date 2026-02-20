@@ -7,6 +7,7 @@ import {
   Globe, Cloud, Shirt 
 } from "lucide-react";
 import Footer from "../components/Footer";
+import Navbar from "../components/navbar";
 
 /**
  * Rluv Sustainability Page

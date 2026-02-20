@@ -21,7 +21,7 @@ import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
-    const { user, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -31,10 +31,14 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const dispatch = useAppDispatch();
-  const categoryTree = useAppSelector((state : any) => state.categories.tree);
-  const categoriesStatus = useAppSelector((state : any) => state.categories.status);
-  const categoriesLoading = categoriesStatus === "idle" || categoriesStatus === "loading";
-  const menuCategories = categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
+  const categoryTree = useAppSelector((state: any) => state.categories.tree);
+  const categoriesStatus = useAppSelector(
+    (state: any) => state.categories.status,
+  );
+  const categoriesLoading =
+    categoriesStatus === "idle" || categoriesStatus === "loading";
+  const menuCategories =
+    categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -157,131 +161,138 @@ export default function Navbar() {
             <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
               {/* Email */}
               {user && (
-              <Link href={`/Messages`}>
-                <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-                  <Mail className="w-6 h-6 text-gray-600" />
-                </button>
-              </Link>
+                <Link href={`/Messages`}>
+                  <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                    <Mail className="w-6 h-6 text-gray-600" />
+                  </button>
+                </Link>
               )}
               {/* Notifications */}
               {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
               <Bell className="w-6 h-6 text-gray-600" />
              </button> */}
               {user && (
-              <div ref={notificationRef} className="relative">
-                <button
-                  onClick={() => setNotificationOpen(!notificationOpen)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
-                >
-                  {/* Avatar / fallback icon */}
-                  <Bell className="w-6 h-6 text-gray-600" />
-                </button>
+                <div ref={notificationRef} className="relative">
+                  <button
+                    onClick={() => setNotificationOpen(!notificationOpen)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
+                  >
+                    {/* Avatar / fallback icon */}
+                    <Bell className="w-6 h-6 text-gray-600" />
+                  </button>
 
-                {notificationOpen && (
-                  <div className="absolute left-[-100] mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                    {/* Profile */}
-                    <div className="cursor-pointer flex items-center gap-2">
-                      <div className="flex flex-col items-center justify-center min-h-[80px] p-8 text-center">
-                        {/* Icon Container */}
-                        <div className="relative mb-4">
-                          <div className="absolute inset-0 bg-indigo-100 rounded-full blur-2xl opacity-50" />
-                          <BellOff
-                            size={40}
-                            strokeWidth={1}
-                            className="relative text-indigo-500 animate-pulse"
-                          />
+                  {notificationOpen && (
+                    <div className="absolute left-[-100] mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                      {/* Profile */}
+                      <div className="cursor-pointer flex items-center gap-2">
+                        <div className="flex flex-col items-center justify-center min-h-[80px] p-8 text-center">
+                          {/* Icon Container */}
+                          <div className="relative mb-4">
+                            <div className="absolute inset-0 bg-indigo-100 rounded-full blur-2xl opacity-50" />
+                            <BellOff
+                              size={40}
+                              strokeWidth={1}
+                              className="relative text-indigo-500 animate-pulse"
+                            />
+                          </div>
+
+                          {/* Text Content */}
+                          <p className="text-xl font-semibold text-gray-900">
+                            No notifications yet
+                          </p>
                         </div>
-
-                        {/* Text Content */}
-                        <p className="text-xl font-semibold text-gray-900">
-                          No notifications yet
-                        </p>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
 
               {/* Likes */}
-               {user && (
-              <Link href={`/products/2`}>
-                <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-                  <Heart className="w-6 h-6 text-gray-600" />
-                </button>
-              </Link>
+              {user && (
+                <Link href={`/products/2`}>
+                  <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                    <Heart className="w-6 h-6 text-gray-600" />
+                  </button>
+                </Link>
               )}
               {/* Profile Dropdown */}
               {user && (
-              <div ref={profileRef} className="relative">
-                <button
-                  onClick={() => setProfileOpen(!profileOpen)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
-                >
-                  {/* Avatar / fallback icon */}
-                  <User className="w-5 h-5 text-gray-600" />
-                </button>
+                <div ref={profileRef} className="relative">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
+                  >
+                    {/* Avatar / fallback icon */}
+                    <img
+                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                    {/* <User className="w-5 h-5 text-gray-600" /> */}
+                  </button>
 
-                {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                    {/* Profile */}
-                    <Link href={`/member/1`}>
-                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                        <span>Profile</span>
-                      </div>
-                    </Link>
-                    {/* Invite friends */}
-                    <Link href={`/Referrals`}>
-                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                        <span>Invite friends</span>
-                      </div>
-                    </Link>
+                  {profileOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
+                      {/* Profile */}
+                      <Link href={`/member/1`}>
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                          <span>Profile</span>
+                        </div>
+                      </Link>
+                      {/* Invite friends */}
+                      <Link href={`/Referrals`}>
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                          <span>Invite friends</span>
+                        </div>
+                      </Link>
 
-                    {/* Settings */}
-                    {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                      {/* Settings */}
+                      {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                     <span>Settings</span>
                   </div> */}
-                    {/* Settings */}
-                    <Link href={`/setting`}>
-                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                        <span>Settings</span>
-                      </div>
-                    </Link>
-                    {/* Personalization */}
-                    {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                      {/* Settings */}
+                      <Link href={`/setting`}>
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                          <span>Settings</span>
+                        </div>
+                      </Link>
+                      {/* Personalization */}
+                      {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                       <span>Personalization</span>
                     </div> */}
-                    {/* Balance */}
-                    <Link href={`/Balance`}>
-                    <div className="px-4 py-2 flex items-center justify-between">
-                      <span className="flex items-center gap-2">Balance</span>
-                      <span className="font-semibold text-sm">$0.00</span>
-                    </div>
-                    </Link>
-                    {/* My orders */}
-                    <Link href={`/Orders`}>
-                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                      <span>My orders</span>
-                    </div>
-                    </Link>
-                    <div className="border-t border-gray-200 my-1" />
+                      {/* Balance */}
+                      <Link href={`/Balance`}>
+                        <div className="px-4 py-2 flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            Balance
+                          </span>
+                          <span className="font-semibold text-sm">$0.00</span>
+                        </div>
+                      </Link>
+                      {/* My orders */}
+                      <Link href={`/Orders`}>
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                          <span>My orders</span>
+                        </div>
+                      </Link>
+                      <div className="border-t border-gray-200 my-1" />
 
-                    {/* Logout */}
-                    <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
-                      <span onClick={logout}>Log out</span>
+                      {/* Logout */}
+                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                        <span onClick={logout}>Log out</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
               {/* Desktop + Tablet Auth buttons */}
               {!user && (
-              <button
-                onClick={() => setOpenSign(true)}
-                className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
-              >
-                Sign up | Log in
-              </button>
+                <button
+                  onClick={() => setOpenSign(true)}
+                  className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
+                >
+                  Sign up | Log in
+                </button>
               )}
               <Link href={`/SellNow`}>
                 <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
@@ -324,23 +335,26 @@ export default function Navbar() {
                 )}
               </div>
             </div>
-              {/* Hamburger for mobile only */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-gray-700" />
-                ) : (
-                  <Menu className="w-6 h-6 text-gray-700" />
-                )}
-              </button>
+            {/* Hamburger for mobile only */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700" />
+              )}
+            </button>
           </div>
         </div>
 
         {/* Mega Menu */}
         <div className="hidden sm:block max-w-7xl mx-auto px-4">
-          <SubMenus subCategories={menuCategories} loading={categoriesLoading} />
+          <SubMenus
+            subCategories={menuCategories}
+            loading={categoriesLoading}
+          />
         </div>
 
         {/* Mobile menu */}
@@ -403,19 +417,19 @@ export default function Navbar() {
             </div>
             {/* Auth buttons */}
             {!user && (
-            <div className="flex flex-col gap-2 mb-3">
-              <button
-                onClick={() => setOpenSign(true)}
-                className="w-full px-4 py-2 border border-[#007782] text-[#007782] rounded text-sm"
-              >
-                Sign up | Log in
-              </button>
-              <button className="w-full px-4 py-2 bg-[#007782] text-white rounded text-sm">
-                Sell
-              </button>
-            </div>
+              <div className="flex flex-col gap-2 mb-3">
+                <button
+                  onClick={() => setOpenSign(true)}
+                  className="w-full px-4 py-2 border border-[#007782] text-[#007782] rounded text-sm"
+                >
+                  Sign up | Log in
+                </button>
+                <button className="w-full px-4 py-2 bg-[#007782] text-white rounded text-sm">
+                  Sell
+                </button>
+              </div>
             )}
-               {/* Language selector */}
+            {/* Language selector */}
             <div className="relative mt-2">
               <button
                 onClick={() => setLangOpen(!langOpen)}
@@ -434,7 +448,7 @@ export default function Navbar() {
                         setLangOpen(false);
                       }}
                     >
-                      {lang.label} 
+                      {lang.label}
                     </div>
                   ))}
                 </div>

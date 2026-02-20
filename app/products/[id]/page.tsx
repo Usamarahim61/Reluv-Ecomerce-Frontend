@@ -19,6 +19,7 @@ import { useState } from "react";
 import Navbar from "@/app/components/navbar";
 import ProductFeed from "@/app/Shop/page";
 import Link from "next/link";
+import Footer from "@/app/components/Footer";
 
 const defaultProduct = {
   id: "",
@@ -329,6 +330,10 @@ export default function ProductDetail() {
           isOpen={showCarousel}
           onClose={() => setShowCarousel(false)}
         />
+
+         <div className="hidden md:block">
+        <Footer />
+      </div>
       </div>
     </>
   );

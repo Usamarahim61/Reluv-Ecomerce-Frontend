@@ -80,9 +80,9 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
                 Join and sell pre-loved clothes with no fees
               </h2>
               <div className="space-y-3">
-                <SocialButton icon="/icons/google.svg" text="Continue with Google" />
-                <SocialButton icon="/icons/facebook.svg" text="Continue with Facebook" />
-                <SocialButton icon="/icons/apple.svg" text="Continue with Apple" />
+                <SocialButton icon="https://www.svgrepo.com/show/475656/google-color.svg" text="Continue with Google" />
+                <SocialButton icon="https://www.svgrepo.com/show/475647/facebook-color.svg" text="Continue with Facebook" />
+                <SocialButton icon="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg" text="Continue with Apple" />
               </div>
               
               <div className="flex items-center my-6">

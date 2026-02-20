@@ -7,7 +7,7 @@ import Navbar from "../components/navbar";
 const MESSAGES_DATA = [
   {
     id: 1,
-    sender: "Rulv",
+    sender: "Reluv",
     avatar: "R",
     isVerified: true,
     heading: "Shop tech for less 🤖",
