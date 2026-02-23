@@ -1,4 +1,4 @@
-import ReluvGroup from '../components/Reluv-Group-';
+import ReluvGroup from '../components/Reluv-Group-Navbar';
 import ReluvGroupFooter from '../components/Reluv-Group-Footer';
 
 import Sustainability from '../sustainability/page';
@@ -9,11 +9,11 @@ import MediaAssets from "../mediaAssets/page"
 export const dynamic = 'force-dynamic';
 
 type Props = {
-  searchParams: { view?: string };
+  searchParams?: { view?: string };
 };
 
 export default function ReluvGroup({ searchParams }: Props) {
-  const view = searchParams.view;
+  const view = searchParams?.view;
 
   return (
     <div className="flex min-h-screen flex-col">
