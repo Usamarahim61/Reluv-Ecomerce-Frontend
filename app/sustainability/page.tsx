@@ -6,8 +6,6 @@ import {
   Banknote, PiggyBank, RefreshCw, 
   Globe, Cloud, Shirt 
 } from "lucide-react";
-import Footer from "../components/Footer";
-import Navbar from "../components/navbar";
 
 /**
  * Rluv Sustainability Page
@@ -15,7 +13,8 @@ import Navbar from "../components/navbar";
  */
 export default function SustainabilityPage() {
   return (
-    <><Navbar />
+    <>
+    {/* <Navbar /> */}
     <div className="bg-white font-sans text-slate-900 overflow-x-hidden">
       
       {/* SECTION 1: HERO & IMPACT REPORT */}
@@ -245,7 +244,7 @@ export default function SustainabilityPage() {
         </div>
       </section>
     </div>
-    <Footer />
+    {/* <Footer /> */}
     </>
   );
 }

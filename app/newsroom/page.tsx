@@ -76,7 +76,7 @@ const NEWS_DATA: NewsItem[] = [
 const newsroom = () => {
   return (
     <>
-    <Navbar />
+    {/* <Navbar /> */}
     <div className="bg-white font-sans text-slate-900">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
         
@@ -161,7 +161,7 @@ const newsroom = () => {
 
       </div>
     </div>
-    <Footer />
+    {/* <Footer /> */}
     </>
   );
 };

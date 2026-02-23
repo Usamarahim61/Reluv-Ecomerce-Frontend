@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 // Import the components we built previously
 import Newsroom from "../newsroom/page";
-import SustainabilityPage from "../sustainability/page";
-import AccessibilitySection from "../Accessibility/page";
+import Sustainability from "../sustainability/page";
+import ReluvVentures from "../ReluvVentures/page";
+import MediaAssets from "../mediaAssets/page"
 
-type Path = '/aboutUs' | '/sustainability' | '/newsroom' | '/advertisment' | '/Accessibility';
+type Path =  '/sustainability' | '/newsroom' | '/mediaAssets' | '/ReluvVentures';
 
 export default function RluvGroupNavbar() {
   // We use the href as the key to match your Footer structure
@@ -45,7 +46,10 @@ export default function RluvGroupNavbar() {
             </button>
             
             <button
-              className="text-[15px] font-medium text-slate-600 hover:text-[#007782]"
+                 onClick={() => navigateTo('/mediaAssets')}
+              className={`text-[15px] font-medium transition-colors ${
+                currentPath === '/mediaAssets' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+              }`}
             >
               Media Assets
             </button>
@@ -60,12 +64,12 @@ export default function RluvGroupNavbar() {
             </button>
 
             <button
-              onClick={() => navigateTo('/Accessibility')}
+              onClick={() => navigateTo('/ReluvVentures')}
               className={`text-[15px] font-medium transition-colors ${
-                currentPath === '/Accessibility' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+                currentPath === '/ReluvVentures' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
               }`}
             >
-              Accessibility
+              Reluv Ventures
             </button>
 
             {/* Language Dropdown */}
@@ -89,16 +93,17 @@ export default function RluvGroupNavbar() {
       {/* Content Rendering based on Path */}
       <main className="transition-all duration-300">
         {currentPath === '/newsroom' && <Newsroom />}
-        {currentPath === '/sustainability' && <SustainabilityPage />}
-        {currentPath === '/Accessibility' && <AccessibilitySection />}
+        {currentPath === '/sustainability' && <Sustainability />}
+        {currentPath === '/ReluvVentures' && <ReluvVentures />}
+        {currentPath === '/mediaAssets' && <MediaAssets />}
         
-        {/* Placeholder for paths not yet built */}
+        {/* Placeholder for paths not yet built
         {(currentPath === '/aboutUs' || currentPath === '/advertisment') && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Coming Soon</h2>
             <p className="text-slate-500">The {currentPath.replace('/', '')} page is currently under development.</p>
           </div>
-        )}
+        )} */}
       </main>
     </div>
   );
