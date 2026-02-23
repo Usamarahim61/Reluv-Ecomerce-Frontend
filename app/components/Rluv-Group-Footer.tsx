@@ -1,28 +1,30 @@
-"use client";
+'use client';
 
 import React from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 interface FooterLink {
   label: string;
   href: string;
 }
 
-interface FooterProps {
-  // Pass the current path and the navigation function from your main layout
-  currentPath: string;
-  onNavigate: (path: any) => void;
-}
+const RluvGroupFooter: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
 
-const RluvGroupFooter: React.FC<FooterProps> = ({ currentPath, onNavigate }) => {
+  const onNavigate = (path: string) => {
+    router.push(path);
+  };
+
   const sections: { title: string; links: FooterLink[] }[] = [
     {
-      title: 'Rluv Group', // Based on reference structure
+      title: 'Rluv Group',
       links: [
-        { label: 'Newsroom', href: '/newsroom' },
-        { label: 'Media Assets', href: '/mediaAssets' },
-        { label: 'Sustainability', href: '/sustainability' },
+        { label: 'Newsroom', href: '/RluvGroup?view=press' },
+        { label: 'Media Assets', href: '/RluvGroup?view=mediaAssets' },
+        { label: 'Sustainability', href: '/RluvGroup?view=sustainability' },
         { label: 'Tax Strategy', href: '/taxStrategy' },
-        { label: 'Vinted Ventures', href: '/vintedVentures' },
+        { label: 'Reluv Ventures', href: '/RluvGroup?view=reluvVentures' },
       ],
     },
     {
@@ -36,32 +38,34 @@ const RluvGroupFooter: React.FC<FooterProps> = ({ currentPath, onNavigate }) => 
   ];
 
   return (
-    <footer className="bg-white pt-20 pb-12 px-4 md:px-8 border-t border-gray-100 font-sans">
+    <footer className="bg-white pt-20 pb-12 px-4 md:px-8 border-t border-gray-100">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between gap-12">
           
-          {/* Brand Column */}
           <div className="flex-1">
-            <span className="text-[#007782] text-3xl font-bold tracking-tighter cursor-pointer" onClick={() => onNavigate('/sustainability')}>
+            <span
+              className="text-[#007782] text-3xl font-bold cursor-pointer"
+              onClick={() => onNavigate('/RluvGroup?view=sustainability')}
+            >
               Rluv
             </span>
           </div>
 
-          {/* Links Columns */}
           <div className="flex-[2] grid grid-cols-1 sm:grid-cols-3 gap-8">
             {sections.map((section, idx) => (
               <div key={idx}>
-                <h4 className="text-[16px] font-bold text-slate-900 mb-6 uppercase tracking-wider">
+                <h4 className="text-[16px] font-bold text-slate-900 mb-6 uppercase">
                   {section.title}
                 </h4>
+
                 <ul className="space-y-4">
                   {section.links.map((link, linkIdx) => (
                     <li key={linkIdx}>
                       <button
                         onClick={() => link.href !== '#' && onNavigate(link.href)}
-                        className={`text-[15px] transition-colors hover:text-[#007782] text-left ${
-                          currentPath === link.href 
-                            ? "text-[#007782] font-semibold underline underline-offset-4" 
+                        className={`text-[15px] hover:text-[#007782] text-left ${
+                          pathname === link.href
+                            ? "text-[#007782] font-semibold underline"
                             : "text-slate-600"
                         }`}
                       >
@@ -75,16 +79,10 @@ const RluvGroupFooter: React.FC<FooterProps> = ({ currentPath, onNavigate }) => 
           </div>
         </div>
 
-        {/* Bottom Legal Section */}
-        <div className="mt-20 pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="mt-20 pt-8 border-t border-gray-100 flex justify-between">
           <p className="text-slate-400 text-sm">
             © 2026 Rluv Group. Second-hand is for everyone.
           </p>
-          <div className="flex gap-6 text-xs text-slate-400 uppercase tracking-widest">
-            <span className="cursor-pointer hover:text-slate-600">Privacy Policy</span>
-            <span className="cursor-pointer hover:text-slate-600">Terms & Conditions</span>
-            <span className="cursor-pointer hover:text-slate-600">Cookie Policy</span>
-          </div>
         </div>
       </div>
     </footer>
