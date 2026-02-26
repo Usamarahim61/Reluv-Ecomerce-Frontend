@@ -27,6 +27,11 @@ type DynamicField = {
   options?: DynamicFieldOption[];
 };
 
+type UploadImage = {
+  file: File;
+  previewUrl: string;
+};
+
 const getLeafCategoryEntries = (nodes: CategoryNode[], parentPath: CategoryNode[] = []): LeafCategoryEntry[] => {
   return nodes.flatMap((node) => {
     const currentPath = [...parentPath, node];
@@ -37,94 +42,20 @@ const getLeafCategoryEntries = (nodes: CategoryNode[], parentPath: CategoryNode[
   });
 };
 
-const toOptions = (rawOptions: unknown): DynamicFieldOption[] => {
-  if (!Array.isArray(rawOptions)) {
-    return [];
-  }
-
-  return rawOptions
-    .map((option) => {
-      if (typeof option === "string" || typeof option === "number") {
-        return { label: String(option), value: String(option) };
-      }
-
-      if (option && typeof option === "object") {
-        const asObject = option as Record<string, unknown>;
-        const value = asObject.value ?? asObject.id ?? asObject.slug ?? asObject.name;
-        const label = asObject.label ?? asObject.name ?? asObject.value ?? asObject.slug;
-        if (value != null && label != null) {
-          return { label: String(label), value: String(value) };
-        }
-      }
-
-      return null;
-    })
-    .filter((option): option is DynamicFieldOption => option !== null);
-};
-
-const normalizeDynamicFields = (payload: unknown): DynamicField[] => {
-  let sourceList: unknown[] = [];
-
-  if (Array.isArray(payload)) {
-    sourceList = payload;
-  } else if (payload && typeof payload === "object") {
-    const root = payload as Record<string, unknown>;
-    const data = root.data;
-
-    if (Array.isArray(data)) {
-      sourceList = data;
-    } else if (data && typeof data === "object") {
-      const dataObject = data as Record<string, unknown>;
-      if (Array.isArray(dataObject.fields)) {
-        sourceList = dataObject.fields;
-      } else if (Array.isArray(dataObject.attributes)) {
-        sourceList = dataObject.attributes;
-      }
-    }
-  }
-
-  return sourceList
-    .map((item, index) => {
-      if (!item || typeof item !== "object") {
-        return null;
-      }
-
-      const raw = item as Record<string, unknown>;
-      const rawType = String(raw.type ?? raw.fieldType ?? raw.inputType ?? "").toLowerCase();
-      const options = toOptions(raw.options ?? raw.values ?? raw.choices);
-
-      let type: DynamicField["type"] = "text";
-      if (rawType.includes("number")) {
-        type = "number";
-      } else if (rawType.includes("select") || options.length > 0) {
-        type = "select";
-      }
-
-      const key = String(raw.key ?? raw.slug ?? raw.name ?? raw.documentId ?? raw.id ?? `field_${index}`);
-      const label = String(raw.label ?? raw.name ?? raw.title ?? `Field ${index + 1}`);
-
-      return {
-        key,
-        label,
-        type,
-        required: Boolean(raw.required),
-        placeholder: raw.placeholder ? String(raw.placeholder) : undefined,
-        unit: raw.unit ? String(raw.unit) : undefined,
-        options,
-      };
-    })
-    .filter((field): field is DynamicField => field !== null);
-};
-
 export default function UploadItem(): JSX.Element {
   const dispatch = useAppDispatch();
   const categoryTree = useAppSelector((state) => state.categories.tree);
   const categoryStatus = useAppSelector((state) => state.categories.status);
   const categoryError = useAppSelector((state) => state.categories.error);
   const categoryLoading = categoryStatus === "idle" || categoryStatus === "loading";
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<UploadImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [price, setPrice] = useState<string>("");
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [submitLoading, setSubmitLoading] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false);
   const [categorySearch, setCategorySearch] = useState<string>("");
@@ -135,6 +66,7 @@ export default function UploadItem(): JSX.Element {
   const [dynamicFieldsError, setDynamicFieldsError] = useState<string | null>(null);
   const [dynamicFieldValues, setDynamicFieldValues] = useState<Record<string, string>>({});
   const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const imagesRef = useRef<UploadImage[]>([]);
 
   useEffect(() => {
     if (categoryStatus === "idle") {
@@ -157,49 +89,149 @@ export default function UploadItem(): JSX.Element {
       setDynamicFieldsLoading(true);
       setDynamicFieldsError(null);
 
-      const endpoints = [
-        `${API_BASE_URL}/api/categories/${selectedCategory.id}/attributes`,
-        `${API_BASE_URL}/api/categories/${selectedCategory.id}/fields`,
-        `${API_BASE_URL}/api/category-attributes?categoryId=${selectedCategory.id}`,
-        `${API_BASE_URL}/api/category-fields?categoryId=${selectedCategory.id}`,
-      ];
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/categories/upload-attributes?category_id=${selectedCategory.id}`
+        );
 
-      let loadedFields: DynamicField[] = [];
-      let lastError = "No field schema returned from backend";
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint);
-          if (!response.ok) {
-            lastError = `Failed to load fields: ${response.status}`;
-            continue;
-          }
-
-          const payload = await response.json();
-          const normalized = normalizeDynamicFields(payload);
-
-          if (normalized.length > 0) {
-            loadedFields = normalized;
-            break;
-          }
-        } catch (error) {
-          lastError = error instanceof Error ? error.message : "Failed to load fields";
+        if (!response.ok) {
+          throw new Error(`Failed to load fields: ${response.status}`);
         }
-      }
 
-      if (!isMounted) {
-        return;
-      }
+        const payload = await response.json();
+        
+        const apiAttributes = payload.attributes || [];
+        
+        // Deduplicate by code
+        const uniqueAttrMap = new Map<string, any>();
+        for (const attr of apiAttributes) {
+          const key = attr.code || attr.id;
+          if (!uniqueAttrMap.has(key)) {
+            uniqueAttrMap.set(key, attr);
+          }
+        }
+        
+        const loadedFields: DynamicField[] = Array.from(uniqueAttrMap.values()).map((attr: any) => {
+          const config = attr.configuration || {};
+          
+          // Use rawOptions if available (new API format)
+          let fieldOptions: DynamicFieldOption[] = [];
+          
+          if (attr.rawOptions && Array.isArray(attr.rawOptions)) {
+            // New format with rawOptions
+            fieldOptions = attr.rawOptions.map((opt: any) => ({
+              label: opt.title || String(opt.id),
+              value: String(opt.value || opt.id),
+            }));
+          } else if (config.options && Array.isArray(config.options) && config.options.length > 0) {
+            // Legacy format with nested options
+            const group = config.options[0];
+            if (group && group.options && Array.isArray(group.options)) {
+              fieldOptions = group.options.map((opt: any) => ({
+                label: opt.title || String(opt.id),
+                value: String(opt.id),
+              }));
+            }
+          }
 
-      if (loadedFields.length > 0) {
-        setDynamicFields(loadedFields);
-        setDynamicFieldValues({});
-      } else {
+          // Determine field type
+          let fieldType: DynamicField["type"] = "text";
+          if (
+            config.field_type === "select" ||
+            attr.field_type === "select" ||
+            config.display_type === "list" ||
+            fieldOptions.length > 0
+          ) {
+            fieldType = "select";
+          } else if (attr.rawType === "number" || config.display_type === "number") {
+            fieldType = "number";
+          }
+
+          return {
+            key: attr.code || String(attr.id),
+            label: config.title || attr.code || 'Field',
+            type: fieldType,
+            required: config.required || false,
+            placeholder: config.placeholder || config.field_placeholder,
+            options: fieldOptions,
+          };
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (loadedFields.length > 0) {
+          setDynamicFields(loadedFields);
+          setDynamicFieldValues({});
+          setDynamicFieldsLoading(false);
+
+          const dropdownCodes = Array.from(
+            new Set(
+              loadedFields
+                .filter((field) => {
+                  const code = field.key.toLowerCase();
+                  const needsDropdownByType = field.type === "select" && (field.options?.length ?? 0) === 0;
+                  const needsDropdownByCode = (code === "brand" || code === "size") && (field.options?.length ?? 0) === 0;
+                  return needsDropdownByType || needsDropdownByCode;
+                })
+                .map((field) => field.key.toLowerCase())
+            )
+          );
+
+          if (dropdownCodes.length > 0) {
+            const dropdownResponses = await Promise.all(
+              dropdownCodes.map(async (code) => {
+                try {
+                  const dropdownRes = await fetch(
+                    `${API_BASE_URL}/api/item-upload/dropdown?category_id=${selectedCategory.id}&code=${encodeURIComponent(code)}`
+                  );
+                  if (!dropdownRes.ok) return [code, []] as const;
+                  const dropdownPayload = await dropdownRes.json();
+                  const options = Array.isArray(dropdownPayload?.options)
+                    ? dropdownPayload.options
+                        .map((option: any) => ({
+                          label: String(option.title || option.value || "").trim(),
+                          value: String(option.value ?? option.id ?? ""),
+                        }))
+                        .filter((option: DynamicFieldOption) => option.label && option.value)
+                    : [];
+                  return [code, options] as const;
+                } catch {
+                  return [code, []] as const;
+                }
+              })
+            );
+
+            if (!isMounted) return;
+
+            const optionsByCode = new Map<string, DynamicFieldOption[]>(dropdownResponses);
+            setDynamicFields((prev) =>
+              prev.map((field) => {
+                const code = field.key.toLowerCase();
+                const fetchedOptions = optionsByCode.get(code) || [];
+                if (fetchedOptions.length === 0) return field;
+                return {
+                  ...field,
+                  type: "select",
+                  options: fetchedOptions,
+                };
+              })
+            );
+          }
+        } else {
+          setDynamicFields([]);
+          setDynamicFieldsError(null);
+          setDynamicFieldsLoading(false);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
         setDynamicFields([]);
-        setDynamicFieldsError(lastError);
+        setDynamicFieldsError(error instanceof Error ? error.message : "Failed to load fields");
+        setDynamicFieldsLoading(false);
       }
-
-      setDynamicFieldsLoading(false);
     };
 
     fetchFields();
@@ -218,6 +250,18 @@ export default function UploadItem(): JSX.Element {
 
     document.addEventListener("mousedown", onDocumentClick);
     return () => document.removeEventListener("mousedown", onDocumentClick);
+  }, []);
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
+    return () => {
+      for (const image of imagesRef.current) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
+    };
   }, []);
 
   const currentLevelNodes = useMemo(() => {
@@ -246,13 +290,23 @@ export default function UploadItem(): JSX.Element {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newImages = Array.from(files).map((file) => URL.createObjectURL(file));
+      const newImages = Array.from(files).map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
       setImages((prev) => [...prev, ...newImages]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((prev) => {
+      const toRemove = prev[index];
+      if (toRemove) URL.revokeObjectURL(toRemove.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleCategoryRowClick = (node: CategoryNode) => {
@@ -279,6 +333,76 @@ export default function UploadItem(): JSX.Element {
     ? activeCategoryPath[activeCategoryPath.length - 1].name
     : "Select a category";
 
+  const handleCreateProduct = async () => {
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (!selectedCategory) {
+      setSubmitError("Please select a category.");
+      return;
+    }
+
+    setSubmitLoading(true);
+
+    try {
+      let imageIds: number[] = [];
+      if (images.length > 0) {
+        const uploadForm = new FormData();
+        for (const image of images) {
+          uploadForm.append("files", image.file);
+        }
+
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: "POST",
+          body: uploadForm,
+        });
+
+        const uploadPayload = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          throw new Error(uploadPayload?.error?.message || `Failed to upload images: ${uploadResponse.status}`);
+        }
+
+        imageIds = Array.isArray(uploadPayload)
+          ? uploadPayload
+              .map((item: any) => Number(item?.id))
+              .filter((id: number) => Number.isInteger(id) && id > 0)
+          : [];
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/products/sell-now`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          price,
+          categoryId: selectedCategory.id,
+          dynamicValues: dynamicFieldValues,
+          imageIds,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error?.message || payload?.message || `Failed to create product: ${response.status}`);
+      }
+
+      setSubmitSuccess(`Product created (ID: ${payload.product?.id})`);
+      setImages((prev) => {
+        for (const image of prev) {
+          URL.revokeObjectURL(image.previewUrl);
+        }
+        return [];
+      });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Failed to create product");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   return (
     <>
       <Navbar />
@@ -296,9 +420,9 @@ export default function UploadItem(): JSX.Element {
           <div className="flex flex-col items-center justify-center py-6">
             {images.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 w-full">
-                {images.map((src, index) => (
+                {images.map((image, index) => (
                   <div key={index} className="relative aspect-square border rounded-md overflow-hidden group">
-                    <img src={src} alt={`Upload ${index}`} className="object-cover w-full h-full" />
+                    <img src={image.previewUrl} alt={`Upload ${index}`} className="object-cover w-full h-full" />
                     <button
                       onClick={() => removeImage(index)}
                       className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -333,11 +457,13 @@ export default function UploadItem(): JSX.Element {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-sm p-6 space-y-8">
-          <div className="flex flex-col md:flex-row justify-between gap-4 border-b border-gray-100 pb-6">
+          <div className="flex flex-col md:flex-row justify-between border-b border-gray-100 pb-6">
             <label className="font-semibold text-gray-900 min-w-[150px]">Title</label>
             <input
               type="text"
               placeholder="Tell buyers what you're selling"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
               className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300"
             />
           </div>
@@ -346,6 +472,8 @@ export default function UploadItem(): JSX.Element {
             <textarea
               placeholder="Tell buyers more about it"
               rows={4}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
               className="flex-1 focus:outline-none text-gray-800 placeholder-gray-300 resize-none"
             />
           </div>
@@ -569,12 +697,25 @@ export default function UploadItem(): JSX.Element {
           </button>
         </div>
 
+        {submitError && (
+          <div className="text-sm text-red-600">{submitError}</div>
+        )}
+
+        {submitSuccess && (
+          <div className="text-sm text-green-700">{submitSuccess}</div>
+        )}
+
         <div className="flex justify-end gap-3 pt-6">
           <button className="px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50">
             Save draft
           </button>
-          <button className="px-8 py-2 bg-[#007782] text-white rounded-md font-semibold hover:bg-[#005f68]">
-            Upload
+          <button
+            type="button"
+            onClick={handleCreateProduct}
+            disabled={submitLoading}
+            className="px-8 py-2 bg-[#007782] text-white rounded-md font-semibold hover:bg-[#005f68] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitLoading ? "Uploading..." : "Upload"}
           </button>
         </div>
       </div>
