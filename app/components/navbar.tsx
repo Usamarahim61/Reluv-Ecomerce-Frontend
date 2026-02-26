@@ -245,11 +245,6 @@ export default function Navbar() {
                           <span>Invite friends</span>
                         </div>
                       </Link>
-
-                      {/* Settings */}
-                      {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>Settings</span>
-                  </div> */}
                       {/* Settings */}
                       <Link href={`/setting`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
