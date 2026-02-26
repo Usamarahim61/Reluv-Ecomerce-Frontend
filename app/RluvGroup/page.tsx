@@ -1,0 +1,38 @@
+import ReluvGroupNavbar from '../components/Rluv-Group-Navbar';
+import ReluvGroupFooter from '../components/Rluv-Group-Footer';
+
+import Sustainability from '../sustainability/page';
+import Newsroom from '../newsroom/page';
+import ReluvVentures from "../ReluvVentures/page";
+import MediaAssets from "../mediaAssets/page"
+
+export const dynamic = 'force-dynamic';
+
+type Props = {
+  searchParams: { view?: string };
+};
+
+export default function RluvGroup({ searchParams }: Props) {
+  const view = searchParams.view;
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <ReluvGroupNavbar />
+    
+      <main className="flex-grow">
+        {view === 'sustainability' && <Sustainability />}
+        {view === 'press' && <Newsroom />}
+        {view === 'mediaAssets' && <MediaAssets />}
+        {view === 'reluvVentures' && <ReluvVentures />}
+
+        {/* {!view && <div className="py-20 text-center">Select a section</div>} */}
+
+        {/* {view !== 'sustainability' && view !== 'press' && view && (
+          <div className="py-20 text-center">Page not found</div>
+        )} */}
+      </main>
+
+      <ReluvGroupFooter />
+    </div>
+  );
+}

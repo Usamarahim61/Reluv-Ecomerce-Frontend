@@ -1,128 +1,282 @@
 "use client";
-import { useState } from "react";
+
+import { useAuth } from "@/context/AuthContext";
+import { getUser, updateUserProfile } from "@/services/auth-service";
+import { useEffect, useState, useRef } from "react";
 
 export default function ProfileSetting() {
-  const [country, setCountry] = useState("Spain");
-  const [city, setCity] = useState("");
-  const [showCity, setShowCity] = useState(true);
-  const [language, setLanguage] = useState("English");
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState({
+    username: "",
+    about: "",
+    country: "Spain",
+    city: "",
+    showCity: true,
+  });
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const countries = ["Spain", "France", "Germany", "Netherlands"];
   const cities = ["Madrid", "Barcelona", "Valencia", "Seville"];
-  const languages = ["English", "Français", "Español", "Nederlands"];
+
+  /* ---------------- FETCH USER DATA ---------------- */
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const data = await getUser(Number(user.id));
+
+        setFormData({
+          username: data.username || "",
+          about: data.about || "",
+          country: data.country || "Spain",
+          city: data.city || "",
+          showCity: data.isShowCity ?? true,
+        });
+
+        if (data.avatar?.url) {
+          setAvatarPreview(data.avatar.url);
+        }
+      } catch {
+        setError("Failed to load profile data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
+
+  /* ---------------- INPUT HANDLER ---------------- */
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+
+    const val =
+      type === "checkbox"
+        ? (e.target as HTMLInputElement).checked
+        : value;
+
+    setFormData((prev) => ({ ...prev, [name]: val }));
+  };
+
+  /* ---------------- PHOTO HANDLER ---------------- */
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File too large. Please select an image under 2MB.");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setSelectedFile(file);
+    setAvatarPreview(previewUrl);
+  };
+
+  /* Cleanup object URLs (important) */
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
+  /* ---------------- UPDATE PROFILE ---------------- */
+
+ const handleUpdate = async () => {
+  if (!user?.id) return;
+
+  try {
+    setIsUpdating(true);
+    const payload = new FormData();
+
+    // Use shorthand or ensure no undefined values
+    payload.append("username", formData.username || "");
+    payload.append("country", formData.country || "");
+    payload.append("city", formData.city || "");
+    payload.append("description", formData.about || "");
+    payload.append("isShowCity", String(formData.showCity));
+
+    if (selectedFile) {
+      // Ensure the key matches what your backend expects
+      payload.append("files.avatar", selectedFile);
+    }
+     console.log(Object.fromEntries(payload));
+    // Verify your apiRequest helper isn't forcing JSON headers!
+    await updateUserProfile(Number(user.id), payload);
+
+    alert("Profile updated successfully!");
+  } catch (err: any) {
+    setError(err.message || "Update failed");
+  } finally {
+    setIsUpdating(false);
+  }
+};
+
+
+  /* ---------------- LOADING UI ---------------- */
+
+  if (loading) {
+    return (
+      <div className="min-h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+      </div>
+    );
+  }
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <>
-      {" "}
-      {/* <--- Added Fragment Open */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow p-6 space-y-6 mb-6">
-        {/* Row 1: Your Photo */}
-        <div className="flex items-center justify-between">
+    <div className="max-w-2xl mx-auto p-4 animate-fadeIn">
+      {error && (
+        <div className="text-red-500 bg-red-50 p-3 rounded mb-4 text-sm">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-6">
+        {/* PHOTO */}
+        <div className="flex items-center justify-between border-b pb-6">
           <span className="font-medium">Your Photo</span>
+
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-gray-600">
-              <span>👤</span>
+            <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden border">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  👤
+                </div>
+              )}
             </div>
-            <button className="px-3 py-1.5 border border-[#007782] text-[#007782] bg-transparent rounded text-sm hover:bg-gray-50">
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handlePhotoChange}
+            />
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 border border-[#007782] text-[#007782] rounded text-sm hover:bg-teal-50 transition-all"
+            >
               Change Photo
             </button>
           </div>
         </div>
 
-        {/* Row 2: Username */}
-        <div className="flex items-center justify-between">
+        {/* USERNAME */}
+        <div className="flex items-center justify-between gap-4 border-b pb-6">
           <span className="font-medium">Username</span>
-          <button className="px-3 py-1.5 border border-[#007782] text-[#007782] bg-transparent rounded text-sm hover:bg-gray-50">
-            Change Username
-          </button>
+
+          <input
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            className="flex-1 max-w-[200px] border-none text-right focus:ring-0 text-gray-700 font-semibold"
+          />
         </div>
 
-        {/* Row 3: About You */}
-        <div className="flex items-start justify-between gap-4">
-          <span className="font-medium pt-2">About You</span>
+        {/* ABOUT */}
+        <div className="space-y-2">
+          <span className="font-medium">About You</span>
+
           <textarea
-            className="flex-1 border border-gray-300 rounded p-2 resize-none focus:outline-none focus:border-[#007782]"
+            name="about"
+            value={formData.about}
+            onChange={handleInputChange}
             rows={4}
-            placeholder="Write something about yourself..."
+            placeholder="Tell us about yourself..."
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-teal-500 outline-none"
           />
         </div>
       </div>
-      <div className="bg-white border border-gray-200 rounded-lg shadow p-6  space-y-6">
-        {/* My location */}
-        <div className="space-y-3">
-          <h3 className="text-gray-500 text-sm font-medium">My location</h3>
 
-          {/* Country */}
-          <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-            <span className="font-medium">Country</span>
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="text-gray-700 border-none focus:ring-0"
-            >
-              {countries.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* LOCATION */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4 mt-6">
+        <h3 className="text-gray-400 text-xs font-bold uppercase">
+          My location
+        </h3>
 
-          {/* Town/City */}
-          <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-            <span className="font-medium">Town/City</span>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="text-gray-700 border-none focus:ring-0"
-            >
-              <option value="">Select a city</option>
-              {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex justify-between items-center border-b pb-2">
+          <span className="font-medium">Country</span>
 
-          {/* Show city toggle */}
-          <div className="flex justify-between items-center pt-2">
-            <span className="font-medium">Show city in profile</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showCity}
-                onChange={() => setShowCity(!showCity)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#007782] after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white relative"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-      {/* Language */}
-      <div className="bg-white border border-gray-200  mt-5 rounded-lg shadow p-6  space-y-6">
-        <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-          <span className="font-medium">Language</span>
           <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="text-gray-700 border-none focus:ring-0"
+            name="country"
+            value={formData.country}
+            onChange={handleInputChange}
+            className="border-none focus:ring-0"
           >
-            {languages.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
+            {countries.map((c) => (
+              <option key={c}>{c}</option>
             ))}
           </select>
         </div>
+
+        <div className="flex justify-between items-center border-b pb-2">
+          <span className="font-medium">Town/City</span>
+
+          <select
+            name="city"
+            value={formData.city}
+            onChange={handleInputChange}
+            className="border-none focus:ring-0"
+          >
+            <option value="">Select city</option>
+            {cities.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex justify-between items-center pt-2">
+          <span className="font-medium">Show city in profile</span>
+
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="showCity"
+              checked={formData.showCity}
+              onChange={handleInputChange}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#007782] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+          </label>
+        </div>
       </div>
-      {/* Update button */}
-      <div className="text-right mt-5">
-        <button className="bg-[#007782] text-white px-4 py-2 rounded hover:bg-[#00656f]">
-          Update profile
+
+      {/* UPDATE BUTTON */}
+      <div className="text-right mt-6">
+        <button
+          onClick={handleUpdate}
+          disabled={isUpdating}
+          className="bg-[#007782] text-white px-10 py-2.5 rounded shadow hover:bg-[#00656f] disabled:opacity-50 transition-all font-medium"
+        >
+          {isUpdating ? "Saving..." : "Update profile"}
         </button>
       </div>
-    </> // <--- Added Fragment Close
+    </div>
   );
 }
