@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Info } from "lucide-react";
+import { API_BASE_URL } from "../constants/api";
 
 interface ProductProps {
   id: string | number;
@@ -66,10 +67,10 @@ export default function ProductCard({
       <div className="flex cursor-pointer flex-col group">
         <div className="relative w-full overflow-hidden bg-gray-100 aspect-3/4">
           {safeImageUrl ? (
-            <Image
-              src={safeImageUrl}
+            <img
+              src={`${API_BASE_URL}${safeImageUrl}`}
               alt={brandText || "Product image"}
-              fill
+              
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
