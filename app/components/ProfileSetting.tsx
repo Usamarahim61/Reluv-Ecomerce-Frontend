@@ -11,7 +11,7 @@ export default function ProfileSetting() {
   const [formData, setFormData] = useState({
     username: "",
     about: "",
-    country: "Spain",
+    country: "",
     city: "",
     showCity: true,
   });
@@ -38,7 +38,7 @@ export default function ProfileSetting() {
         setFormData({
           username: data.username || "",
           about: data.about || "",
-          country: data.country || "Spain",
+          country: data.country || "",
           city: data.city || "",
           showCity: data.isShowCity ?? true,
         });
@@ -105,22 +105,16 @@ export default function ProfileSetting() {
   try {
     setIsUpdating(true);
     const payload = new FormData();
-
-    // Use shorthand or ensure no undefined values
     payload.append("username", formData.username || "");
     payload.append("country", formData.country || "");
     payload.append("city", formData.city || "");
-    payload.append("description", formData.about || "");
+    payload.append("about", formData.about || "");
     payload.append("isShowCity", String(formData.showCity));
 
     if (selectedFile) {
-      // Ensure the key matches what your backend expects
       payload.append("files.avatar", selectedFile);
     }
-     console.log(Object.fromEntries(payload));
-    // Verify your apiRequest helper isn't forcing JSON headers!
     await updateUserProfile(Number(user.id), payload);
-
     alert("Profile updated successfully!");
   } catch (err: any) {
     setError(err.message || "Update failed");
