@@ -4,12 +4,66 @@ import Navbar from "./components/navbar";
 import ProductFeed from "./Shop/page";
 import Footer from "./components/Footer";
 import { items } from "./dataCenter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { fetchProductsForHome, ProductCardItem } from "@/services/products-service";
 
 export default function Home() {
+  const pageSize = 20;
   const [showBanner, setShowBanner] = useState(true);
   const [openInBox, setOpenInBox] = useState(false);
+  const [products, setProducts] = useState<ProductCardItem[]>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProducts = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const result = await fetchProductsForHome(1, pageSize);
+        if (!isMounted) return;
+        if (result.items.length > 0) {
+          setProducts(result.items || []);
+        }
+        setPage(result.page);
+        setHasMore(result.hasMore);
+      } catch (error) {
+        if (!isMounted) return;
+        setLoadError(error instanceof Error ? error.message : "Failed to load products");
+      } finally {
+        if (!isMounted) return;
+        setIsLoading(false);
+      }
+    };
+
+    loadProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    setLoadError(null);
+    try {
+      const nextPage = page + 1;
+      const result = await fetchProductsForHome(nextPage, pageSize);
+      setProducts((prev:any) => [...prev, ...result.items]);
+      setPage(result.page);
+      setHasMore(result.hasMore);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Failed to load products");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -67,7 +121,18 @@ export default function Home() {
         
         {/* Product Feed wrapper to ensure padding on mobile */}
         <div className="mt-2">
-           <ProductFeed productList={[...items]} />
+          <ProductFeed
+            productList={products || []}
+            onLoadMore={handleLoadMore}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+          />
+          {isLoading && (
+            <p className="mt-4 text-center text-sm text-gray-400">Loading products...</p>
+          )}
+          {loadError && (
+            <p className="mt-4 text-center text-sm text-red-500">{loadError}</p>
+          )}
         </div>
       </section>
 
