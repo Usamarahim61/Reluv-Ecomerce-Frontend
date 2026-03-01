@@ -18,6 +18,21 @@ export type ProductsPage = {
   hasMore: boolean;
 };
 
+export type ProductDetailItem = {
+  id: number | string;
+  title: string;
+  description: string;
+  brand: string;
+  size: string;
+  condition: string;
+  price: string;
+  totalPrice: string;
+  likes: number;
+  images: string[];
+  user:any
+  rating: number;
+};
+
 
 const formatPrice = (value: unknown): string => {
   if (value == null) return "";
@@ -53,13 +68,24 @@ const formatCondition = (value: unknown): string => {
   }
 };
 
-const getFirstImageUrl = (images: any): string | null => {
+export const getFirstImageUrl = (images: any): string | null => {
   if (!images) return null;
   const data = images;
   if (Array.isArray(data)) {
     return data[0]?.url ?? null;
   }
   return data?.url ?? null;
+};
+
+const getImageUrls = (images: any): string[] => {
+  if (!images) return [];
+  if (Array.isArray(images)) {
+    return images
+      .map((img) => (typeof img?.url === "string" ? img.url : null))
+      .filter((url): url is string => Boolean(url));
+  }
+  if (typeof images?.url === "string") return [images.url];
+  return [];
 };
 
 const mapProductToCard = (entry: any): ProductCardItem => {
@@ -84,6 +110,27 @@ const mapProductToCard = (entry: any): ProductCardItem => {
   };
 };
 
+const mapProductToDetail = (entry: any): ProductDetailItem => {
+  const product = entry ?? {};
+  const condition = formatCondition(product.condition);
+  const price = formatPrice(product.price);
+
+  return {
+    id: product.id,
+    title: product.title ?? "",
+    description: product.description ?? "",
+    brand: product.brand ?? "",
+    size: product.size ?? "",
+    condition,
+    price,
+    totalPrice: price,
+    likes: Number(product.likeCount ?? 0) || 0,
+    images: getImageUrls(product.images),
+    rating: Number(product.rating ?? 4) || 4.5,
+    user: product.user
+  };
+};
+
 export async function fetchProductsForHome(
   page = 1,
   pageSize = 20
@@ -103,4 +150,9 @@ export async function fetchProductsForHome(
     pageSize,
     hasMore: items.length === pageSize,
   };
+}
+
+export async function fetchProductById(id: string | number): Promise<ProductDetailItem> {
+  const payload = await apiRequest(`/products/getProductById/${encodeURIComponent(String(id))}`);
+  return mapProductToDetail(payload?.product);
 }

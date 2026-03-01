@@ -1,122 +1,155 @@
 "use client";
-import ImageZoom from "@/app/components/ImageZoom";
+
 import ImageCarousel from "@/app/components/ImageCarousel";
-import { items } from "@/app/dataCenter";
-import {
-  Heart,
-  Info,
-  ShieldCheck,
-  ChevronRight,
-  Flag,
-  Share2,
-  Star,
-  MapPin,
-  Clock,
-  PlusSquare,
-} from "lucide-react";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import ImageZoom from "@/app/components/ImageZoom";
+import Footer from "@/app/components/Footer";
 import Navbar from "@/app/components/navbar";
 import ProductFeed from "@/app/Shop/page";
+// import { items } from "@/app/dataCenter";
+import { API_BASE_URL } from "@/app/constants/api";
+import { fetchProductById, ProductDetailItem } from "@/services/products-service";
+import {
+  ChevronRight,
+  Clock,
+  Flag,
+  Heart,
+  Info,
+  MapPin,
+  PlusSquare,
+  Share2,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import Link from "next/link";
-import Footer from "@/app/components/Footer";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-const defaultProduct = {
-  id: "",
-  name: "Vintage Carhartt WIP Heart Hoodie - Black Edition",
-  brand: "Carhartt",
-  size: "L",
-  condition: "Very good",
-  color: "Black",
-  price: "€53.15",
-  totalPrice: "€53.15",
-  imageUrl: "/product1.webp",
-  images: [
-    "/product1.webp",
-    "/product2.webp",
-    "/product3.webp",
-    "/product4.webp",
-    "/product1.webp",
-    "/product2.webp",
-    "/product3.webp",
-    "/product4.webp",
-  ],
-  uploaded: "an hour ago",
-  seller: {
-    id: "1",
-    name: "manueli11",
-    location: "Granada, Spain",
-    lastSeen: "Last seen 10 minutes ago",
-    rating: 5,
-    reviews: 437,
-    badge: "Frequent Uploads",
-  },
+// const defaultProduct = {
+//   name: "Vintage Carhartt WIP Heart Hoodie - Black Edition",
+//   brand: "Carhartt",
+//   size: "L",
+//   condition: "Very good",
+//   color: "Black",
+//   price: "EUR 53.15",
+//   totalPrice: "EUR 53.15",
+//   description: "Product details are not available.",
+//   images: ["/product1.webp", "/product2.webp", "/product3.webp", "/product4.webp"],
+// };
+
+// const Seller = {
+//   id: "1",
+//   name: "manueli11",
+//   location: "Granada, Spain",
+//   lastSeen: "Last seen 10 minutes ago",
+//   rating: 5,
+//   reviews: 437,
+//   badge: "Frequent Uploads",
+// };
+
+const toAbsoluteImageUrl = (url: string): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
 };
 
-export default function ProductDetail() {
+export default function ProductDetailPage() {
   const params = useParams();
-  const id = params.id as string;
-  console.log(`Request received: GET /products/${id}`);
+  const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const id = String(idParam ?? "").trim();
 
-  const [products, setProducts] = useState(() => {
-    const existing = items.find((p) => p.id === id);
-    if (!existing) {
-      const newProduct = { ...defaultProduct, id };
-      return [...items, newProduct];
-    }
-    return items;
-  });
-
-  const product = products.find((p) => p.id === id) || defaultProduct;
-  const productImages = (product as any).images || defaultProduct.images;
-
+  const [product, setProduct] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCarousel, setShowCarousel] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!id) {
+      setIsLoading(false);
+      setLoadError("Invalid product id.");
+      return;
+    }
+
+    const loadProduct = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const result = await fetchProductById(id);
+        if (!isMounted) return;
+        setProduct(result);
+      } catch (error) {
+        if (!isMounted) return;
+        setLoadError(error instanceof Error ? error.message : "Failed to load product.");
+      } finally {
+        if (!isMounted) return;
+        setIsLoading(false);
+      }
+    };
+
+    loadProduct();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const productImages = useMemo(() => {
+    const images = product?.images ?? [];
+    // if (images.length === 0) return defaultProduct.images;
+    return images.map(toAbsoluteImageUrl).filter(Boolean);
+  }, [product]);
+
+  const name = product?.title
+  const brand = product?.brand
+  const size = product?.size
+  const condition = product?.condition
+  const price = product?.price
+  const totalPrice = product?.totalPrice
+  const description = product?.description
+  const color = product?.color ?? "";
+  const likes = product?.likes ?? 0;
+  const Seller = product?.user ?? {};
 
   return (
     <>
       <Navbar />
-      <div className="bg-[#f2f2f2] min-h-screen pb-12 mt-5">
+      <div className="mt-5 min-h-screen bg-[#f2f2f2] pb-12">
         <div className="container mx-auto px-4 py-4">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center gap-2 text-xs text-[#007782] mb-4">
-            <span>Home</span>{" "}
+          <nav className="mb-4 flex items-center gap-2 text-xs text-[#007782]">
+            <span>Home</span>
             <ChevronRight size={12} className="text-gray-400" />
-            <span>Men</span>{" "}
+            <span>Shop</span>
             <ChevronRight size={12} className="text-gray-400" />
-            <span>Clothing</span>{" "}
-            <ChevronRight size={12} className="text-gray-400" />
-            <span className="text-gray-400">Carhartt Hoodies & sweaters</span>
+            <span className="text-gray-400">{name}</span>
           </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_620px] gap-9 items-start">
-            {/* LEFT: Image Gallery */}
+          {isLoading && <p className="mb-4 text-sm text-gray-500">Loading product...</p>}
+          {loadError && <p className="mb-4 text-sm text-red-500">{loadError}</p>}
+
+          <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[1fr_620px]">
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
-                {productImages.slice(0, 4).map((img: string, index: number) => (
-                  <div
-                    key={index}
-                    className={` bg-white ${index === 0 ? "col-span-2 lg:col-span-1" : ""}`}
-                  >
+                {productImages.slice(0, 4).map((img:any, index:any) => (
+                  <div key={index} className={`bg-white ${index === 0 ? "col-span-2 lg:col-span-1" : ""}`}>
                     {index === 3 && productImages.length > 4 ? (
                       <div className="relative">
-                        <ImageZoom src={img} alt={`Product ${index + 1}`} />
+                        <ImageZoom src={img} alt={`${name} ${index + 1}`} />
                         <div
-                          className="absolute inset-0 flex items-center justify-center font-semibold text-lg text-white bg-black bg-opacity-50 cursor-pointer"
+                          className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-lg font-semibold text-white"
                           onClick={() => setShowCarousel(true)}
                         >
                           + {productImages.length - 4}
                         </div>
-                        <button className="absolute bottom-2 right-2 bg-white p-1.5 rounded-sm shadow-sm">
+                        <button className="absolute bottom-2 right-2 rounded-sm bg-white p-1.5 shadow-sm">
                           <Heart size={18} className="text-gray-400" />
                         </button>
                       </div>
                     ) : (
-                      <ImageZoom src={img} alt={`Product ${index + 1}`} />
+                      <ImageZoom src={img} alt={`${name} ${index + 1}`} />
                     )}
                   </div>
                 ))}
               </div>
+
               <div className="flex justify-between text-gray-400">
                 <Flag size={18} className="cursor-pointer" />
                 <Share2 size={18} className="cursor-pointer" />
@@ -124,199 +157,125 @@ export default function ProductDetail() {
 
               <div>
                 <h2>Member Items</h2>
-                <ProductFeed isProductDetail={true} productList={[...items]} />
+                {/* <ProductFeed isProductDetail={true} productList={[...items]} /> */}
               </div>
             </div>
 
-            {/* RIGHT: Sidebar */}
-            <div className="space-y-4 sticky top-4">
-              <div className="bg-white p-5 shadow-sm rounded-sm">
-                <h1 className="text-lg font-normal">
-                  {(product as any).name || defaultProduct.name}
-                </h1>
-                <p className="text-sm text-gray-500 mb-4">
-                  {product.size} · {product.condition} ·{" "}
-                  <span className="text-[#007782] underline">
-                    {product.brand}
-                  </span>
+            <div className="sticky top-4 space-y-4">
+              <div className="rounded-sm bg-white p-5 shadow-sm">
+                <h1 className="text-lg font-normal">{name}</h1>
+                <p className="mb-2 text-sm text-gray-500">
+                  {size} - {condition} - <span className="text-[#007782] underline">{brand}</span>
                 </p>
+                <p className="mb-4 text-sm text-gray-600">{description}</p>
 
                 <div className="border-t pt-4">
-                  <p className="text-gray-400 line-through text-sm">€49.95</p>
-                  <p className="text-2xl font-bold text-[#007782]">
-                    {product.price}
-                  </p>
-                  <p className="text-[#007782] text-[14px] flex items-center gap-1 mt-1 font-medium">
+                  <p className="text-2xl font-bold text-[#007782]">{price}</p>
+                  <p className="mt-1 flex items-center gap-1 text-[14px] font-medium text-[#007782]">
                     Includes Buyer Protection <Info size={12} />
                   </p>
                 </div>
 
-                <div className="mt-6 space-y-2 text-[13px] border-b pb-6">
+                <div className="mt-6 space-y-2 border-b pb-6 text-[13px]">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Brand</span>
-                    <span className="text-[#007782] underline">
-                      {product.brand}
-                    </span>
+                    <span className="text-[#007782] underline">{brand}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Size</span>
-                    <span>{product.size}</span>
+                    <span>{size}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Condition</span>
-                    <span>{product.condition}</span>
+                    <span>{condition}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Colour</span>
-                    <span>{(product as any).color || "Black"}</span>
+                    <span>{color}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Uploaded</span>
-                    <span>
-                      {(product as any).uploaded || defaultProduct.uploaded}
-                    </span>
+                    <span className="text-gray-500">Total</span>
+                    <span>{totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Likes</span>
+                    <span>{likes}</span>
                   </div>
                 </div>
 
                 <div className="mt-6 space-y-2">
-                  <button className="w-full bg-[#007782] text-white py-2.5 rounded-[4px] font-semibold">
-                    Buy now
-                  </button>
-                  <button className="w-full border border-[#007782] text-[#007782] py-2.5 rounded-[4px] font-semibold">
+                  <button className="w-full rounded-[4px] bg-[#007782] py-2.5 font-semibold text-white">Buy now</button>
+                  <button className="w-full rounded-[4px] border border-[#007782] py-2.5 font-semibold text-[#007782]">
                     Make an offer
                   </button>
-                  <button className="w-full border border-[#007782] text-[#007782] py-2.5 rounded-[4px] font-semibold">
+                  <button className="w-full rounded-[4px] border border-[#007782] py-2.5 font-semibold text-[#007782]">
                     Ask seller
                   </button>
                 </div>
               </div>
 
-              {/* Buyer Protection Card */}
-              <div className="bg-white p-4 shadow-sm border-l-[3px] border-[#007782] flex gap-3">
-                <ShieldCheck className="text-[#007782] shrink-0" size={20} />
+              <div className="flex gap-3 border-l-[3px] border-[#007782] bg-white p-4 shadow-sm">
+                <ShieldCheck className="shrink-0 text-[#007782]" size={20} />
                 <div className="text-[12px] text-gray-700">
-                  <p className="font-bold mb-1">Buyer Protection fee</p>
+                  <p className="mb-1 font-bold">Buyer Protection fee</p>
                   <p>
-                    Added for a fee to every purchase...{" "}
-                    <span className="text-[#007782] underline">
-                      Refund Policy
-                    </span>
-                    .
+                    Added for a fee to every purchase... <span className="text-[#007782] underline">Refund Policy</span>.
                   </p>
                 </div>
               </div>
 
-              {/* Seller Info */}
-              <div className="flex justify-center min-h-screen">
-                <div className="w-full  border border-gray-200 rounded-md bg-white shadow-sm h-fit">
-                  {/* Header Section: User Info */}
+              <div className="flex min-h-screen justify-center">
+                <div className="h-fit w-full rounded-md border border-gray-200 bg-white shadow-sm">
                   <Link
-                    href={`/member/${1 || product.seller?.id || defaultProduct.seller.id}`}
-                    className="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
+                    href={`/member/${Seller?.id}`}
+                    className="flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="relative shrink-0">
                         <img
                           src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop"
-                          alt={`${product.seller?.name || defaultProduct.seller.name} profile`}
-                          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border border-gray-100"
+                          alt={`${Seller?.username} profile`}
+                          className="h-14 w-14 rounded-full border border-gray-100 object-cover sm:h-16 sm:w-16"
                         />
                       </div>
                       <div className="min-w-0">
-                        {" "}
-                        {/* min-w-0 prevents text overflow in flex */}
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
-                          {product.seller?.name || defaultProduct.seller.name}
-                        </h2>
+                        <h2 className="truncate text-lg font-semibold text-gray-800 sm:text-xl">{Seller?.username}</h2>
                         <div className="flex items-center gap-1">
                           <div className="flex text-yellow-400">
-                            {[
-                              ...Array(
-                                Math.floor(
-                                  Number(
-                                    product.seller?.rating ??
-                                      defaultProduct.seller.rating,
-                                  ),
-                                ),
-                              ),
-                            ].map((_, i) => (
-                              <Star
-                                key={i}
-                                size={14}
-                                fill="currentColor"
-                                className="sm:w-4 sm:h-4"
-                              />
+                            {[...Array(Math.floor(Seller?.rating_avg || []))].map((_, i) => (
+                              <Star key={i} size={14} fill="currentColor" className="sm:h-4 sm:w-4" />
                             ))}
                           </div>
-                          <span className="text-gray-500 text-xs sm:text-sm font-medium">
-                            {product.seller?.reviews ||
-                              defaultProduct.seller.reviews}
-                          </span>
+                          <span className="text-xs font-medium text-gray-500 sm:text-sm">{Seller?.reviews}</span>
                         </div>
                       </div>
                     </div>
-                    <ChevronRight
-                      size={20}
-                      className="text-gray-400 shrink-0"
-                    />
+                    <ChevronRight size={20} className="shrink-0 text-gray-400" />
                   </Link>
 
                   <hr className="border-gray-100" />
 
-                  {/* Badge Section: Seller Badge */}
-                  <div className="p-4 flex items-center gap-4">
-                    <div className="bg-[#e6f7f6] p-2 rounded-lg shrink-0">
+                  <div className="flex items-center gap-4 p-4">
+                    <div className="shrink-0 rounded-lg bg-[#e6f7f6] p-2">
                       <PlusSquare className="text-[#00a09a]" size={22} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-gray-800 text-sm sm:text-base">
-                        {product.seller?.badge || defaultProduct.seller.badge}
-                      </p>
-                      <p className="text-gray-500 text-xs sm:text-sm leading-snug">
-                        {product.seller?.badge === "Frequent Uploads"
-                          ? "Regularly lists 5 or more items."
-                          : "New seller on the platform."}
-                      </p>
+                      <p className="text-sm font-bold text-gray-800 sm:text-base">{Seller?.badge}</p>
+                      <p className="text-xs leading-snug text-gray-500 sm:text-sm">Regularly lists 5 or more items.</p>
                     </div>
                   </div>
 
                   <hr className="border-gray-100" />
 
-                  {/* Info Section: Location & Status */}
-                  <div className="p-4 space-y-3">
+                  <div className="space-y-3 p-4">
                     <div className="flex items-center gap-3 text-gray-600">
-                      <MapPin size={18} className="text-gray-400 shrink-0" />
-                      <span className="text-sm sm:text-base truncate">
-                        {product.seller?.location ||
-                          defaultProduct.seller.location}
-                      </span>
+                      <MapPin size={18} className="shrink-0 text-gray-400" />
+                      <span className="truncate text-sm sm:text-base">{Seller?.city}, {Seller?.country}</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
-                      <Clock size={18} className="text-gray-400 shrink-0" />
-                      <span className="text-sm sm:text-base">
-                        {product.seller?.lastSeen ||
-                          defaultProduct.seller.lastSeen}
-                      </span>
+                      <Clock size={18} className="shrink-0 text-gray-400" />
+                      <span className="text-sm sm:text-base">{Seller?.lastSeen || "10 min ago, Last Seen"}</span>
                     </div>
-                  </div>
-
-                  <hr className="border-gray-100" />
-
-                  {/* Legal/Footer Section */}
-                  <div className="p-4 bg-white">
-                    <p className="text-[11px] sm:text-xs text-gray-400 leading-relaxed">
-                      Consumer protection laws do not apply to your purchases
-                      from other consumers. More specifically, the right of
-                      withdrawal of{" "}
-                      <span className="text-teal-600 underline cursor-pointer">
-                        Articles 68 and following
-                      </span>
-                      ... Every purchase you make is covered by our{" "}
-                      <span className="text-teal-600 underline cursor-pointer">
-                        Buyer Protection
-                      </span>{" "}
-                      service.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -324,16 +283,11 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        <ImageCarousel
-          images={productImages}
-          initialIndex={0}
-          isOpen={showCarousel}
-          onClose={() => setShowCarousel(false)}
-        />
+        <ImageCarousel images={productImages} initialIndex={0} isOpen={showCarousel} onClose={() => setShowCarousel(false)} />
 
-         <div className="hidden md:block">
-        <Footer />
-      </div>
+        <div className="hidden md:block">
+          <Footer />
+        </div>
       </div>
     </>
   );
