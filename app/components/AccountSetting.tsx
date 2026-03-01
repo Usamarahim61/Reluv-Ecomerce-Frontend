@@ -1,71 +1,181 @@
 "use client";
-import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
+import { getUser, AccountUpdate } from "@/services/auth-service";
 
 export default function AccountSetting() {
-  const [fullName, setFullName] = useState("Raja Abad");
-  const [gender, setGender] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [holidayMode, setHolidayMode] = useState(false);
+   const { user } = useAuth();
+
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    phoneNumber: "",
+    fullName: "",
+    gender: "",
+    birthday: "",
+    holidayMode: false,
+    facebookLinked: false,
+    googleLinked: false,
+  });
+   useEffect(() => {
+    const fetchUser = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const data: any= await getUser(Number(user.id));
+
+        setFormData({
+          email: data.email || "",
+          phoneNumber: data.phoneNumber || "",
+          fullName: data.fullName || "",
+          gender: data.gender || "",
+          birthday: data.birthday || "",
+          holidayMode: data.holidayMode || false,
+          facebookLinked: data.facebook,
+          googleLinked: data.google,
+        });
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [user?.id]);
+
+  const handleChange = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+       e.preventDefault();
+
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+
+    const payload = {
+      // email: formData.email,
+      phoneNumber: formData.phoneNumber,
+      fullName: formData.fullName,
+      gender: formData.gender,
+      birthday: formData.birthday,
+      holidayMode: formData.holidayMode,
+      // facebook: formData.facebookLinked,
+      // google: formData.googleLinked,
+    };
+
+    console.log("Payload:", payload);
+     await AccountUpdate(Number(user?.id), payload);
+
+      console.log("Profile Updated ✅");
+    } catch (error) {
+      console.error("Update failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    /* ---------------- LOADING UI ---------------- */
+
+  if (loading) {
+    return (
+      <div className="min-h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4 bg-gray-50">
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-2xl mx-auto p-4 space-y-4 bg-gray-50"
+    >
       {/* Email & Phone Section */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
         <div className="flex justify-between items-start">
           <div>
-            <p className="font-medium text-gray-900">rajaabad335@gmail.com</p>
+            <p className="font-medium text-gray-900">
+              {formData.email}
+            </p>
             <p className="text-xs text-green-600 flex items-center gap-1">
               Verified <span>✓</span>
             </p>
           </div>
-          <button className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium hover:bg-gray-50">
+          <button
+            type="button"
+            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium hover:bg-gray-50"
+          >
             Change
           </button>
         </div>
 
         <div className="flex justify-between items-center border-t pt-4">
-          <span className="font-medium text-gray-900">Phone number</span>
-          <button className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium hover:bg-gray-50">
-            Verify
-          </button>
+          <span className="font-medium text-gray-900">
+            Phone number
+          </span>
+          <input
+            type="text"
+            value={formData.phoneNumber}
+            onChange={(e) =>
+              handleChange("phoneNumber", e.target.value)
+            }
+            className="bg-gray-50 p-2 focus:outline-none text-gray-600"
+            placeholder="Enter phone"
+          />
         </div>
-        <p className="text-xs text-gray-500">
-          Your phone number will only be used to help you log in. It won't be made public, or used for marketing purposes.
-        </p>
       </div>
 
       {/* Personal Info Section */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-6 shadow-sm">
         <div className="flex justify-between items-center border-b pb-4">
-          <label className="font-medium text-gray-700">Full name</label>
-          <input 
-            type="text" 
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+          <label className="font-medium text-gray-700">
+            Full name
+          </label>
+          <input
+            type="text"
+            value={formData.fullName}
+            onChange={(e) =>
+              handleChange("fullName", e.target.value)
+            }
             className="bg-gray-50 p-3 focus:outline-none text-gray-600"
           />
         </div>
 
         <div className="flex justify-between items-center border-b pb-4">
-          <label className="font-medium text-gray-700">Gender</label>
-          <select 
-            value={gender} 
-            onChange={(e) => setGender(e.target.value)}
+          <label className="font-medium text-gray-700">
+            Gender
+          </label>
+          <select
+            value={formData.gender}
+            onChange={(e) =>
+              handleChange("gender", e.target.value)
+            }
             className="text-gray-500 bg-transparent focus:outline-none"
           >
             <option value="">Select gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
             <option value="other">Other</option>
           </select>
         </div>
 
         <div className="flex justify-between items-center">
-          <label className="font-medium text-gray-700">Birthday</label>
-          <input 
-            type="date" 
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
+          <label className="font-medium text-gray-700">
+            Birthday
+          </label>
+          <input
+            type="date"
+            value={formData.birthday}
+            onChange={(e) =>
+              handleChange("birthday", e.target.value)
+            }
             className="text-gray-500 bg-transparent focus:outline-none"
           />
         </div>
@@ -73,50 +183,76 @@ export default function AccountSetting() {
 
       {/* Holiday Mode */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 flex justify-between items-center shadow-sm">
-        <span className="font-medium text-gray-900">Holiday mode</span>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={holidayMode}
-            onChange={() => setHolidayMode(!holidayMode)}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#007782] after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-        </label>
+        <span className="font-medium text-gray-900">
+          Holiday mode
+        </span>
+        <input
+          type="checkbox"
+          checked={formData.holidayMode}
+          onChange={() =>
+            handleChange(
+              "holidayMode",
+              !formData.holidayMode
+            )
+          }
+          className="w-5 h-5"
+        />
       </div>
 
       {/* Linked Accounts */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
         <div className="flex justify-between items-center border-b pb-4">
-          <span className="font-medium text-gray-900">Facebook</span>
-          <button className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium">Link</button>
+          <span className="font-medium text-gray-900">
+            Facebook
+          </span>
+          <button
+            type="button"
+            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+          >
+            {formData.facebookLinked
+              ? "Linked"
+              : "Link"}
+          </button>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-900">Google</span>
-          <button className="px-4 py-1 border border-gray-300 text-gray-500 rounded-md text-sm font-medium" disabled>Linked</button>
+
+            <div className="flex justify-between items-center border-b pb-4">
+          <span className="font-medium text-gray-900">
+            Google
+          </span>
+          <button
+            type="button"
+            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+          >
+            {formData.googleLinked
+              ? "Linked"
+              : "Link"}
+          </button>
         </div>
-        <p className="text-xs text-gray-500">Link to your other accounts to become a trusted, verified member.</p>
       </div>
 
-      {/* Security & Actions */}
-      <div className="space-y-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-6 flex justify-between items-center shadow-sm">
-          <span className="font-medium text-gray-900">Change password</span>
-          <button className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium">Change</button>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-6 flex justify-between items-center shadow-sm cursor-pointer hover:bg-gray-50">
-          <span className="font-medium text-gray-900">Delete my account</span>
-          <span className="text-gray-400">›</span>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end pt-4">
-        <button className="bg-[#007782] text-white px-8 py-2 rounded font-medium hover:bg-[#005f68] transition-colors">
-          Save
+      {/* Security */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 flex justify-between items-center shadow-sm">
+        <span className="font-medium text-gray-900">
+          Change password
+        </span>
+        <button
+          type="button"
+          className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+        >
+          Change
         </button>
       </div>
-    </div>
+
+      {/* Save */}
+      <div className="flex justify-end pt-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-[#007782] text-white px-8 py-2 rounded font-medium hover:bg-[#005f68] transition-colors"
+        >
+          {loading ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </form>
   );
 }
