@@ -188,6 +188,27 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   };
 };
 
+const mapProductToDetail = (entry: any): ProductDetailItem => {
+  const product = entry ?? {};
+  const condition = formatCondition(product.condition);
+  const price = formatPrice(product.price);
+
+  return {
+    id: product.id,
+    title: product.title ?? "",
+    description: product.description ?? "",
+    brand: product.brand ?? "",
+    size: product.size ?? "",
+    condition,
+    price,
+    totalPrice: price,
+    likes: Number(product.likeCount ?? 0) || 0,
+    images: getImageUrls(product.images),
+    rating: Number(product.rating ?? 4) || 4.5,
+    user: product.user
+  };
+};
+
 export async function fetchProductsForHome(
   page = 1,
   pageSize = 20
