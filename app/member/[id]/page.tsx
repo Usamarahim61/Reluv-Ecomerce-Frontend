@@ -16,7 +16,7 @@ import ProductCard from "@/app/components/ProductCard";
 import Footer from "@/app/components/Footer";
 import { getUser } from "@/services/auth-service";
 import { useAuth } from "@/context/AuthContext";
-
+import { getFirstImageUrl } from "@/services/products-service";
 const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
   const params = useParams();
   const sellerId = params?.id;
@@ -74,7 +74,29 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
     );
   }
 
-  const listings = userData.products || [];
+const mapProductToCard = (entry: any) => {
+  const attributes = entry ?? {};
+  const brand = attributes.brand ?? "";
+  const size = attributes.size ?? "";
+  const condition = attributes.condition ?? "";
+  const price = attributes.price ? `${attributes.price}` : "N/A";
+  const totalPrice = price;
+  const imageUrl = getFirstImageUrl(attributes.images);
+  const likes = Number(attributes.likeCount ?? 0) || 0;
+
+  return {
+    id: entry.id,
+    brand,
+    size,
+    condition,
+    price,
+    totalPrice,
+    imageUrl,
+    likes,
+  };
+};
+
+  const listings =  (userData.products || []).map(mapProductToCard);
   const reviews = userData.received_reviews || [];
   const ratingAvg = userData.rating_avg || 5;
   const followers = userData.followers?.length || 0;
@@ -205,6 +227,86 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
         </div>
 
         {/* Tabs & Content unchanged */}
+        <div className="border-b border-gray-200 mb-6">
+          <div className="flex gap-6 md:gap-8 justify-center sm:justify-start">
+            <button
+              onClick={() => setActiveTab("Listings")}
+              className={`pb-4 px-2 font-semibold text-sm transition-all whitespace-nowrap ${
+                activeTab === "Listings"
+                  ? "border-b-2 border-[#007782] text-[#007782]"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Listings ({listings.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("Reviews")}
+              className={`pb-4 px-2 font-semibold text-sm transition-all whitespace-nowrap ${
+                activeTab === "Reviews"
+                  ? "border-b-2 border-[#007782] text-[#007782]"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              Reviews ({reviews.length})
+            </button>
+          </div>
+        </div>
+
+        {/* --- Tab Content --- */}
+        {activeTab === "Listings" && (
+          <>
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+              <h2 className="text-lg font-semibold">{listings.length} items</h2>
+              <div className="flex items-center gap-4 md:gap-6 text-sm">
+                <div className="flex items-center gap-1 cursor-pointer text-gray-600">
+                  Category <span className="font-semibold text-gray-800">All</span> <ChevronDown size={14} />
+                </div>
+                <div className="flex items-center gap-1 cursor-pointer text-gray-600">
+                  Sort by <span className="font-semibold text-gray-800">Relevance</span> <ChevronDown size={14} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+              {listings.map((product: any) => (
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  likes={Number(product.likes || 0)}
+                />
+              ))}
+              {listings.length === 0 && (
+                <p className="col-span-full text-center py-10 text-gray-400">
+                  No items listed yet.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === "Reviews" && (
+          <div className="space-y-6 max-w-3xl mx-auto sm:mx-0">
+            <h2 className="text-lg font-semibold">{reviews.length} reviews</h2>
+            {reviews.map((review: any) => (
+              <div key={review.id} className="border-b border-gray-200 pb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                  <div className="flex text-yellow-400">
+                    {[...Array(review.rating)].map((_, i) => (
+                      <Star key={i} size={16} fill="currentColor" />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {review.author?.username || "Anonymous"} — {new Date(review.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm md:text-base">{review.content}</p>
+              </div>
+            ))}
+            {reviews.length === 0 && (
+              <p className="text-gray-400 text-center py-10">No reviews yet.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="hidden md:block">

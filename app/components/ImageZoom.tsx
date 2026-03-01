@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import Image from "next/image";
+import { API_BASE_URL } from "../constants/api";
 
 const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
   const [showZoom, setShowZoom] = useState(false);
@@ -36,10 +37,10 @@ const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
           onMouseLeave={() => setShowZoom(false)}
           onMouseMove={handleMouseMove}
         >
-          <Image
+          <img
             src={src}
             alt={alt || 'Product image'}
-            fill
+            // fill
             style={{ objectFit: 'cover' }}
           />
 
@@ -114,10 +115,10 @@ const ImageZoom = ({ src, alt }: { src: string; alt?: string }) => {
             </svg>
           </button>
           <div className="relative w-full h-full max-w-full max-h-full">
-            <Image
-              src={src}
+            <img
+              src={`${src}`}
               alt={alt || 'Product image'}
-              fill
+              // fill
               style={{ objectFit: 'contain' }}
               className="select-none"
               onClick={(e) => e.stopPropagation()}
