@@ -20,7 +20,7 @@ interface PrivacyRowProps {
   isLast?: boolean;
 }
 
-export default function PrivacySettings(): JSX.Element {
+export default function PrivacySettings(): React.ReactElement {
   const [settings, setSettings] = useState<PrivacySettingsState>({
     featureItems: true,
     notifyOwners: true,
@@ -102,7 +102,7 @@ function PrivacyRow({
   active,
   onToggle,
   isLast,
-}: PrivacyRowProps): JSX.Element {
+}: PrivacyRowProps): React.ReactElement {
   return (
     <div className={`flex items-start justify-between p-4 bg-white ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="pr-6">
