@@ -192,14 +192,22 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   const product = entry ?? {};
   const condition = formatCondition(product.condition);
   const price = formatPrice(product.price);
+  const uploadedAt = product.updatedAt ?? product.createdAt ?? "";
+  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 2.95);
 
   return {
     id: product.id,
     title: product.title ?? "",
     description: product.description ?? "",
     brand: product.brand ?? "",
+    category: product.category ?? product.categoryId ?? "",
+    subCategory: product.subCategory ?? product.subcategory ?? "",
     size: product.size ?? "",
     condition,
+    material: product.material ?? product.fabric ?? "",
+    color: product.color ?? "",
+    uploadedAt,
+    shippingFromPrice,
     price,
     totalPrice: price,
     likes: Number(product.likeCount ?? 0) || 0,
