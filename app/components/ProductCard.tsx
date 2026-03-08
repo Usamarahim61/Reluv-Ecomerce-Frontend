@@ -1,6 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-import { Heart, Info } from "lucide-react";
+import { Heart, ShieldCheck } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 
 interface ProductProps {
@@ -64,32 +63,32 @@ export default function ProductCard({
 
   return (
     <Link href={`/products/${productId}`}>
-      <div className="flex cursor-pointer flex-col group">
-        <div className="relative w-full overflow-hidden bg-gray-100 aspect-3/4">
+      <div className="group flex cursor-pointer flex-col">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[8px] bg-[#efefec]">
           {safeImageUrl ? (
             <img
               src={`${API_BASE_URL}${safeImageUrl}`}
               alt={brandText || "Product image"}
-              
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
-            <div className="h-full w-full bg-gray-100" />
+            <div className="h-full w-full bg-[#efefec]" />
           )}
 
-          <button className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2 py-1 text-xs font-bold">
-            <Heart size={12} className="text-gray-400" /> {likes}
+          <button className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#d7d7d7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#5e5e5e] shadow-sm">
+            <Heart size={13} className="text-[#6e6e6e]" /> {likes}
           </button>
         </div>
 
-        <div className="space-y-0.5 py-2">
-          <p className="truncate text-xs text-gray-500">
-            {brandText} · {sizeText} · {conditionText}
+        <div className="space-y-0.5 pt-2">
+          <p className="truncate text-[15px] leading-[1.2] text-[#4b4b4b]">{brandText}</p>
+          <p className="truncate text-[13px] leading-[1.2] text-[#5f5f5f]">
+            {sizeText} · {conditionText}
           </p>
-          <p className="text-sm font-semibold">{priceText}</p>
-          <div className="flex items-center gap-1 text-[11px] text-gray-400">
+          <p className="pt-1 text-[13px] font-medium leading-tight text-[#2f2f2f]">{priceText}</p>
+          <div className="flex items-center gap-1 text-[13px] leading-tight text-[#007782]">
             <span>{totalPriceText} incl.</span>
-            <Info size={10} />
+            <ShieldCheck size={11} />
           </div>
         </div>
       </div>
