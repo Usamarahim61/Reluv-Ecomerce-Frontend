@@ -10,7 +10,7 @@ const ReluvAdForm = () => {
   const [charCount, setCharCount] = useState(300);
 
   const toggleSection = (id:any) => {
-    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+    setOpenSections((prev:any) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -57,6 +57,7 @@ const ReluvAdForm = () => {
               title="Contact information" 
               isOpen={openSections[1]} 
               onToggle={() => toggleSection(1)}
+              isLast={false}
             >
               <InputRow label="First name" placeholder="Enter your first name(s)" />
               <InputRow label="Last name" placeholder="Enter your last name(s)" />
@@ -70,6 +71,7 @@ const ReluvAdForm = () => {
               title="Company information" 
               isOpen={openSections[2]} 
               onToggle={() => toggleSection(2)}
+              isLast={false}
             >
               <SelectRow label="Company type" options={['Agency', 'Brand', 'Other']} />
               <InputRow label="Company name" placeholder="Enter company name" />
@@ -126,7 +128,7 @@ const ReluvAdForm = () => {
 
 // --- Helper Components for Clean Code ---
 
-const FormSection = ({ num, title, children, isOpen, onToggle, isLast }) => (
+const FormSection = ({ num, title, children, isOpen, onToggle, isLast }:{num:any,title:any, children:any, isOpen:any, onToggle:any, isLast:any}) => (
   <div className={`border-t border-gray-100 ${isLast ? 'border-b' : ''}`}>
     <button 
       type="button"
@@ -147,7 +149,7 @@ const FormSection = ({ num, title, children, isOpen, onToggle, isLast }) => (
   </div>
 );
 
-const InputRow = ({ label, placeholder, type = "text" }) => (
+const InputRow = ({ label, placeholder, type = "text" }: { label: string; placeholder: string; type?: string }) => (
   <div className="flex flex-col md:flex-row md:items-center py-4 border-b border-gray-50 last:border-0">
     <label className="md:w-1/3 text-[15px] font-medium text-gray-700 mb-1 md:mb-0">{label}</label>
     <input 
@@ -158,12 +160,12 @@ const InputRow = ({ label, placeholder, type = "text" }) => (
   </div>
 );
 
-const SelectRow = ({ label, options }) => (
+const SelectRow = ({ label, options }: { label: string; options: string[] }) => (
   <div className="flex flex-col md:flex-row md:items-center py-4 border-b border-gray-50 last:border-0">
     <label className="md:w-1/3 text-[15px] font-medium text-gray-700 mb-1 md:mb-0">{label}</label>
     <select className="md:w-2/3 border-b border-gray-200 focus:border-[#007782] outline-none py-2 bg-transparent text-gray-800 appearance-none cursor-pointer">
       <option value="">Please select</option>
-      {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
     </select>
   </div>
 );
