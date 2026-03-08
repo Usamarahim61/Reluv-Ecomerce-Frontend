@@ -9,6 +9,7 @@ export type ProductCardItem = {
   totalPrice: string;
   imageUrl?: string | null;
   likes: number;
+  userId?: number | string | null;
 };
 
 export type ProductsPage = {
@@ -23,8 +24,14 @@ export type ProductDetailItem = {
   title: string;
   description: string;
   brand: string;
+  category?: unknown;
+  subCategory?: unknown;
   size: string;
   condition: string;
+  material?: string;
+  color?: string;
+  uploadedAt?: string;
+  shippingFromPrice?: string;
   price: string;
   totalPrice: string;
   likes: number;
@@ -97,6 +104,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
   const totalPrice = price;
   const imageUrl = getFirstImageUrl(attributes.images);
   const likes = Number(attributes.likeCount ?? 0) || 0;
+  const userId = attributes.user?.id ?? entry?.user?.id ?? null;
 
   return {
     id: entry.id,
@@ -107,6 +115,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
     totalPrice,
     imageUrl,
     likes,
+    userId,
   };
 };
 
@@ -114,14 +123,22 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   const product = entry ?? {};
   const condition = formatCondition(product.condition);
   const price = formatPrice(product.price);
+  const uploadedAt = product.updatedAt ?? product.createdAt ?? "";
+  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 2.95);
 
   return {
     id: product.id,
     title: product.title ?? "",
     description: product.description ?? "",
     brand: product.brand ?? "",
+    category: product.category ?? product.categoryId ?? "",
+    subCategory: product.subCategory ?? product.subcategory ?? "",
     size: product.size ?? "",
     condition,
+    material: product.material ?? product.fabric ?? "",
+    color: product.color ?? "",
+    uploadedAt,
+    shippingFromPrice,
     price,
     totalPrice: price,
     likes: Number(product.likeCount ?? 0) || 0,
