@@ -1,6 +1,7 @@
 "use client";
 import React, { JSX, useState } from "react";
 import { X, Lock, CreditCard, Info } from "lucide-react";
+import { API_BASE_URL } from "../constants/api";
 
 interface CardDetailsModalProps {
   isOpen: boolean;
@@ -12,8 +13,43 @@ export default function CardDetailsModal({ isOpen, onClose }: CardDetailsModalPr
   const [cardNumber, setCardNumber] = useState<string>("");
   const [expiry, setExpiry] = useState<string>("");
   const [cvv, setCvv] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+
+    const handleSaveCard = async () => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        cardName,
+        cardNumber,
+        expiry,
+        cvv,
+      };
+
+      // const res = await fetch(
+      //   `${API_BASE_URL}/api/cards-payment`,
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(payload),
+      //   }
+      // );
+
+      // if (!res.ok) {
+      //   throw new Error("Failed");
+      // }
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -114,9 +150,13 @@ export default function CardDetailsModal({ isOpen, onClose }: CardDetailsModalPr
 
           {/* Actions */}
           <div className="space-y-3">
-            <button className="w-full bg-[#007782] text-white font-bold py-3 rounded-md hover:bg-[#005f68] transition-colors">
-              Use this card
-            </button>
+             <button
+            onClick={handleSaveCard}
+            disabled={loading}
+            className="w-full bg-[#007782] text-white py-3"
+          >
+            {loading ? "Saving..." : "Use this card"}
+          </button>
             <button 
               onClick={onClose}
               className="w-full text-[#007782] font-bold py-2 hover:underline text-center"
