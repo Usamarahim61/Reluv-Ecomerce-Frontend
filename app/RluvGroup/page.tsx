@@ -1,5 +1,5 @@
-import ReluvGroupNavbar from '../components/Rluv-Group-Navbar';
-import ReluvGroupFooter from '../components/Rluv-Group-Footer';
+import ReluvGroupNavbar from '../components/Reluv-Group-Navbar';
+import ReluvGroupFooter from '../components/Reluv-Group-Footer';
 
 import Sustainability from '../sustainability/page';
 import Newsroom from '../newsroom/page';
@@ -12,7 +12,7 @@ type Props = {
   searchParams: { view?: string };
 };
 
-export default function RluvGroup({ searchParams }: Props) {
+export default function ReluvGroup({ searchParams }: Props) {
   const view = searchParams.view;
 
   return (

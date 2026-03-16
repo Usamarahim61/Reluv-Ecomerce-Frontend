@@ -9,12 +9,8 @@ import MediaAssets from "../mediaAssets/page"
 
 type Path =  '/sustainability' | '/newsroom' | '/mediaAssets' | '/ReluvVentures';
 
-export default function RluvGroupNavbar() {
-  // We use the href as the key to match your Footer structure
+export default function ReluvGroupNavbar() {
   const [currentPath, setCurrentPath] = useState<Path>('/sustainability');
-
-  // This mock router effect allows the component to react if you 
-  // later implement real Next.js/React Router navigation
   const navigateTo = (path: Path) => {
     setCurrentPath(path);
     window.scrollTo(0, 0);
@@ -31,7 +27,7 @@ export default function RluvGroupNavbar() {
             className="flex items-center cursor-pointer" 
             onClick={() => navigateTo('/newsroom')}
           >
-             <span className="text-[#007782] text-3xl font-bold tracking-tighter">Rluv</span>
+             <span className="text-[#007782] text-3xl font-bold tracking-tighter">Reluv</span>
           </div>
 
           {/* Nav Links mapped to your Footer paths */}
