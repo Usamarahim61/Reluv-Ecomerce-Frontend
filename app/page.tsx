@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image";
 import Navbar from "./components/navbar";
-import ProductFeed from "./Shop/page";
+import ProductFeed from "./components/ProductFeed";
 import Footer from "./components/Footer";
 import { useEffect, useState } from "react";
 import Link from "next/link";

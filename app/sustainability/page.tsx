@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 /**
- * Rluv Sustainability Page
+ * Reluv Sustainability Page
  * Combined Sections 1-4
  */
 export default function SustainabilityPage() {
@@ -66,7 +66,7 @@ export default function SustainabilityPage() {
             Pre-loved is a big part of our members’ wardrobes and shopping habits. To 
             understand the full impact of second-hand on our community, we’ve 
             combined an independent study of our carbon emissions and survey results 
-            from over 100,000 members.* We found that when you choose Rluv 
+            from over 100,000 members.* We found that when you choose Reluv 
             instead of new, you join an international community changing things for the 
             better.
           </p>
@@ -121,7 +121,7 @@ export default function SustainabilityPage() {
           <FindingCard 
             icon={<Tag size={48} className="text-[#DFFF00]" />}
             stat="22% buy better quality new fashion"
-            desc="Because it can be resold on Rluv. Many are taking better care of their pieces too."
+            desc="Because it can be resold on Reluv. Many are taking better care of their pieces too."
           />
         </div>
       </section>
@@ -145,14 +145,14 @@ export default function SustainabilityPage() {
             <div className="rounded-3xl overflow-hidden aspect-[4/3] shadow-lg">
               <img
                 src="https://images.unsplash.com/photo-1580519542036-c47de6196ba5?auto=format&fit=crop&q=80&w=800"
-                alt="Browsing Rluv app"
+                alt="Browsing Reluv app"
                 className="w-full h-full object-cover"
               />
             </div>
           </div>
         </div>
 
-        <h3 className="text-2xl font-bold mb-10">Key findings: saving and spending on Rluv</h3>
+        <h3 className="text-2xl font-bold mb-10">Key findings: saving and spending on Reluv</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 bg-[#f8f5f0]">
           <FindingCard 
             icon={<RefreshCw size={48} className="text-[#DFFF00]" />}
@@ -162,11 +162,11 @@ export default function SustainabilityPage() {
           <FindingCard 
             icon={<PiggyBank size={48} className="text-[#DFFF00]" />}
             stat="18% use the money for savings, 10% for other expenses"
-            desc="Selling on Rluv puts extra cash in your pocket for the things you want."
+            desc="Selling on Reluv puts extra cash in your pocket for the things you want."
           />
           <FindingCard 
             icon={<Banknote size={48} className="text-[#DFFF00]" />}
-            stat="53% spend less since using Rluv"
+            stat="53% spend less since using Reluv"
             desc="Most buy the same amount or fewer items than before. Less spending, more conscious consumption."
           />
         </div>
@@ -182,7 +182,7 @@ export default function SustainabilityPage() {
               <span className="absolute -bottom-2 left-0 w-3/4 h-1.5 bg-[#DFFF00] opacity-80" />
             </h2>
             <p className="text-slate-600 leading-relaxed text-[17px]">
-              To understand the carbon emissions avoided by shopping on Rluv instead of new, 
+              To understand the carbon emissions avoided by shopping on Reluv instead of new, 
               we partnered with carbon tracking platform Vaayu. They calculated that you, 
               as a community, have the most impact when you replace new purchases with 
               second-hand ones.
@@ -213,7 +213,7 @@ export default function SustainabilityPage() {
           />
           <FindingCard 
             icon={<Shirt size={48} className="text-[#DFFF00]" />}
-            stat="40% of Rluv purchases replaced new ones"
+            stat="40% of Reluv purchases replaced new ones"
             desc="This is the main way we impact emissions together by avoiding brand new production."
           />
         </div>
@@ -233,7 +233,7 @@ export default function SustainabilityPage() {
             <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-1/2 h-1.5 bg-[#DFFF00] opacity-80" />
           </h2>
           <p className="text-[17px] md:text-[19px] leading-relaxed mb-10 opacity-90">
-            Rluv needs to minimise the impact of its operations on climate change, too. 
+            Reluv needs to minimise the impact of its operations on climate change, too. 
             We’ve developed an action plan to reduce emissions in line with climate science. 
             Emissions from deliveries make up 98% of our total carbon footprint, so we’re 
             focussing on our logistics operations.

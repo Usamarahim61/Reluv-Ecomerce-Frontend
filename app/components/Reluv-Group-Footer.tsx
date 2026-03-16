@@ -8,7 +8,7 @@ interface FooterLink {
   href: string;
 }
 
-const RluvGroupFooter: React.FC = () => {
+const ReluvGroupFooter: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -18,13 +18,13 @@ const RluvGroupFooter: React.FC = () => {
 
   const sections: { title: string; links: FooterLink[] }[] = [
     {
-      title: 'Rluv Group',
+      title: 'Reluv Group',
       links: [
-        { label: 'Newsroom', href: '/RluvGroup?view=press' },
-        { label: 'Media Assets', href: '/RluvGroup?view=mediaAssets' },
-        { label: 'Sustainability', href: '/RluvGroup?view=sustainability' },
+        { label: 'Newsroom', href: '/ReluvGroup?view=press' },
+        { label: 'Media Assets', href: '/ReluvGroup?view=mediaAssets' },
+        { label: 'Sustainability', href: '/ReluvGroup?view=sustainability' },
         { label: 'Tax Strategy', href: '/taxStrategy' },
-        { label: 'Reluv Ventures', href: '/RluvGroup?view=reluvVentures' },
+        { label: 'Reluv Ventures', href: '/ReluvGroup?view=reluvVentures' },
       ],
     },
     {
@@ -45,9 +45,9 @@ const RluvGroupFooter: React.FC = () => {
           <div className="flex-1">
             <span
               className="text-[#007782] text-3xl font-bold cursor-pointer"
-              onClick={() => onNavigate('/RluvGroup?view=sustainability')}
+              onClick={() => onNavigate('/ReluvGroup?view=sustainability')}
             >
-              Rluv
+              Reluv
             </span>
           </div>
 
@@ -81,7 +81,7 @@ const RluvGroupFooter: React.FC = () => {
 
         <div className="mt-20 pt-8 border-t border-gray-100 flex justify-between">
           <p className="text-slate-400 text-sm">
-            © 2026 Rluv Group. Second-hand is for everyone.
+            © 2026 Reluv Group. Second-hand is for everyone.
           </p>
         </div>
       </div>
@@ -89,4 +89,4 @@ const RluvGroupFooter: React.FC = () => {
   );
 };
 
-export default RluvGroupFooter;
+export default ReluvGroupFooter;

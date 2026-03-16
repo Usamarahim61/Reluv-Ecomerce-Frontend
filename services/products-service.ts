@@ -3,6 +3,11 @@ import { apiRequest } from "./api";
 export type ProductCardItem = {
   id: number | string;
   brand: string;
+  category?: string;
+  subCategory?: string;
+  item?: string;
+  color?: string;
+  material?: string;
   size: string;
   condition: string;
   price: string;
@@ -17,6 +22,31 @@ export type ProductsPage = {
   page: number;
   pageSize: number;
   hasMore: boolean;
+};
+
+export type ProductFilterParams = {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  subCategory?: string;
+  item?: string;
+  brand?: string;
+  size?: string;
+  condition?: string;
+  colour?: string;
+  material?: string;
+  sortBy?: string;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+};
+
+export type ProductFilterOptions = {
+  brand: string[];
+  size: string[];
+  condition: string[];
+  colour: string[];
+  material: string[];
+  sortBy: string[];
 };
 
 export type ProductDetailItem = {
@@ -98,17 +128,27 @@ const getImageUrls = (images: any): string[] => {
 const mapProductToCard = (entry: any): ProductCardItem => {
   const attributes = entry ?? {};
   const brand = attributes.brand ?? "";
+  const category = attributes.category ?? "";
+  const subCategory = attributes.subCategory ?? attributes.subcategory ?? "";
+  const item = attributes.item ?? "";
+  const color = attributes.color ?? attributes.colour ?? "";
+  const material = attributes.material ?? "";
   const size = attributes.size ?? "";
   const condition = formatCondition(attributes.condition);
   const price = formatPrice(attributes.price);
   const totalPrice = price;
   const imageUrl = getFirstImageUrl(attributes.images);
-  const likes = Number(attributes.likeCount ?? 0) || 0;
+  const likes = Number(attributes.likeCount ?? attributes.likes ?? 0) || 0;
   const userId = attributes.user?.id ?? entry?.user?.id ?? null;
 
   return {
     id: entry.id,
     brand,
+    category,
+    subCategory,
+    item,
+    color,
+    material,
     size,
     condition,
     price,
@@ -166,6 +206,79 @@ export async function fetchProductsForHome(
     page,
     pageSize,
     hasMore: items.length === pageSize,
+  };
+}
+
+export async function fetchFilteredProducts(
+  params: ProductFilterParams = {},
+): Promise<ProductsPage> {
+  const page = Math.max(1, Number(params.page ?? 1));
+  const pageSize = Math.max(1, Number(params.pageSize ?? 40));
+  const offset = Math.max(0, (page - 1) * pageSize);
+  const search = new URLSearchParams();
+  search.set("offset", String(offset));
+  search.set("pageSize", String(pageSize));
+
+  const addIfValue = (key: string, value: unknown) => {
+    if (value == null) return;
+    const text = String(value).trim();
+    if (!text) return;
+    search.set(key, text);
+  };
+
+  addIfValue("category", params.category);
+  addIfValue("subCategory", params.subCategory);
+  addIfValue("item", params.item);
+  addIfValue("brand", params.brand);
+  addIfValue("size", params.size);
+  addIfValue("condition", params.condition);
+  addIfValue("colour", params.colour);
+  addIfValue("material", params.material);
+  addIfValue("sortBy", params.sortBy);
+  if (params.minPrice != null) search.set("minPrice", String(params.minPrice));
+  if (params.maxPrice != null) search.set("maxPrice", String(params.maxPrice));
+
+  const payload = await apiRequest(`/products/filter?${search.toString()}`);
+  const data = Array.isArray(payload?.products) ? payload.products : [];
+  const items = data.map(mapProductToCard);
+  const hasMore = Boolean(payload?.pagination?.hasMore);
+
+  return {
+    items,
+    page,
+    pageSize,
+    hasMore,
+  };
+}
+
+export async function fetchProductFilterOptions(params: {
+  category?: string;
+  subCategory?: string;
+  item?: string;
+} = {}): Promise<ProductFilterOptions> {
+  const search = new URLSearchParams();
+  const addIfValue = (key: string, value: unknown) => {
+    if (value == null) return;
+    const text = String(value).trim();
+    if (!text) return;
+    search.set(key, text);
+  };
+
+  addIfValue("category", params.category);
+  addIfValue("subCategory", params.subCategory);
+  addIfValue("item", params.item);
+
+  const query = search.toString();
+  const payload = await apiRequest(`/products/filter-options${query ? `?${query}` : ""}`);
+  const options = payload?.options ?? {};
+
+  return {
+    brand: Array.isArray(options.brand) ? options.brand : [],
+    size: Array.isArray(options.size) ? options.size : [],
+    condition: Array.isArray(options.condition) ? options.condition : [],
+    colour: Array.isArray(options.colour) ? options.colour : [],
+    material: Array.isArray(options.material) ? options.material : [],
+    sortBy: Array.isArray(options.sortBy) ? options.sortBy : ['Newest', 'Price: Low to high', 'Price: High to low'],
   };
 }
 

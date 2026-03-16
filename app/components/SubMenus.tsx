@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { SubCategoryItem } from "../constants/subCatagories";
+import Link from "next/link";
 
 interface SubMenusProps {
   subCategories?: SubCategoryItem[];
@@ -53,8 +54,12 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
             className="flex items-center cursor-pointer py-2 px-1 hover:text-[#007782]"
             onMouseEnter={() => handleCategoryHover(cat)}
           >
-            {/* <span className="text-lg">{cat.icon}</span> */}
-            <span className="ml-2">{cat.label}</span>
+            <Link
+              href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
+              className="ml-2"
+            >
+              {cat.label}
+            </Link>
           </div>
         ))}
       </div>
@@ -76,7 +81,11 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
                 onMouseEnter={() => setSelectedChild(child.label)}
               >
                 <span>{child.icon}</span>
-                <span>{child.label}</span>
+                <Link
+                  href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(child.slug || child.label)}`}
+                >
+                  {child.label}
+                </Link>
               </div>
             ))}
           </div>
@@ -88,14 +97,15 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
           <div className="flex flex-col flex-wrap gap-5">
             {activeCategory.children
               .filter((child) => child.label === selectedChild)
-              .flatMap((child) => child.items)
-              .map((item) => (
-                <div
+              .flatMap((child) => child.items.map((item, idx) => ({ item, slug: child.itemSlugs?.[idx] })))
+              .map(({ item, slug }) => (
+                <Link
+                  href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(selectedChild || "")}&item=${encodeURIComponent(slug || item)}`}
                   key={item}
                   className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#007782] hover:font-semibold whitespace-nowrap"
                 >
                   {item}
-                </div>
+                </Link>
               ))}
           </div>
         </div>

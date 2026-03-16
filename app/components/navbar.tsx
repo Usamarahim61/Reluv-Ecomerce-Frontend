@@ -452,12 +452,13 @@ export default function Navbar() {
             {/* Sub Categories with icons */}
             <div className="flex flex-col gap-2 mb-3">
               {menuCategories.map((cat) => (
-                <div
+                <Link
                   key={cat.label}
+                  href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
                   className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#007782] rounded"
                 >
                   <span>{cat.label}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

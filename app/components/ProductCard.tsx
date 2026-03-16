@@ -60,6 +60,7 @@ export default function ProductCard({
   const conditionText = toDisplayText(condition);
   const priceText = toDisplayText(price);
   const totalPriceText = toDisplayText(totalPrice);
+  const showInDemand = Number(likes || 0) >= 50;
 
   return (
     <Link href={`/products/${productId}`}>
@@ -74,6 +75,12 @@ export default function ProductCard({
           ) : (
             <div className="h-full w-full bg-[#efefec]" />
           )}
+
+          {showInDemand ? (
+            <div className="absolute left-2 top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-[#404040] shadow-sm">
+              In demand
+            </div>
+          ) : null}
 
           <button className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#d7d7d7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#5e5e5e] shadow-sm">
             <Heart size={13} className="text-[#6e6e6e]" /> {likes}
