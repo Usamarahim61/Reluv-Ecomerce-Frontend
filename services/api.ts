@@ -1,4 +1,6 @@
-const BASE_URL = "http://localhost:1337/api";
+import { API_BASE_URL } from "@/app/constants/api";
+
+const BASE_URL = `${API_BASE_URL}/api`;
 
 export async function apiRequest(
   endpoint: string,
