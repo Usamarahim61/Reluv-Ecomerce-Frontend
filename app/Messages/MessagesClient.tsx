@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Info, CheckCircle2, Send, Image as ImageIcon } from "lucide-react";
-
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import { ConversationItem, MessageItem } from "@/services/messages-service";

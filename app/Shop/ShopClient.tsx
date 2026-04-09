@@ -1,7 +1,6 @@
 "use client";
 
 import Footer from "@/app/components/Footer";
-
 import ProductFeed from "@/app/components/ProductFeed";
 import { API_BASE_URL } from "@/app/constants/api";
 import {
