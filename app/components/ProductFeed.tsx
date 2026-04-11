@@ -7,26 +7,30 @@ export default function ProductFeed({
   productList,
   onLoadMore,
   isLoadingMore,
+  isLoading,
   hasMore,
   className = '',
   gridClassName = '',
+  cardVariant = 'default',
 }: {
   productList: ProductCardItem[];
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  isLoading?: boolean;
   hasMore?: boolean;
   className?: string;
   gridClassName?: string;
+  cardVariant?: 'default' | 'android';
 }) {
   return (
     <section className={className || 'max-w-7xl mx-auto px-4 py-6'}>
       <div className={gridClassName || 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-10'}>
         {(productList || []).map((item, index) => (
-          <ProductCard key={index} {...item} />
+          <ProductCard key={index} {...item} variant={cardVariant} />
         ))}
       </div>
 
-      {onLoadMore && hasMore !== false && (
+      {!isLoading && onLoadMore && hasMore !== false && (
         <div className="flex items-center justify-center">
           <button
             onClick={onLoadMore}

@@ -19,8 +19,11 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
+import AndroidChrome from "./AndroidChrome";
+import { useAndroidNative } from "./useAndroidNative";
 
 export default function Navbar() {
+  const { isAndroid, isReady } = useAndroidNative();
   const { user, logout } = useAuth();
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -45,6 +48,7 @@ export default function Navbar() {
   const LangRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (isAndroid) return;
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
 
@@ -67,13 +71,19 @@ export default function Navbar() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [isAndroid]);
 
   useEffect(() => {
+    if (isAndroid) return;
     if (categoriesStatus === "idle") {
       dispatch(fetchCatalogTree());
     }
-  }, [categoriesStatus, dispatch]);
+  }, [categoriesStatus, dispatch, isAndroid]);
+
+  if (!isReady) return null;
+  if (isAndroid) {
+    return <AndroidChrome />;
+  }
 
   const languages = [
     { code: "ES", label: "Español (Spanish)" },

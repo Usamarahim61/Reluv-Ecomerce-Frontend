@@ -1,6 +1,9 @@
 // components/Footer.tsx
+"use client";
+
 import { Facebook, Linkedin, Instagram } from 'lucide-react';
 import Link from 'next/link';
+import { Capacitor } from '@capacitor/core';
 
 type FooterLink = {
   label: string;
@@ -8,6 +11,8 @@ type FooterLink = {
 };
 
 export default function Footer() {
+  if (Capacitor.isNativePlatform()) return null;
+
   const sections: { title: string; links: FooterLink[] }[] = [
     {
       title: 'Reluv',
