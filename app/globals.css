@@ -1,11 +1,69 @@
 @import "tailwindcss";
 
-/* :root {
+html.loading *,
+html.loading body * {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+html.loading::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #10b981 0%, #0f766e 50%, #047857 100%);
+  z-index: 99999;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+html.loading::after {
+  content: 'Reluv';
+  font-family: var(--font-great-vibes);
+  font-weight: 400;
+  font-size: clamp(4rem, 15vw, 8rem);
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4));
+  animation: reluv-glow 1.5s ease-in-out infinite alternate;
+  z-index: 100000;
+  position: relative;
+}
+
+@keyframes reluv-glow {
+  0% { 
+    filter: drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4));
+    transform: scale(1);
+  }
+  100% { 
+    filter: drop-shadow(0 30px 60px rgba(16, 185, 129, 0.6));
+    transform: scale(1.03);
+  }
+}
+
+html:not(.loading)::before,
+html:not(.loading)::after {
+  display: none !important;
+}
+
+html.android-native {
+  font-size: 16px;
+  max-width: 100%;
+}
+
+/* Rest preserved */
+ /* :root {
   --background: #ffffff;
   --foreground: #171717;
 } */
 
-/* @theme inline {
+ /* @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

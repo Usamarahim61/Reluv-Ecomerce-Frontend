@@ -479,6 +479,7 @@ export default function ShopClient() {
           productList={items}
           onLoadMore={() => loadProducts(page + 1)}
           isLoadingMore={loadingMore}
+          isLoading={loading}
           hasMore={hasMore}
           className="px-0 py-0"
           gridClassName="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4"

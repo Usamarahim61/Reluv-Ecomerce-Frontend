@@ -1,5 +1,7 @@
 'use client';
 import Image from "next/image";
+import AndroidChrome from "./components/AndroidChrome";
+import { useAndroidNative } from "./components/useAndroidNative";
 import Navbar from "./components/navbar";
 import ProductFeed from "./components/ProductFeed";
 import Footer from "./components/Footer";
@@ -7,9 +9,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchProducts } from "@/lib/features/productsSlice";
+import type { ProductCardItem } from "@/services/products-service";
+
+
 
 export default function Home() {
-  const dispatch = useAppDispatch();
+  const { isAndroid, isReady } = useAndroidNative();
+  const dispatch = useAppDispatch(); 
   const pageSize = 20;
   const [showBanner, setShowBanner] = useState(true);
   const [openInBox, setOpenInBox] = useState(false);
@@ -23,6 +29,7 @@ export default function Home() {
   const isLoading = status === "loading";
   const isLoadingMore = status === "loading" && products.length > 0;
 
+
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, pageSize }));
   }, [dispatch]);
@@ -33,7 +40,29 @@ export default function Home() {
     dispatch(fetchProducts({ page: nextPage, pageSize }));
   };
 
+  if (!isReady) {
+    return (
+      <div className="min-h-screen reluv-loading-screen flex items-center justify-center">
+        <div className="reluv-loading reluv-loading-text">Reluv</div>
+      </div>
+    );
+  }
+
+  if (isAndroid) {
+    return (
+      <AndroidHome
+        products={products}
+        onLoadMore={handleLoadMore}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        hasMore={hasMore}
+        error={error}
+      />
+    );
+  }
+
   return (
+    !isAndroid && (
     <div className="min-h-screen flex flex-col">
       {!openInBox && <Navbar />}
       
@@ -89,8 +118,10 @@ export default function Home() {
           <ProductFeed
             productList={products}
             onLoadMore={handleLoadMore}
-            isLoadingMore={isLoadingMore}
+            isLoadingMore={isLoadingMore}            
+            isLoading={isLoading}
             hasMore={hasMore}
+
           />
           {isLoading && products.length === 0 && (
             <p className="mt-4 text-center text-sm text-gray-400">Loading products...</p>
@@ -102,6 +133,44 @@ export default function Home() {
       </section>
 
       <Footer />
+    </div>
+  )
+)
+}
+
+function AndroidHome({
+  products,
+  onLoadMore,
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  error,
+}: {
+  products: ProductCardItem[];
+  onLoadMore: () => void;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="min-h-screen bg-[#f7f7f8] text-[#1f2937] pb-24">
+      <AndroidChrome />
+      <ProductFeed
+        productList={products}
+        onLoadMore={onLoadMore}
+        isLoadingMore={isLoadingMore}
+        hasMore={hasMore}
+        className="px-3 pt-3"
+        gridClassName="grid grid-cols-2 gap-3"
+        cardVariant="android"
+      />
+
+      {isLoading && products.length === 0 && (
+        <p className="mt-2 text-center text-sm text-[#6b7280]">Loading products...</p>
+      )}
+      {error && <p className="mt-2 text-center text-sm text-red-600">{error}</p>}
+
     </div>
   );
 }

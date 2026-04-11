@@ -7,9 +7,15 @@ import { login, register } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
 import { API_BASE_URL } from "../constants/api";
 
-export default function SignUpLogin({ onClose }: { onClose: () => void }) {
+export default function SignUpLogin({
+  onClose,
+  initialView = "initial",
+}: {
+  onClose: () => void;
+  initialView?: "initial" | "login" | "register";
+}) {
   const { login: setAuthLogin } = useAuth();
-  const [view, setView] = useState<"initial" | "login" | "register">("initial");
+  const [view, setView] = useState<"initial" | "login" | "register">(initialView);
   
   // New State for Password Visibility
   const [showPassword, setShowPassword] = useState(false);

@@ -4,6 +4,7 @@ import Footer from '@/app/components/Footer';
 import Navbar from '@/app/components/navbar';
 import ProductFeed from '@/app/components/ProductFeed';
 import { API_BASE_URL } from '@/app/constants/api';
+import { useAndroidNative } from '@/app/components/useAndroidNative';
 import {
   fetchFilteredProducts,
   fetchProductFilterOptions,
@@ -49,6 +50,7 @@ const getLeafCategoryEntries = (
   });
 
 export default function ShopPage() {
+  const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -241,44 +243,57 @@ export default function ShopPage() {
   const staticPillClass =
     'rounded-full border border-[#c7d0d5] bg-white px-4 py-1.5 text-[14px] text-[#2f2f2f] shadow-[0_1px_2px_rgba(0,0,0,0.04)] md:text-[16px]';
 
+  if (!isReady) {
+    return (
+      <div className="min-h-screen reluv-loading-screen flex items-center justify-center">
+        <div className="reluv-loading reluv-loading-text">Reluv</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f3f3]">
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-4">
-        <nav className="mb-1 flex items-center gap-2 text-[12px] text-[#6f6f6f]">
-          <Link href="/" className="underline hover:text-[#007782]">Home</Link>
-          <ChevronRight size={11} className="text-[#9f9f9f]" />
-          <Link href="/Shop" className="underline hover:text-[#007782]">Shop</Link>
-          {category ? (
-            <>
+        {!isAndroid ? (
+          <>
+            <nav className="mb-1 flex items-center gap-2 text-[12px] text-[#6f6f6f]">
+              <Link href="/" className="underline hover:text-[#007782]">Home</Link>
               <ChevronRight size={11} className="text-[#9f9f9f]" />
-              <span className="underline">{category}</span>
-            </>
-          ) : null}
-          {subCategory ? (
-            <>
-              <ChevronRight size={11} className="text-[#9f9f9f]" />
-              <span className="underline">{subCategory}</span>
-            </>
-          ) : null}
-          {item ? (
-            <>
-              <ChevronRight size={11} className="text-[#9f9f9f]" />
-              <span className="underline">{item}</span>
-            </>
-          ) : null}
-        </nav>
+              <Link href="/Shop" className="underline hover:text-[#007782]">Shop</Link>
+              {category ? (
+                <>
+                  <ChevronRight size={11} className="text-[#9f9f9f]" />
+                  <span className="underline">{category}</span>
+                </>
+              ) : null}
+              {subCategory ? (
+                <>
+                  <ChevronRight size={11} className="text-[#9f9f9f]" />
+                  <span className="underline">{subCategory}</span>
+                </>
+              ) : null}
+              {item ? (
+                <>
+                  <ChevronRight size={11} className="text-[#9f9f9f]" />
+                  <span className="underline">{item}</span>
+                </>
+              ) : null}
+            </nav>
 
-        <div className="mb-3 flex items-center justify-between border-b border-[#d9d9d9] pb-5">
-          <h1 className="text-[32px] font-semibold leading-none text-[#1d1d1d] md:text-[36px]">{pageTitle}</h1>
-          <button className="flex items-center gap-2 rounded-[10px] border border-[#9aa5ab] bg-white px-4 py-2 text-[14px] text-[#2d2d2d] md:text-[16px]">
-            <Bookmark size={20} />
-            Save search
-          </button>
-        </div>
+            <div className="mb-3 flex items-center justify-between border-b border-[#d9d9d9] pb-5">
+              <h1 className="text-[32px] font-semibold leading-none text-[#1d1d1d] md:text-[36px]">{pageTitle}</h1>
+              <button className="flex items-center gap-2 rounded-[10px] border border-[#9aa5ab] bg-white px-4 py-2 text-[14px] text-[#2d2d2d] md:text-[16px]">
+                <Bookmark size={20} />
+                Save search
+              </button>
+            </div>
+          </>
+        ) : null}
 
-        <section className="mb-4 border-b border-[#d9d9d9] pb-5">
+        {!isAndroid ? (
+          <section className="mb-4 border-b border-[#d9d9d9] pb-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="relative" ref={categoryMenuRef}>
               <button
@@ -453,16 +468,19 @@ export default function ShopPage() {
               </button>
             ) : null}
           </div>
-        </section>
+          </section>
+        ) : null}
 
-        <div className="mb-3 flex items-center justify-between text-[14px] text-[#5f6a6f] md:text-[16px]">
-          <span>{items.length}+ results.</span>
-          <span className="flex items-center gap-1">
-            Search results <CircleHelp size={18} />
-          </span>
-        </div>
+        {!isAndroid ? (
+          <div className="mb-3 flex items-center justify-between text-[14px] text-[#5f6a6f] md:text-[16px]">
+            <span>{items.length}+ results.</span>
+            <span className="flex items-center gap-1">
+              Search results <CircleHelp size={18} />
+            </span>
+          </div>
+        ) : null}
 
-        {showShippingBanner ? (
+        {!isAndroid && showShippingBanner ? (
           <div className="mb-3 flex items-center justify-between rounded-md border border-[#dedede] bg-white px-4 py-3 text-[14px] text-[#5f6a6f] md:text-[16px]">
             <p>Shipping fees will be added at checkout</p>
             <button onClick={() => setShowShippingBanner(false)}>
@@ -478,9 +496,11 @@ export default function ShopPage() {
           productList={items}
           onLoadMore={() => loadProducts(page + 1)}
           isLoadingMore={loadingMore}
+          isLoading={loading}
           hasMore={hasMore}
           className="px-0 py-0"
           gridClassName="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4"
+          cardVariant={isAndroid ? "android" : "default"}
         />
       </main>
 

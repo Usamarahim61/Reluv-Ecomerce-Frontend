@@ -11,6 +11,7 @@ interface ProductProps {
   totalPrice: unknown;
   imageUrl?: unknown;
   likes: number;
+  variant?: "default" | "android";
 }
 
 const toDisplayText = (value: unknown): string => {
@@ -52,6 +53,7 @@ export default function ProductCard({
   totalPrice,
   imageUrl,
   likes,
+  variant = "default",
 }: ProductProps) {
   const safeImageUrl = toImageUrl(imageUrl);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
@@ -61,11 +63,24 @@ export default function ProductCard({
   const priceText = toDisplayText(price);
   const totalPriceText = toDisplayText(totalPrice);
   const showInDemand = Number(likes || 0) >= 50;
+  const isAndroid = variant === "android";
 
   return (
     <Link href={`/products/${productId}`}>
-      <div className="group flex cursor-pointer flex-col">
-        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[8px] bg-[#efefec]">
+      <div
+        className={
+          isAndroid
+            ? "group flex cursor-pointer flex-col rounded-[14px] bg-white p-2 shadow-[0_10px_20px_rgba(15,23,42,0.08)]"
+            : "group flex cursor-pointer flex-col"
+        }
+      >
+        <div
+          className={
+            isAndroid
+              ? "relative aspect-[3/4] w-full overflow-hidden rounded-[10px] bg-[#f2f4f7]"
+              : "relative aspect-[3/4] w-full overflow-hidden rounded-[8px] bg-[#efefec]"
+          }
+        >
           {safeImageUrl ? (
             <img
               src={`${API_BASE_URL}${safeImageUrl}`}
@@ -73,27 +88,67 @@ export default function ProductCard({
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
-            <div className="h-full w-full bg-[#efefec]" />
+            <div className={isAndroid ? "h-full w-full bg-[#f2f4f7]" : "h-full w-full bg-[#efefec]"} />
           )}
 
           {showInDemand ? (
-            <div className="absolute left-2 top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-[#404040] shadow-sm">
+            <div
+              className={
+                isAndroid
+                  ? "absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-[#3c3c3c] shadow-sm"
+                  : "absolute left-2 top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-[#404040] shadow-sm"
+              }
+            >
               In demand
             </div>
           ) : null}
 
-          <button className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#d7d7d7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#5e5e5e] shadow-sm">
-            <Heart size={13} className="text-[#6e6e6e]" /> {likes}
+          <button
+            className={
+              isAndroid
+                ? "absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#e3e6ea] bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#4f4f4f] shadow-sm"
+                : "absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#d7d7d7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#5e5e5e] shadow-sm"
+            }
+          >
+            <Heart size={13} className={isAndroid ? "text-[#6b7280]" : "text-[#6e6e6e]"} /> {likes}
           </button>
         </div>
 
-        <div className="space-y-0.5 pt-2">
-          <p className="truncate text-[15px] leading-[1.2] text-[#4b4b4b]">{brandText}</p>
-          <p className="truncate text-[13px] leading-[1.2] text-[#5f5f5f]">
+        <div className={isAndroid ? "space-y-0.5 pt-2 text-[#1f2937]" : "space-y-0.5 pt-2"}>
+          <p
+            className={
+              isAndroid
+                ? "truncate text-[14px] leading-[1.2] text-[#374151]"
+                : "truncate text-[15px] leading-[1.2] text-[#4b4b4b]"
+            }
+          >
+            {brandText}
+          </p>
+          <p
+            className={
+              isAndroid
+                ? "truncate text-[12px] leading-[1.2] text-[#6b7280]"
+                : "truncate text-[13px] leading-[1.2] text-[#5f5f5f]"
+            }
+          >
             {sizeText} · {conditionText}
           </p>
-          <p className="pt-1 text-[13px] font-medium leading-tight text-[#2f2f2f]">{priceText}</p>
-          <div className="flex items-center gap-1 text-[13px] leading-tight text-[#007782]">
+          <p
+            className={
+              isAndroid
+                ? "pt-1 text-[13px] font-medium leading-tight text-[#111827]"
+                : "pt-1 text-[13px] font-medium leading-tight text-[#2f2f2f]"
+            }
+          >
+            {priceText}
+          </p>
+          <div
+            className={
+              isAndroid
+                ? "flex items-center gap-1 text-[12px] leading-tight text-[#0f766e]"
+                : "flex items-center gap-1 text-[13px] leading-tight text-[#007782]"
+            }
+          >
             <span>{totalPriceText} incl.</span>
             <ShieldCheck size={11} />
           </div>
@@ -102,3 +157,4 @@ export default function ProductCard({
     </Link>
   );
 }
+
