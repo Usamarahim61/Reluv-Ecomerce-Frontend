@@ -33,7 +33,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-
     <html lang="en" suppressHydrationWarning={true}>
       <head>
         <Script id="android-native-flag" strategy="beforeInteractive">
