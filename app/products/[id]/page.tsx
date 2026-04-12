@@ -10,6 +10,8 @@ import { CATEGORY_TREE_ENDPOINT, CategoryNode } from "@/lib/categoryUtils";
 import {
   fetchProductById,
   fetchProductsForHome,
+  fetchProductsByUserId,
+  fetchFilteredProducts,
   ProductCardItem,
   ProductDetailItem,
 } from "@/services/products-service";
@@ -124,14 +126,26 @@ export default function ProductDetailPage() {
         if (!isMounted) return;
 
         const others = feed.items.filter((item) => String(item.id) !== String(product.id));
-        const memberMatches = others.filter((item) => {
-          if (!item.userId || !product?.user?.id) return false;
-          return String(item.userId) === String(product.user.id);
-        });
-        const similarMatches = others.filter((item) => {
-          const currentBrand = toText(product.brand).toLowerCase();
-          return currentBrand.length > 0 && toText(item.brand).toLowerCase() === currentBrand;
-        });
+        let memberMatches: ProductCardItem[] = [];
+        if (product?.user?.id) {
+          try {
+            const sellerItems = await fetchProductsByUserId(product.user.id);
+            memberMatches = sellerItems.slice(0, 20);
+          } catch (err) {
+            console.warn("Failed to fetch seller items:", err);
+            // fallback to brand matches or first items
+          }
+        }
+        let similarMatches: ProductCardItem[] = [];
+        const currentBrand = toText(product.brand).trim();
+        if (currentBrand) {
+          try {
+            const brandItems = await fetchFilteredProducts({ brand: currentBrand, pageSize: 40 });
+            similarMatches = brandItems.items.filter((item) => String(item.id) !== String(product.id)).slice(0, 20);
+          } catch (err) {
+            console.warn("Failed to fetch similar items:", err);
+          }
+        }
 
         const fallbackMember = others.slice(0, 20);
         const fallbackSimilar = others.filter(
