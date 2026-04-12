@@ -6,6 +6,11 @@ import { useAppDispatch } from "@/lib/hooks";
 import { fetchConversations } from "@/lib/features/messagesSlice";
 import { createConversationForProduct } from "@/services/messages-service";
 
+import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/lib/hooks";
+import { fetchConversations } from "@/lib/features/messagesSlice";
+import { createConversationForProduct } from "@/services/messages-service";
+
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
 import Footer from "@/app/components/Footer";
