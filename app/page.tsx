@@ -39,10 +39,48 @@ export default function Home() {
     dispatch(fetchProducts({ page: nextPage, pageSize }));
   };
 
-  if (!isReady) {
+if (!isReady) {
     return (
-      <div className="min-h-screen reluv-loading-screen flex items-center justify-center">
-        <div className="reluv-loading reluv-loading-text">Reluv</div>
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg, #10b981 0%, #0f766e 50%, #047857 100%)',
+        }}
+      >
+        <div 
+          className="text-center"
+          style={{
+            fontFamily: 'var(--font-great-vibes)',
+          }}
+        >
+          <span 
+            className="inline-block"
+            style={{
+              fontSize: 'clamp(4rem, 15vw, 8rem)',
+              fontWeight: 400,
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              filter: 'drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4))',
+              animation: 'reluv-glow 1.5s ease-in-out infinite alternate',
+            }}
+          >
+            Reluv
+          </span>
+        </div>
+        <style jsx global>{`
+          @keyframes reluv-glow {
+            0% { 
+              filter: drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4));
+              transform: scale(1);
+            }
+            100% { 
+              filter: drop-shadow(0 30px 60px rgba(16, 185, 129, 0.6));
+              transform: scale(1.03);
+            }
+          }
+        `}</style>
       </div>
     );
   }
