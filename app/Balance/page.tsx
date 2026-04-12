@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Info, Menu, X } from 'lucide-react';
 import Footer from '../components/Footer';
-import Navbar from '../components/navbar';
 
 type NavPath = 
   | 'my-balance/balance' 
@@ -27,7 +26,6 @@ const Balance = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f0f3f5]">
-      <Navbar />
       
       <div className="flex flex-col md:flex-row flex-grow max-w-7xl w-full mx-auto p-4 md:p-10 font-sans text-slate-800">
         

@@ -1,11 +1,12 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX } from "react";
 import { Plus, Camera, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from "lucide-react";
-import Navbar from "../components/navbar";
+
 import { API_BASE_URL } from "../constants/api";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
+import { useAuth } from "@/context/AuthContext";
 
 type LeafCategoryEntry = {
   node: CategoryNode;
@@ -43,6 +44,7 @@ const getLeafCategoryEntries = (nodes: CategoryNode[], parentPath: CategoryNode[
 };
 
 export default function UploadItem(): JSX.Element {
+  const { user } = useAuth();
   const dispatch = useAppDispatch();
   const categoryTree = useAppSelector((state) => state.categories.tree);
   const categoryStatus = useAppSelector((state) => state.categories.status);
@@ -381,6 +383,7 @@ export default function UploadItem(): JSX.Element {
           categoryId: selectedCategory.id,
           dynamicValues: dynamicFieldValues,
           imageIds,
+          userId: user?.id,
         }),
       });
 
@@ -405,7 +408,6 @@ export default function UploadItem(): JSX.Element {
 
   return (
     <>
-      <Navbar />
       <div className="max-w-4xl mx-auto p-4 space-y-4 bg-white min-h-screen pb-20">
         <div className="bg-white border border-gray-200 rounded-sm p-6 border-dashed border-2 min-h-[250px]">
           <input

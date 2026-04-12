@@ -1,7 +1,7 @@
 "use client";
 
 import Footer from "@/app/components/Footer";
-import Navbar from "@/app/components/navbar";
+
 import ProductFeed from "@/app/components/ProductFeed";
 import { API_BASE_URL } from "@/app/constants/api";
 import {
@@ -244,7 +244,7 @@ export default function ShopClient() {
 
   return (
     <div className="min-h-screen bg-[#f3f3f3]">
-      <Navbar />
+      {/* < /> */}
 
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-4">
         <nav className="mb-1 flex items-center gap-2 text-[12px] text-[#6f6f6f]">

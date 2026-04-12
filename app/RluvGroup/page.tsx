@@ -1,4 +1,4 @@
-import ReluvGroupNavbar from '../components/Reluv-Group-Navbar';
+import ReluvGroup from '../components/Reluv-Group-';
 import ReluvGroupFooter from '../components/Reluv-Group-Footer';
 
 import Sustainability from '../sustainability/page';
@@ -17,7 +17,7 @@ export default function ReluvGroup({ searchParams }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <ReluvGroupNavbar />
+      <ReluvGroup />
     
       <main className="flex-grow">
         {view === 'sustainability' && <Sustainability />}

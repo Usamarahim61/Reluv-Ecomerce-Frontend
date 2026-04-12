@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
-import Navbar from '../components/navbar';
 import Footer from '../components/Footer';
 
 const ReluvAdForm = () => {
@@ -15,7 +14,6 @@ const ReluvAdForm = () => {
 
   return (
     <>
-    <Navbar/>
     <div className="min-h-screen bg-[#F2F2F2] font-sans">
       {/* Hero Header */}
       <header className="bg-[#007782] text-white pt-24 pb-24 relative overflow-hidden">

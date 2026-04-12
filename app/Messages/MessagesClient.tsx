@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Info, CheckCircle2, Send, Image as ImageIcon } from "lucide-react";
-import Navbar from "../components/navbar";
+
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import { ConversationItem, MessageItem } from "@/services/messages-service";
@@ -149,7 +149,7 @@ export default function MessagesClient() {
   if (!user) {
     return (
       <>
-        <Navbar />
+        
         <div className="max-w-3xl mx-auto px-4 py-12 text-center">
           <h2 className="text-xl font-semibold mb-2">Please log in to view messages</h2>
           <p className="text-sm text-gray-500">You need an account to chat with buyers and sellers.</p>
@@ -160,7 +160,7 @@ export default function MessagesClient() {
 
   return (
     <>
-      <Navbar />
+      
       <div className="md:mt-5 flex flex-col h-[calc(100vh-70px)] md:h-[85vh] max-w-7xl mx-auto bg-white font-sans text-[#111111] md:border md:border-gray-300 overflow-hidden">
         <div className="flex border-b border-gray-200 text-sm font-medium">
           <div className={`w-full md:w-80 p-4 border-r border-gray-200 ${viewMessage ? "hidden md:block" : "block"}`}>

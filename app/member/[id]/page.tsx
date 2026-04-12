@@ -11,19 +11,21 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import Navbar from "@/app/components/navbar";
+
 import ProductCard from "@/app/components/ProductCard";
 import Footer from "@/app/components/Footer";
 import { getUser } from "@/services/auth-service";
 import { useAuth } from "@/context/AuthContext";
-import { getFirstImageUrl } from "@/services/products-service";
-const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
+import { getFirstImageUrl, fetchProductsByUserId } from "@/services/products-service";
+const ProfilePage = ({ show = true }: { show?: boolean }) => {
   const params = useParams();
   const sellerId = params?.id;
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Listings");
   const [userData, setUserData] = useState<any>(null);
+  const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const timeAgo = (dateString: string | undefined) => {
@@ -58,6 +60,32 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
     fetchData();
   }, [sellerId]);
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!sellerId || !userData) return;
+      
+      // Only fetch from API if userData doesn't have products or we want fresh data
+      if (userData.products && userData.products.length > 0) {
+        setListings(userData.products.map(mapProductToCard));
+        return;
+      }
+      
+      try {
+        setProductsLoading(true);
+        const products = await fetchProductsByUserId(Number(sellerId));
+        setListings(products);
+      } catch (err: any) {
+        console.error("Products Fetch Error:", err);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    if (activeTab === "Listings") {
+      fetchProducts();
+    }
+  }, [sellerId, userData, activeTab]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -74,29 +102,29 @@ const ProfilePage = ({ showNavbar = true }: { showNavbar?: boolean }) => {
     );
   }
 
-const mapProductToCard = (entry: any) => {
-  const attributes = entry ?? {};
-  const brand = attributes.brand ?? "";
-  const size = attributes.size ?? "";
-  const condition = attributes.condition ?? "";
-  const price = attributes.price ? `${attributes.price}` : "N/A";
-  const totalPrice = price;
-  const imageUrl = getFirstImageUrl(attributes.images);
-  const likes = Number(attributes.likeCount ?? 0) || 0;
+  const mapProductToCard = (entry: any) => {
+    const attributes = entry ?? {};
+    const brand = attributes.brand ?? "";
+    const size = attributes.size ?? "";
+    const condition = attributes.condition ?? "";
+    const price = attributes.price ? `${attributes.price}` : "N/A";
+    const totalPrice = price;
+    const imageUrl = getFirstImageUrl(attributes.images);
+    const likes = Number(attributes.likeCount ?? 0) || 0;
 
-  return {
-    id: entry.id,
-    brand,
-    size,
-    condition,
-    price,
-    totalPrice,
-    imageUrl,
-    likes,
+    return {
+      id: entry.id,
+      brand,
+      size,
+      condition,
+      price,
+      totalPrice,
+      imageUrl,
+      likes,
+    };
   };
-};
 
-  const listings =  (userData.products || []).map(mapProductToCard);
+  const productListings = userData.products || [];
   const reviews = userData.received_reviews || [];
   const ratingAvg = userData.rating_avg || 5;
   const followers = userData.followers?.length || 0;
@@ -110,7 +138,7 @@ const mapProductToCard = (entry: any) => {
 
   return (
     <>
-      {showNavbar && <Navbar />}
+      {/* {show && < />} */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 font-sans text-gray-800">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start mb-10">
