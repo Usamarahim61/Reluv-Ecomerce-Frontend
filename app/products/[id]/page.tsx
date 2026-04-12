@@ -1,5 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/lib/hooks";
+import { fetchConversations } from "@/lib/features/messagesSlice";
+import { createConversationForProduct } from "@/services/messages-service";
+
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
 import Footer from "@/app/components/Footer";
@@ -74,6 +79,8 @@ const toRelativeUploadTime = (value: unknown): string => {
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
 
@@ -85,6 +92,26 @@ export default function ProductDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCarousel, setShowCarousel] = useState(false);
+
+  const handleAskSeller = async () => {
+    if (!product?.id || !product.user?.id) {
+      alert("Seller information not available");
+      return;
+    }
+    try {
+      const conversation = await createConversationForProduct({
+        productId: Number(product.id),
+        otherUserId: Number(product.user.id)
+      });
+      if (conversation?.id) {
+        dispatch(fetchConversations());
+        router.push(`/Messages?conversationId=${conversation.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+      alert("Failed to start conversation. Please try again.");
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -375,7 +402,7 @@ export default function ProductDetailPage() {
                   <button className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782]">
                     Make an offer
                   </button>
-                  <button className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782]">
+                  <button onClick={handleAskSeller} className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782] hover:bg-[#007782] hover:text-white transition-colors">
                     Ask seller
                   </button>
                 </div>
