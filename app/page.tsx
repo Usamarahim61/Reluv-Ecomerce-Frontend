@@ -2,7 +2,6 @@
 import Image from "next/image";
 import AndroidChrome from "./components/AndroidChrome";
 import { useAndroidNative } from "./components/useAndroidNative";
-import Navbar from "./components/navbar";
 import ProductFeed from "./components/ProductFeed";
 import Footer from "./components/Footer";
 import { useEffect, useState } from "react";
@@ -64,9 +63,7 @@ export default function Home() {
   return (
     !isAndroid && (
     <div className="min-h-screen flex flex-col">
-      {!openInBox && <Navbar />}
-      
-      {!openInBox && (
+      { (
         <section className="relative h-[400px] md:h-[500px] lg:h-[600px] w-full bg-gray-200 overflow-hidden">
           <Image
             src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"

@@ -3,7 +3,7 @@
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
 import Footer from "@/app/components/Footer";
-import Navbar from "@/app/components/navbar";
+
 import ProductCard from "@/app/components/ProductCard";
 import { API_BASE_URL } from "@/app/constants/api";
 import { CATEGORY_TREE_ENDPOINT, CategoryNode } from "@/lib/categoryUtils";
@@ -237,7 +237,7 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <Navbar />
+      {/* < /> */}
       <main className="min-h-screen bg-[#f3f3f3] pb-14 pt-4">
         <div className="mx-auto w-full max-w-320 px-4">
           <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#6f6f6f]">

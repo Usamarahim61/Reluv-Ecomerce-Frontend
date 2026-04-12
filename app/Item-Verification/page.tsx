@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import Footer from '../components/Footer';
-import Navbar from '../components/navbar';
+import  from '../components/';
 import "../global.css"
 
 export default function ItemVerificationPage() {
   return (
     <>
-    <Navbar/>
+    </>
     <div className="min-h-screen bg-white font-sans text-[#111111]">
       
       {/* 1. HERO SECTION */}

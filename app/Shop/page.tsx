@@ -1,7 +1,6 @@
 'use client';
 
 import Footer from '@/app/components/Footer';
-import Navbar from '@/app/components/navbar';
 import ProductFeed from '@/app/components/ProductFeed';
 import { API_BASE_URL } from '@/app/constants/api';
 import { useAndroidNative } from '@/app/components/useAndroidNative';
@@ -243,17 +242,10 @@ export default function ShopPage() {
   const staticPillClass =
     'rounded-full border border-[#c7d0d5] bg-white px-4 py-1.5 text-[14px] text-[#2f2f2f] shadow-[0_1px_2px_rgba(0,0,0,0.04)] md:text-[16px]';
 
-  if (!isReady) {
-    return (
-      <div className="min-h-screen reluv-loading-screen flex items-center justify-center">
-        <div className="reluv-loading reluv-loading-text">Reluv</div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-[#f3f3f3]">
-      <Navbar />
 
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-4">
         {!isAndroid ? (

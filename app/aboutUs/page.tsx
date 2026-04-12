@@ -1,4 +1,4 @@
-import Navbar from "../components/navbar";
+
 import Footer from "../components/Footer";
 
 const storyBlocks = [
@@ -23,7 +23,7 @@ const storyBlocks = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#ececec] text-[#111827]">
-      <Navbar />
+
 
       <section className="bg-[#ececec] px-6 py-20 md:py-28">
         <div className="mx-auto w-full max-w-3xl">

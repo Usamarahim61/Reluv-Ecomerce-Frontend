@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { FileText } from "lucide-react";
 import Footer from "../components/Footer";
-import Navbar from "../components/navbar";
+
 
 type Category = "Sold" | "Bought";
 type Status = "All" | "In Progress" | "Completed" | "Cancelled";
@@ -59,7 +59,7 @@ export default function Orders() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <Navbar />
+      {/* < /> */}
       
       {/* Main Container: 
           - flex-col on mobile, flex-row on md+ 

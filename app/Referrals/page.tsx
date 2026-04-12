@@ -1,7 +1,7 @@
 "use client";
 import React, { JSX, useState } from "react";
 import { Users, Mail, Smartphone, Ticket, ChevronRight } from "lucide-react";
-import Navbar from "../components/navbar";
+
 import Footer from "../components/Footer";
 
 export default function Referrals(): JSX.Element {
@@ -13,7 +13,8 @@ export default function Referrals(): JSX.Element {
   };
 
   return (
-    <><Navbar /><div className="w-full bg-white font-sans text-[#111111]">
+    <>
+    <div className="w-full bg-white font-sans text-[#111111]">
       {/* Hero Section */}
       <div className="relative h-[500px] w-full overflow-hidden">
         {/* Background Image - Replace src with your actual asset path */}

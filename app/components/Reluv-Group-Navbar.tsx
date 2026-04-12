@@ -9,7 +9,7 @@ import MediaAssets from "../mediaAssets/page"
 
 type Path =  '/sustainability' | '/newsroom' | '/mediaAssets' | '/ReluvVentures';
 
-export default function ReluvGroupNavbar() {
+export default function ReluvGroup() {
   const [currentPath, setCurrentPath] = useState<Path>('/sustainability');
   const navigateTo = (path: Path) => {
     setCurrentPath(path);

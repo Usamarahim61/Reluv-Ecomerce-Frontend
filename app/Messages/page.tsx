@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Info, CheckCircle2 } from "lucide-react";
-import Navbar from "../components/navbar";
+
 
 // 1. Define the dynamic data
 const MESSAGES_DATA = [
@@ -49,7 +49,7 @@ export default function Messages() {
 
   return (
     <>
-      <Navbar />
+      {/* < /> */}
       <div className="md:mt-5 flex flex-col h-[calc(100vh-70px)] md:h-[85vh] max-w-7xl mx-auto bg-white font-sans text-[#111111] md:border md:border-gray-300 overflow-hidden">
         
         {/* Header Bar */}

@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import ReluvGroupNavbar from "../components/Reluv-Group-Navbar";
+import ReluvGroup from "../components/Reluv-Group-";
 import ReluvGroupFooter from "../components/Reluv-Group-Footer";
-import Navbar from "../components/navbar";
+
 import Footer from "../components/Footer";
 
 interface NewsItem {
@@ -76,7 +76,7 @@ const NEWS_DATA: NewsItem[] = [
 const newsroom = () => {
   return (
     <>
-    {/* <Navbar /> */}
+    {/* < /> */}
     <div className="bg-white font-sans text-slate-900">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
         

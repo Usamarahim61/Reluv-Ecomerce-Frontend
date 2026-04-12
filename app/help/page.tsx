@@ -1,7 +1,7 @@
 "use client";
 import { X, Search, Tag, ShoppingBag, User } from "lucide-react";
 import { JSX, useState } from "react";
-import Navbar from "../components/navbar";
+
 import Footer from "../components/Footer";
 
 // Define the available tabs
@@ -73,7 +73,7 @@ export default function HelpComp(): JSX.Element {
 
   return (
     <div className="flex flex-col min-h-screen bg-white md:bg-gray-50">
-      <Navbar />
+      {/* < /> */}
       
       <div className="flex-grow w-full mx-auto max-w-5xl md:bg-white md:rounded-xl md:p-8 md:mt-10 md:mb-10 md:shadow-sm px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8 lg:gap-12">

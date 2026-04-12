@@ -286,3 +286,9 @@ export async function fetchProductById(id: string | number): Promise<ProductDeta
   const payload = await apiRequest(`/products/getProductById/${encodeURIComponent(String(id))}`);
   return mapProductToDetail(payload?.product);
 }
+
+export async function fetchProductsByUserId(userId: number | string): Promise<ProductCardItem[]> {
+  const payload = await apiRequest(`/products/user/${encodeURIComponent(String(userId))}`);
+  const data = Array.isArray(payload?.products) ? payload.products : [];
+  return data.map(mapProductToCard);
+}

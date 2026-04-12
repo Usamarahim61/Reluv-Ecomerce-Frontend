@@ -14,7 +14,7 @@ import {
 export default function SustainabilityPage() {
   return (
     <>
-    {/* <Navbar /> */}
+    {/* < /> */}
     <div className="bg-white font-sans text-slate-900 overflow-x-hidden">
       
       {/* SECTION 1: HERO & IMPACT REPORT */}

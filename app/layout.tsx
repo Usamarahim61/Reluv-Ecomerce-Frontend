@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Providers from "./providers";
 import Script from "next/script";
+import Navbar from "./components/navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+
     <html lang="en" suppressHydrationWarning={true}>
       <head>
         <Script id="android-native-flag" strategy="beforeInteractive">
@@ -65,6 +67,8 @@ export default function RootLayout({
       >
         <Providers>
          <AuthProvider>
+          <Navbar />
+
         {children}
          </AuthProvider>
          </Providers>

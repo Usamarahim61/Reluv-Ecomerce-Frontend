@@ -1,13 +1,13 @@
 import { ShieldCheck, RotateCcw } from 'lucide-react';
 import Image from 'next/image';
-import Navbar from '../components/navbar';
+import  from '../components/';
 import Footer from '../components/Footer';
 import "../global.css"
 
 export default function ReluvHowItWorks() {
   return (
     <>
-    <Navbar/>
+    </>
     <div className="min-h-screen bg-white font-sans text-[#111111]">
       
       {/* 1. HERO SECTION - Fixed alignment and background */}

@@ -9,7 +9,7 @@ import PrivacySetting from "../components/PrivacySetting"
 import SecuritySetting from "../components/Security"
 import Payments from "../components/Payments"
 import BundleDiscount from "../components/BundleDiscount"
-import Navbar from "../components/navbar";
+
 import Footer from "../components/Footer";
 
 export default function SettingsComp() {
@@ -42,7 +42,7 @@ export default function SettingsComp() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <Navbar />
+      {/* < /> */}
 
       <main className="flex-grow w-full max-w-6xl mx-auto px-4 py-6 md:py-10">
         <h1 className="text-2xl font-bold mb-6 md:hidden">Settings</h1>
