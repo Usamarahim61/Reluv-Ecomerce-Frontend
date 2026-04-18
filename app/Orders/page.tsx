@@ -20,34 +20,11 @@ type Order = {
   username: string;
   date: string;
 };
-
-const MOCK_DATA: Order[] = [
-  {
-    id: "s1",
-    title: "Vintage Canon AE-1 Camera",
-    type: "Sold",
-    status: "Vendido",
-    price: "120,00 €",
-    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=150",
-    username: "marcos_retro",
-    date: "Ayer"
-  },
-  {
-    id: "b1",
-    title: "Mechanical Keyboard Custom RGB",
-    type: "Bought",
-    status: "Entregado",
-    price: "85,00 €",
-    imageUrl: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=150",
-    username: "tech_store_es",
-    date: "Hoy"
-  },
-];
-  
 export default function Orders() {
   const { user } = useAuth();
+  const [ordersData, setOrdersData] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category>("Sold");
-  const [activeStatus, setActiveStatus] = useState<Status>("In Progress");
+  const [activeStatus, setActiveStatus] = useState<Status>("All");
 
   const categories: Category[] = ["Sold", "Bought"];
   const statuses: Status[] = ["All", "In Progress", "Completed", "Cancelled"];
@@ -57,11 +34,7 @@ export default function Orders() {
 
       try {
         // setLoading(true);
-        // const data = await getUser(Number(user.id));
-        // const res = await fetch(`http://localhost:1337/api/fetch-orders-by-user?userId=${user.id}`);
-        const payload = {
-          userId: Number(user.id)}
-         // You can add more filters here if needed, e.g., status, category, etc.   
+        const payload = {userId: Number(user.id)}
            const PLACE_ORDER_ENDPOINT = `${API_BASE_URL}/api/orders/fetch-orders-by-user`;
               const res = await fetch(PLACE_ORDER_ENDPOINT, {
                 method: "POST",
@@ -72,21 +45,8 @@ export default function Orders() {
                 body: JSON.stringify(payload),
               });
         if (!res.ok) return;
-
         const data = await res.json();
-        console.log("API Response:", data);
-
-        // setFormData({
-        //   username: data.username || "",
-        //   about: data.about || "",
-        //   country: data.country || "",
-        //   city: data.city || "",
-        //   showCity: data.isShowCity ?? true,
-        // });
-
-        // if (data.avatar?.url) {
-        //   setAvatarPreview(data.avatar.url);
-        // }
+        setOrdersData(Array.isArray(data) ? data : data?.data || []);
       } catch {
         setError("Failed to load profile data.");
       } finally {
@@ -97,12 +57,38 @@ export default function Orders() {
     fetchData();
   }, [user?.id]);
     const filteredOrders = useMemo(() => {
-    return MOCK_DATA.filter((order) => {
-      const matchesCategory = order.type === activeCategory;
-      const matchesStatus = activeStatus === "All" || order.status === activeStatus;
-      return matchesCategory && matchesStatus;
-    });
-  }, [activeCategory, activeStatus]);
+    return ordersData
+      .map((order) => {
+          let mappedStatus: Status = "Cancelled";
+      if (
+        order.orderStatus === "In Progress" ||
+        order.orderStatus === "shipped"
+      ) {
+        mappedStatus = "In Progress";
+      } else if (order.orderStatus === "delivered") {
+        mappedStatus = "Completed";
+      } else if (order.orderStatus === "cancelled") {
+        mappedStatus = "Cancelled";
+      }
+        return {
+          id: order.id,
+          title: order.product?.title || "No title",
+          type: order.type,
+          status: mappedStatus,
+          price: `${order.totalAmount} €`,
+          imageUrl: order.productImage || "",
+          username: order.buyer?.username || "",
+          date: new Date(order.createdAt).toLocaleDateString(),
+        };
+      })
+      .filter((order) => {
+        const matchesCategory = order.type === activeCategory;
+        const matchesStatus =
+          activeStatus === "All" || order.status === activeStatus;
+        return matchesCategory && matchesStatus;
+      });
+  }, [ordersData, activeCategory, activeStatus]);
+
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -164,9 +150,9 @@ export default function Orders() {
             </header>
 
             {/* Result Area */}
-            <div className="flex-grow flex flex-col items-center justify-center p-4 md:p-8">
+            <div className="flex-grow flex flex-col items-center justify-center p-2 md:p-2">
               {filteredOrders.length > 0 ? (
-                <div className="w-full bg-white">
+                <div className="w-full bg-white border-2 border-slate-200 rounded-lg divide-y divide-gray-100">
                   {filteredOrders.map((order) => (
                     <div
                       key={order.id}
