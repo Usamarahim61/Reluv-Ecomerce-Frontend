@@ -276,6 +276,19 @@ export default function ProductDetailPage() {
     };
   }, [categoryName]);
 
+   const productInfo = {
+  productId: product?.id,
+  title: name,
+  brand: brand,
+  size: size,
+  price: getPriceValue(price) || 0,
+  currency: getCurrencyCode(price) || "EUR",
+  imageUrl: productImages,
+  buyerProtectionFee: 2.45,
+  shippingFee: getPriceValue(shippingFromPrice) || 0,
+  sellerId: seller?.id
+};
+
   return (
     <>
       {/* < /> */}
@@ -396,9 +409,11 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <button className="w-full rounded-[4px] bg-[#007782] py-2 text-[13px] font-semibold text-white">
-                    Buy now
-                  </button>
+                  <Link href={{pathname: "/CheckOut", query: productInfo }}>
+                    <button className="w-full rounded-[4px] bg-[#007782] py-2 text-[13px] font-semibold text-white">
+                      Buy now
+                    </button>
+                  </Link>
                   <button className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782]">
                     Make an offer
                   </button>
@@ -476,4 +491,12 @@ export default function ProductDetailPage() {
       </main>
     </>
   );
+}
+function getPriceValue(priceString: string) {
+    const match = priceString.match(/([\d.]+)/);
+    return match ? match[1] : null;
+}
+function getCurrencyCode(priceString: string) {
+   const curMatch = priceString.match(/[^\d.\s]+/);
+    return curMatch ? curMatch[1] : null;
 }

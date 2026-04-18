@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { FileText } from "lucide-react";
 import Footer from "../components/Footer";
-
+import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "../constants/api";
+import Navbar from "../components/navbar";
 
 type Category = "Sold" | "Bought";
 type Status = "All" | "In Progress" | "Completed" | "Cancelled";
@@ -41,15 +43,60 @@ const MOCK_DATA: Order[] = [
     date: "Hoy"
   },
 ];
-
+  
 export default function Orders() {
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState<Category>("Sold");
   const [activeStatus, setActiveStatus] = useState<Status>("In Progress");
 
   const categories: Category[] = ["Sold", "Bought"];
   const statuses: Status[] = ["All", "In Progress", "Completed", "Cancelled"];
+    useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
 
-  const filteredOrders = useMemo(() => {
+      try {
+        // setLoading(true);
+        // const data = await getUser(Number(user.id));
+        // const res = await fetch(`http://localhost:1337/api/fetch-orders-by-user?userId=${user.id}`);
+        const payload = {
+          userId: Number(user.id)}
+         // You can add more filters here if needed, e.g., status, category, etc.   
+           const PLACE_ORDER_ENDPOINT = `${API_BASE_URL}/api/orders/fetch-orders-by-user`;
+              const res = await fetch(PLACE_ORDER_ENDPOINT, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  // Authorization: `Bearer ${user?.jwt}`, // if using auth
+                },
+                body: JSON.stringify(payload),
+              });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        console.log("API Response:", data);
+
+        // setFormData({
+        //   username: data.username || "",
+        //   about: data.about || "",
+        //   country: data.country || "",
+        //   city: data.city || "",
+        //   showCity: data.isShowCity ?? true,
+        // });
+
+        // if (data.avatar?.url) {
+        //   setAvatarPreview(data.avatar.url);
+        // }
+      } catch {
+        setError("Failed to load profile data.");
+      } finally {
+        // setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
+    const filteredOrders = useMemo(() => {
     return MOCK_DATA.filter((order) => {
       const matchesCategory = order.type === activeCategory;
       const matchesStatus = activeStatus === "All" || order.status === activeStatus;
@@ -196,4 +243,8 @@ export default function Orders() {
       <Footer />
     </div>
   );
+}
+
+function setError(arg0: string) {
+  throw new Error("Function not implemented.");
 }

@@ -4,11 +4,17 @@ import { X, Lock, CreditCard, Info } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 
 interface CardDetailsModalProps {
-  isOpen: boolean;
+   isOpen: boolean;
   onClose: () => void;
+  onSave: (card: {
+    cardName: string;
+    cardNumber: string;
+    expiry: string;
+    cvv: string;
+  }) => void;
 }
 
-export default function CardDetailsModal({ isOpen, onClose }: CardDetailsModalProps): JSX.Element | null {
+export default function CardDetailsModal({ isOpen, onClose, onSave  }: CardDetailsModalProps): JSX.Element | null {
   const [cardName, setCardName] = useState<string>("Raja Abad");
   const [cardNumber, setCardNumber] = useState<string>("");
   const [expiry, setExpiry] = useState<string>("");
@@ -42,6 +48,7 @@ export default function CardDetailsModal({ isOpen, onClose }: CardDetailsModalPr
       // if (!res.ok) {
       //   throw new Error("Failed");
       // }
+      onSave(payload);
 
       onClose();
     } catch (err) {
