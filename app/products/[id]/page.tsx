@@ -8,7 +8,6 @@ import { createConversationForProduct } from "@/services/messages-service";
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
 import Footer from "@/app/components/Footer";
-
 import ProductCard from "@/app/components/ProductCard";
 import { API_BASE_URL } from "@/app/constants/api";
 import { CATEGORY_TREE_ENDPOINT, CategoryNode } from "@/lib/categoryUtils";
@@ -21,21 +20,14 @@ import {
   ProductDetailItem,
 } from "@/services/products-service";
 import {
-  ChevronRight,
-  Clock,
-  Flag,
-  Heart,
-  Info,
-  MapPin,
-  PlusSquare,
-  Share2,
-  ShieldCheck,
-  Star,
+  ChevronRight, Clock, Flag, Heart, Info, MapPin,
+  PlusSquare, Share2, ShieldCheck, Star,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+/* ─── helpers ─────────────────────────────────────────────── */
 const toAbsoluteImageUrl = (url: string): string => {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -48,35 +40,40 @@ const toText = (value: unknown, fallback = ""): string => {
   return fallback;
 };
 
-type BreadcrumbItem = { label: string; slug: string };
-
-const findCategoryPath = (nodes: CategoryNode[], targetName: string): CategoryNode[] | null => {
-  for (const node of nodes) {
-    if (node.name.toLowerCase() === targetName.toLowerCase()) {
-      return [node];
-    }
-    const childPath = findCategoryPath(node.categories || [], targetName);
-    if (childPath) {
-      return [node, ...childPath];
-    }
-  }
-  return null;
-};
-
 const toRelativeUploadTime = (value: unknown): string => {
   if (typeof value !== "string" || value.trim().length === 0) return "18 min ago";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "18 min ago";
-
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
   if (diffMinutes < 60) return `${diffMinutes} min ago`;
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours} h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} d ago`;
+  return `${Math.floor(diffHours / 24)} d ago`;
 };
 
+type BreadcrumbItem = { label: string; slug: string };
+
+const findCategoryPath = (nodes: CategoryNode[], targetName: string): CategoryNode[] | null => {
+  for (const node of nodes) {
+    if (node.name.toLowerCase() === targetName.toLowerCase()) return [node];
+    const childPath = findCategoryPath(node.categories || [], targetName);
+    if (childPath) return [node, ...childPath];
+  }
+  return null;
+};
+
+function getPriceValue(priceString: string) {
+  const match = priceString.match(/([\d.]+)/);
+  return match ? match[1] : null;
+}
+
+function getCurrencyCode(priceString: string) {
+  const curMatch = priceString.match(/[^\d.\s]+/);
+  return curMatch ? curMatch[0] : null; // ← was curMatch[1], which is always undefined
+}
+
+/* ─── component ───────────────────────────────────────────── */
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -84,227 +81,231 @@ export default function ProductDetailPage() {
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
 
-  const [product, setProduct] = useState<ProductDetailItem | null>(null);
-  const [memberItems, setMemberItems] = useState<ProductCardItem[]>([]);
+  const [product, setProduct]           = useState<ProductDetailItem | null>(null);
+  const [memberItems, setMemberItems]   = useState<ProductCardItem[]>([]);
   const [similarItems, setSimilarItems] = useState<ProductCardItem[]>([]);
-  const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [categoryTrail, setCategoryTrail] = useState<BreadcrumbItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCarousel, setShowCarousel] = useState(false);
 
-  const handleAskSeller = async () => {
-    if (!product?.id || !product.user?.id) {
-      alert("Seller information not available");
-      return;
-    }
-    try {
-      const conversation = await createConversationForProduct({
-        productId: Number(product.id),
-        otherUserId: Number(product.user.id)
-      });
-      if (conversation?.id) {
-        dispatch(fetchConversations());
-        router.push(`/Messages?conversationId=${conversation.id}`);
-      }
-    } catch (err) {
-      console.error("Failed to create conversation:", err);
-      alert("Failed to start conversation. Please try again.");
-    }
-  };
+  // granular loading / error states
+  const [isProductLoading, setIsProductLoading]   = useState(true);
+  const [productError, setProductError]           = useState<string | null>(null);
+  const [isFeedLoading, setIsFeedLoading]         = useState(false);
+  const [feedError, setFeedError]                 = useState<string | null>(null);
 
+  /* ── 1. load product ── */
   useEffect(() => {
-    let isMounted = true;
     if (!id) {
-      setIsLoading(false);
-      setLoadError("Invalid product id.");
+      setIsProductLoading(false);
+      setProductError("Invalid product id.");
       return;
     }
+    let isMounted = true;
+    setIsProductLoading(true);
+    setProductError(null);
 
-    const loadProduct = async () => {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        const result = await fetchProductById(id);
-        if (!isMounted) return;
-        setProduct(result);
-      } catch (error) {
-        if (!isMounted) return;
-        setLoadError(error instanceof Error ? error.message : "Failed to load product.");
-      } finally {
-        if (!isMounted) return;
-        setIsLoading(false);
-      }
-    };
+    fetchProductById(id)
+      .then((result) => { if (isMounted) setProduct(result); })
+      .catch((err)   => { if (isMounted) setProductError(err instanceof Error ? err.message : "Failed to load product."); })
+      .finally(()    => { if (isMounted) setIsProductLoading(false); });
 
-    loadProduct();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [id]);
 
+  /* ── 2. load related items — runs once product is ready ── */
   useEffect(() => {
+    if (!product?.id) return;
     let isMounted = true;
-    const loadRelatedItems = async () => {
-      if (!product?.id) return;
+
+    const loadRelated = async () => {
       setIsFeedLoading(true);
+      setFeedError(null);
+
       try {
-        const feed = await fetchProductsForHome(1, 60);
+        // fire seller-items and brand-items in parallel; fall back to home feed only if both fail
+        const [sellerResult, brandResult] = await Promise.allSettled([
+          product.user?.id
+            ? fetchProductsByUserId(product.user.id)
+            : Promise.reject("no seller"),
+          toText(product.brand).trim()
+            ? fetchFilteredProducts({ brand: toText(product.brand).trim(), pageSize: 40 })
+            : Promise.reject("no brand"),
+        ]);
+
         if (!isMounted) return;
 
-        const others = feed.items.filter((item) => String(item.id) !== String(product.id));
+        /* member items */
         let memberMatches: ProductCardItem[] = [];
-        if (product?.user?.id) {
-          try {
-            const sellerItems = await fetchProductsByUserId(product.user.id);
-            memberMatches = sellerItems.slice(0, 20);
-          } catch (err) {
-            console.warn("Failed to fetch seller items:", err);
-            // fallback to brand matches or first items
-          }
+        if (sellerResult.status === "fulfilled") {
+          memberMatches = sellerResult.value
+            .filter((item) => String(item.id) !== String(product.id))
+            .slice(0, 20);
         }
+
+        /* similar items */
         let similarMatches: ProductCardItem[] = [];
-        const currentBrand = toText(product.brand).trim();
-        if (currentBrand) {
-          try {
-            const brandItems = await fetchFilteredProducts({ brand: currentBrand, pageSize: 40 });
-            similarMatches = brandItems.items.filter((item) => String(item.id) !== String(product.id)).slice(0, 20);
-          } catch (err) {
-            console.warn("Failed to fetch similar items:", err);
-          }
+        if (brandResult.status === "fulfilled") {
+          similarMatches = brandResult.value.items
+            .filter((item) => String(item.id) !== String(product.id))
+            .slice(0, 20);
         }
 
-        const fallbackMember = others.slice(0, 20);
-        const fallbackSimilar = others.filter(
-          (item) => !fallbackMember.some((memberItem) => memberItem.id === item.id),
-        );
+        // only hit the home feed when BOTH primary sources failed
+        if (!memberMatches.length && !similarMatches.length) {
+          const feed = await fetchProductsForHome(1, 40);
+          if (!isMounted) return;
+          const others = feed.items.filter((item) => String(item.id) !== String(product.id));
+          memberMatches  = others.slice(0, 20);
+          similarMatches = others.slice(20, 40);
+        } else if (!memberMatches.length) {
+          // seller call failed but brand succeeded — use brand items as member fallback too
+          memberMatches = similarMatches.slice(0, 20);
+        } else if (!similarMatches.length) {
+          // brand call failed but seller succeeded — use seller items as similar fallback
+          similarMatches = memberMatches.slice(0, 20);
+        }
 
-        setMemberItems((memberMatches.length ? memberMatches : fallbackMember).slice(0, 20));
-        setSimilarItems((similarMatches.length ? similarMatches : fallbackSimilar).slice(0, 20));
+        setMemberItems(memberMatches);
+        setSimilarItems(similarMatches);
       } catch {
         if (!isMounted) return;
+        setFeedError("Could not load related items.");
         setMemberItems([]);
         setSimilarItems([]);
       } finally {
-        if (!isMounted) return;
-        setIsFeedLoading(false);
+        if (isMounted) setIsFeedLoading(false);
       }
     };
 
-    loadRelatedItems();
-
-    return () => {
-      isMounted = false;
-    };
+    loadRelated();
+    return () => { isMounted = false; };
   }, [product]);
 
-  const productImages = useMemo(() => {
-    const images = product?.images ?? [];
-    return images.map(toAbsoluteImageUrl).filter(Boolean) as string[];
-  }, [product]);
-  const visibleLimit = productImages.length >= 5 ? 5 : 4;
-  const visibleImages = productImages.slice(0, visibleLimit);
-  const imageCount = visibleImages.length;
-  const lastVisibleIndex = Math.max(0, visibleImages.length - 1);
+  /* ── 3. category breadcrumbs ── */
+  useEffect(() => {
+    const categoryName = toText(product?.category, "");
+    if (!categoryName) { setCategoryTrail([]); return; }
+    let isMounted = true;
 
-  const name = toText(product?.title, "Product title");
-  const brand = toText(product?.brand, "No brand");
-  const size = toText(product?.size, "One size");
-  const condition = toText(product?.condition, "Good");
-  const material = toText(product?.material, "Not specified");
-  const price = toText(product?.price, "EUR 0.00");
-  const description = toText(product?.description, "Product details are not available.");
-  const color = toText(product?.color, "N/A");
-  const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
+    fetch(CATEGORY_TREE_ENDPOINT)
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((payload: { data?: CategoryNode[] }) => {
+        if (!isMounted) return;
+        const tree = Array.isArray(payload?.data) ? payload.data : [];
+        const pathNodes = findCategoryPath(tree, categoryName);
+        setCategoryTrail(
+          pathNodes?.length
+            ? pathNodes.map((n) => ({ label: n.name, slug: n.slug || n.name }))
+            : [{ label: categoryName, slug: categoryName }]
+        );
+      })
+      .catch(() => {
+        if (isMounted) setCategoryTrail([{ label: categoryName, slug: categoryName }]);
+      });
+
+    return () => { isMounted = false; };
+  }, [product?.category]);
+
+  /* ── derived values ── */
+  const productImages = useMemo(
+    () => (product?.images ?? []).map(toAbsoluteImageUrl).filter(Boolean) as string[],
+    [product]
+  );
+
+  const visibleLimit      = productImages.length >= 5 ? 5 : 4;
+  const visibleImages     = productImages.slice(0, visibleLimit);
+  const imageCount        = visibleImages.length;
+  const lastVisibleIndex  = Math.max(0, visibleImages.length - 1);
+
+  const name              = toText(product?.title, "Product title");
+  const brand             = toText(product?.brand, "No brand");
+  const size              = toText(product?.size, "One size");
+  const condition         = toText(product?.condition, "Good");
+  const material          = toText(product?.material, "Not specified");
+  const price             = toText(product?.price, "EUR 0.00");
+  const description       = toText(product?.description, "Product details are not available.");
+  const color             = toText(product?.color, "N/A");
+  const uploadedAt        = toRelativeUploadTime(product?.uploadedAt);
   const shippingFromPrice = toText(product?.shippingFromPrice, "EUR 2.95");
-  const seller = product?.user ?? {};
-  const categoryName = toText(product?.category, "");
-  const galleryGridClass =
-    imageCount >= 4
-      ? "min-h-[540px] grid-cols-1 sm:grid-cols-4"
-      : imageCount === 3
-        ? "grid-cols-1 sm:grid-cols-3"
-        : imageCount === 2
-          ? "grid-cols-1 sm:grid-cols-2"
-          : "grid-cols-1";
+  const seller            = product?.user ?? {};
 
-  const getGalleryItemClass = (index: number): string => {
+  const galleryGridClass =
+    imageCount >= 4 ? "min-h-[540px] grid-cols-1 sm:grid-cols-4"
+    : imageCount === 3 ? "grid-cols-1 sm:grid-cols-3"
+    : imageCount === 2 ? "grid-cols-1 sm:grid-cols-2"
+    : "grid-cols-1";
+
+  const getGalleryItemClass = (index: number) => {
     if (imageCount >= 4) return index === 0 ? "sm:col-span-2 sm:row-span-2" : "sm:col-span-1";
     if (imageCount === 3) return index === 0 ? "sm:col-span-2" : "sm:col-span-1";
     return "sm:col-span-1";
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const productInfo = {
+    productId:        product?.id,
+    title:            name,
+    brand,
+    size,
+    price:            getPriceValue(price) || 0,
+    currency:         getCurrencyCode(price) || "EUR",
+    imageUrl:         productImages,
+    buyerProtectionFee: 2.45,
+    shippingFee:      getPriceValue(shippingFromPrice) || 0,
+    sellerId:         seller?.id,
+  };
 
-    const resolveCategoryTrail = async () => {
-      if (!categoryName) {
-        setCategoryTrail([]);
-        return;
+  const handleAskSeller = async () => {
+    if (!product?.id || !product.user?.id) { alert("Seller information not available"); return; }
+    try {
+      const conversation = await createConversationForProduct({
+        productId:   Number(product.id),
+        otherUserId: Number(product.user.id),
+      });
+      if (conversation?.id) {
+        dispatch(fetchConversations());
+        router.push(`/Messages?conversationId=${conversation.id}`);
       }
+    } catch {
+      alert("Failed to start conversation. Please try again.");
+    }
+  };
 
-      try {
-        const response = await fetch(CATEGORY_TREE_ENDPOINT);
-        if (!response.ok) throw new Error("Failed to load category tree");
-        const payload = (await response.json()) as { data?: CategoryNode[] };
-        const tree = Array.isArray(payload?.data) ? payload.data : [];
-        const pathNodes = findCategoryPath(tree, categoryName);
+  /* ─── LOADING / ERROR SCREENS ────────────────────────────── */
+  if (isProductLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+      </div>
+    );
+  }
 
-        if (!isMounted) return;
+  if (productError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center px-4">
+        <p className="text-red-500 text-sm">{productError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-sm text-[#007782] underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-        if (pathNodes && pathNodes.length > 0) {
-          setCategoryTrail(
-            pathNodes.map((node) => ({
-              label: node.name,
-              slug: node.slug || node.name,
-            })),
-          );
-          return;
-        }
-
-        setCategoryTrail([{ label: categoryName, slug: categoryName }]);
-      } catch {
-        if (!isMounted) return;
-        setCategoryTrail([{ label: categoryName, slug: categoryName }]);
-      }
-    };
-
-    resolveCategoryTrail();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [categoryName]);
-
-   const productInfo = {
-  productId: product?.id,
-  title: name,
-  brand: brand,
-  size: size,
-  price: getPriceValue(price) || 0,
-  currency: getCurrencyCode(price) || "EUR",
-  imageUrl: productImages,
-  buyerProtectionFee: 2.45,
-  shippingFee: getPriceValue(shippingFromPrice) || 0,
-  sellerId: seller?.id
-};
-
+  /* ─── MAIN RENDER ─────────────────────────────────────────── */
   return (
     <>
-      {/* < /> */}
       <main className="min-h-screen bg-[#f3f3f3] pb-14 pt-4">
         <div className="mx-auto w-full max-w-320 px-4">
+
+          {/* breadcrumbs */}
           <nav className="mb-3 flex items-center gap-2 text-[11px] text-[#6f6f6f]">
-            <Link href="/" className="hover:text-[#007782] hover:underline">
-              Home
-            </Link>
+            <Link href="/" className="hover:text-[#007782] hover:underline">Home</Link>
             {categoryTrail.map((crumb, index) => (
               <span key={`${crumb.slug}-${index}`} className="contents">
                 <ChevronRight size={11} className="text-[#9f9f9f]" />
-                <Link
-                  href={`/Shop?category=${encodeURIComponent(crumb.slug)}`}
-                  className="hover:text-[#007782] hover:underline"
-                >
+                <Link href={`/Shop?category=${encodeURIComponent(crumb.slug)}`} className="hover:text-[#007782] hover:underline">
                   {crumb.label}
                 </Link>
               </span>
@@ -313,18 +314,16 @@ export default function ProductDetailPage() {
             <span>{name}</span>
           </nav>
 
-          {isLoading && <p className="mb-4 text-sm text-gray-500">Loading product...</p>}
-          {loadError && <p className="mb-4 text-sm text-red-500">{loadError}</p>}
-
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+
+            {/* ── LEFT COLUMN ── */}
             <section className="space-y-3">
-              <div className="rounded-sm bg-white p-2">
+
+              {/* image gallery */}
+              <div className="rounded-sm  p-2">
                 <div className={`grid gap-2 ${galleryGridClass}`}>
                   {visibleImages.map((img, index) => (
-                    <div
-                      key={index}
-                      className={`relative overflow-hidden bg-[#f5f5f5] ${getGalleryItemClass(index)}`}
-                    >
+                    <div key={index} className={`relative overflow-hidden bg-[#f5f5f5] ${getGalleryItemClass(index)}`}>
                       {index === lastVisibleIndex && productImages.length > visibleImages.length ? (
                         <div className="relative h-full" onClick={() => setShowCarousel(true)}>
                           <ImageZoom src={img} alt={`${name} ${index + 1}`} />
@@ -348,28 +347,40 @@ export default function ProductDetailPage() {
                 <Share2 size={15} className="cursor-pointer" />
               </div>
 
+              {/* member items */}
               <section className="space-y-3 pt-1">
                 <h2 className="text-sm font-semibold text-[#222]">Member items</h2>
-                {isFeedLoading ? <p className="text-sm text-gray-500">Loading items...</p> : null}
-                <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
-                  {memberItems.map((item) => (
-                    <ProductCard key={`member-${item.id}`} {...item} />
-                  ))}
-                </div>
+                {isFeedLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-teal-600" />
+                  </div>
+                ) : feedError ? (
+                  <p className="text-xs text-red-400">{feedError}</p>
+                ) : memberItems.length === 0 ? (
+                  <p className="text-xs text-gray-400">No items found from this seller.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
+                    {memberItems.map((item) => <ProductCard key={`member-${item.id}`} {...item} />)}
+                  </div>
+                )}
               </section>
 
+              {/* similar items */}
               <section className="space-y-3 pt-4">
                 <h2 className="text-sm font-semibold text-[#222]">Similar items</h2>
-                {isFeedLoading ? null : (
+                {isFeedLoading ? null : feedError ? (
+                  <p className="text-xs text-red-400">{feedError}</p>
+                ) : similarItems.length === 0 ? (
+                  <p className="text-xs text-gray-400">No similar items found.</p>
+                ) : (
                   <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
-                    {similarItems.map((item) => (
-                      <ProductCard key={`similar-${item.id}`} {...item} />
-                    ))}
+                    {similarItems.map((item) => <ProductCard key={`similar-${item.id}`} {...item} />)}
                   </div>
                 )}
               </section>
             </section>
 
+            {/* ── RIGHT COLUMN (aside) — unchanged ── */}
             <aside className="space-y-3">
               <div className="rounded-sm border border-[#e3e3e3] bg-white p-4">
                 <h1 className="text-[13px] font-medium leading-[1.3] text-[#333]">{name}</h1>
@@ -388,18 +399,12 @@ export default function ProductDetailPage() {
                 <div className="mt-3 rounded-sm bg-[#f7f7f7] p-2 text-[11px] text-[#666]">
                   <p className="mb-1 text-[#222]">In demand: 3 buyers recently sent offers</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <span>Brand</span>
-                    <span className="text-[#333]">{brand}</span>
-                    <span>Size</span>
-                    <span className="text-[#333]">{size}</span>
-                    <span>Condition</span>
-                    <span className="text-[#333]">{condition}</span>
-                    <span>Material</span>
-                    <span className="text-[#333]">{material}</span>
-                    <span>Colour</span>
-                    <span className="text-[#333]">{color}</span>
-                    <span>Uploaded</span>
-                    <span className="text-[#333]">{uploadedAt}</span>
+                    <span>Brand</span>      <span className="text-[#333]">{brand}</span>
+                    <span>Size</span>       <span className="text-[#333]">{size}</span>
+                    <span>Condition</span>  <span className="text-[#333]">{condition}</span>
+                    <span>Material</span>   <span className="text-[#333]">{material}</span>
+                    <span>Colour</span>     <span className="text-[#333]">{color}</span>
+                    <span>Uploaded</span>   <span className="text-[#333]">{uploadedAt}</span>
                   </div>
                 </div>
 
@@ -409,15 +414,15 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <Link href={{pathname: "/CheckOut", query: productInfo }}>
+                  <Link href={{ pathname: "/CheckOut", query: productInfo }}>
                     <button className="w-full rounded-[4px] bg-[#007782] py-2 text-[13px] font-semibold text-white">
                       Buy now
                     </button>
                   </Link>
-                  <button className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782]">
-                    Make an offer
-                  </button>
-                  <button onClick={handleAskSeller} className="w-full rounded-[4px] border border-[#007782] py-2 text-[13px] font-semibold text-[#007782] hover:bg-[#007782] hover:text-white transition-colors">
+                  <button
+                    onClick={handleAskSeller}
+                    className="w-full rounded-[4px] border border-[#007782] mt-2 py-2 text-[13px] font-semibold text-[#007782] hover:bg-[#007782] hover:text-white transition-colors"
+                  >
                     Ask seller
                   </button>
                 </div>
@@ -427,9 +432,7 @@ export default function ProductDetailPage() {
                 <ShieldCheck className="shrink-0 text-[#007782]" size={18} />
                 <div className="text-[11px] leading-[1.35] text-[#666]">
                   <p className="mb-1 font-semibold text-[#222]">Buyer Protection fee</p>
-                  <p>
-                    Added to every purchase. <span className="text-[#007782] underline">Refund Policy</span> applies.
-                  </p>
+                  <p>Added to every purchase. <span className="text-[#007782] underline">Refund Policy</span> applies.</p>
                 </div>
               </div>
 
@@ -469,9 +472,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-2 p-3 text-[12px] text-[#666]">
                   <div className="flex items-center gap-2">
                     <MapPin size={14} className="text-[#8b8b8b]" />
-                    <span>
-                      {toText(seller?.city, "Unknown city")}, {toText(seller?.country, "Unknown country")}
-                    </span>
+                    <span>{toText(seller?.city, "Unknown city")}, {toText(seller?.country, "Unknown country")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={14} className="text-[#8b8b8b]" />
@@ -484,19 +485,8 @@ export default function ProductDetailPage() {
         </div>
 
         <ImageCarousel images={productImages} initialIndex={0} isOpen={showCarousel} onClose={() => setShowCarousel(false)} />
-
-        <div className="hidden md:block">
-          <Footer />
-        </div>
+        <div className="hidden md:block"><Footer /></div>
       </main>
     </>
   );
-}
-function getPriceValue(priceString: string) {
-    const match = priceString.match(/([\d.]+)/);
-    return match ? match[1] : null;
-}
-function getCurrencyCode(priceString: string) {
-   const curMatch = priceString.match(/[^\d.\s]+/);
-    return curMatch ? curMatch[1] : null;
 }
