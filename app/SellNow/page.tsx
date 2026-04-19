@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX } from "react";
 import { Plus, Camera, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from "lucide-react";
+import { toast } from "react-toastify";
 
 import { API_BASE_URL } from "../constants/api";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
@@ -392,13 +393,32 @@ export default function UploadItem(): JSX.Element {
         throw new Error(payload?.error?.message || payload?.message || `Failed to create product: ${response.status}`);
       }
 
-      setSubmitSuccess(`Product created (ID: ${payload.product?.id})`);
+      toast.success("Product created successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      setTitle("");
+      setDescription("");
+      setPrice("");
+      setDynamicFieldValues({});
       setImages((prev) => {
         for (const image of prev) {
           URL.revokeObjectURL(image.previewUrl);
         }
         return [];
       });
+      setSelectedCategory(null);
+      setActiveCategoryPath([]);
+      setCategoryMenuOpen(false);
+      setCategorySearch("");
+      setDynamicFields([]);
+      setSubmitSuccess(null);
+      setSubmitError(null);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Failed to create product");
     } finally {
