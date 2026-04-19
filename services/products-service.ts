@@ -251,6 +251,37 @@ export async function fetchFilteredProducts(
   };
 }
 
+export async function searchProducts(
+  query: string,
+  pageSize = 5,
+): Promise<ProductsPage> {
+  const trimmedQuery = query.trim();
+  const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 5));
+
+  if (trimmedQuery.length < 2) {
+    return {
+      items: [],
+      page: 1,
+      pageSize: safePageSize,
+      hasMore: false,
+    };
+  }
+
+  const search = new URLSearchParams();
+  search.set("q", trimmedQuery);
+  search.set("pageSize", String(safePageSize));
+
+  const payload = await apiRequest(`/products/search?${search.toString()}`);
+  const data = Array.isArray(payload?.products) ? payload.products : [];
+
+  return {
+    items: data.map(mapProductToCard),
+    page: 1,
+    pageSize: safePageSize,
+    hasMore: Boolean(payload?.pagination?.hasMore),
+  };
+}
+
 export async function fetchProductFilterOptions(params: {
   category?: string;
   subCategory?: string;

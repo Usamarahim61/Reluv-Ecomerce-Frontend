@@ -11,7 +11,8 @@ import {
   User,
   BellOff,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
 import Link from "next/link";
@@ -21,9 +22,31 @@ import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 import AndroidChrome from "./AndroidChrome";
 import { useAndroidNative } from "./useAndroidNative";
+import { ProductCardItem, searchProducts } from "@/services/products-service";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
+  const router = useRouter();
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  const handleSearchResultClick = useCallback((id: string | number) => {
+    setSearchQuery("");
+    setShowResults(false);
+    router.push(`/products/${id}`);
+  }, []);
+  
+  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowResults(false);
+      router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }, []);
   const { user, logout } = useAuth();
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -42,6 +65,39 @@ export default function Navbar() {
     categoriesStatus === "idle" || categoriesStatus === "loading";
   const menuCategories =
     categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
+  
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+  
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+  
+    setSearchLoading(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await searchProducts(searchQuery, 5);
+        setSearchResults(response.items);
+        setShowResults(true);
+      } catch (error) {
+        console.error("Search error:", error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+  
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -156,14 +212,54 @@ export default function Navbar() {
               </div>
 
               {/* Search bar (tablet + desktop) */}
-              <div className="hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
+              <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
                 <Search className="text-[#007782] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search for items"
                   className="bg-transparent outline-none flex-1 px-2"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery && setShowResults(true)}
+                  onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearchSubmit(e as any);
+                    }
+                  }}
                 />
                 <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                {showResults && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
+                    {searchLoading ? (
+                      <div className="p-4 text-center text-gray-500">Searching...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">No results</div>
+                    ) : (
+                      searchResults.map((item) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => handleSearchResultClick(item.id)}
+                          className="p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3 w-full text-left bg-transparent border-none cursor-pointer"
+                        >
+                          <img
+                            src={item.imageUrl || "/placeholder.jpg"}
+                            alt={item.item || item.brand}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{item.brand || item.title}</p>
+                            <p className="text-xs text-gray-500 truncate">{item.item}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-sm">{item.price}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
