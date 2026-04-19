@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/context/AuthContext";
 
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/lib/hooks";
@@ -78,6 +79,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { user } = useAuth();
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
 
@@ -228,6 +230,7 @@ export default function ProductDetailPage() {
   const uploadedAt        = toRelativeUploadTime(product?.uploadedAt);
   const shippingFromPrice = toText(product?.shippingFromPrice, "EUR 2.95");
   const seller            = product?.user ?? {};
+  const isOwnProduct = user?.id && product?.user?.id && Number(user.id) === Number(product.user.id);
 
   const galleryGridClass =
     imageCount >= 4 ? "min-h-[540px] grid-cols-1 sm:grid-cols-4"
@@ -414,16 +417,27 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <Link href={{ pathname: "/CheckOut", query: productInfo }}>
-                    <button className="w-full rounded-[4px] bg-[#007782] py-2 text-[13px] font-semibold text-white">
-                      Buy now
-                    </button>
-                  </Link>
+                  {isOwnProduct ? (
+                    <div className="w-full p-3 text-center text-sm text-gray-500 bg-gray-50 rounded-[4px]">
+                      You cannot buy your own product.
+                    </div>
+                  ) : (
+                    <Link href={{ pathname: "/CheckOut", query: productInfo }}>
+                      <button className="w-full rounded-[4px] bg-[#007782] py-2 text-[13px] font-semibold text-white">
+                        Buy now
+                      </button>
+                    </Link>
+                  )}
                   <button
                     onClick={handleAskSeller}
-                    className="w-full rounded-[4px] border border-[#007782] mt-2 py-2 text-[13px] font-semibold text-[#007782] hover:bg-[#007782] hover:text-white transition-colors"
+                    disabled={isOwnProduct}
+                    className={`w-full rounded-[4px] border border-[#007782] mt-2 py-2 text-[13px] font-semibold transition-colors ${
+                      isOwnProduct
+                        ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                        : 'text-[#007782] hover:bg-[#007782] hover:text-white'
+                    }`}
                   >
-                    Ask seller
+                    {isOwnProduct ? 'Your product' : 'Ask seller'}
                   </button>
                 </div>
               </div>
