@@ -3,10 +3,17 @@
 import { useAuth } from "@/context/AuthContext";
 import { getUser, updateUserProfile } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
+import { toast } from "react-toastify";
+
+const MAX_AVATAR_SIZE_MB = 10;
 
 export default function ProfileSetting() {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track the current preview URL in a ref so we can revoke it on unmount
+  // or when it's replaced — even if state updates haven't flushed yet.
+  const avatarPreviewRef = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -14,6 +21,7 @@ export default function ProfileSetting() {
     country: "",
     city: "",
     showCity: true,
+    language: ""
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -24,6 +32,7 @@ export default function ProfileSetting() {
 
   const countries = ["Spain", "France", "Germany", "Netherlands"];
   const cities = ["Madrid", "Barcelona", "Valencia", "Seville"];
+  const languages = ["en", "th"];
 
   /* ---------------- FETCH USER DATA ---------------- */
 
@@ -41,10 +50,13 @@ export default function ProfileSetting() {
           country: data.country || "",
           city: data.city || "",
           showCity: data.isShowCity ?? true,
+          language: data.language || ""
         });
 
         if (data.avatar?.url) {
+          // Server URL — not a blob, no need to track for revocation
           setAvatarPreview(data.avatar.url);
+          avatarPreviewRef.current = data.avatar.url;
         }
       } catch {
         setError("Failed to load profile data.");
@@ -77,52 +89,113 @@ export default function ProfileSetting() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File too large. Please select an image under 2MB.");
+    // Validate file size (matches UploadItem's MAX_FILE_SIZE_MB pattern)
+    if (file.size > MAX_AVATAR_SIZE_MB * 1024 * 1024) {
+      toast.warn(`"${file.name}" exceeds the ${MAX_AVATAR_SIZE_MB}MB size limit.`);
+      // Reset input so the same file can be re-selected after user picks another
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
+    // Revoke the previous blob URL before creating a new one to avoid memory leaks
+    if (avatarPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreviewRef.current);
+    }
+
     const previewUrl = URL.createObjectURL(file);
+    avatarPreviewRef.current = previewUrl;
 
     setSelectedFile(file);
     setAvatarPreview(previewUrl);
+
+    // Reset input value so selecting the same file again triggers onChange
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* Cleanup object URLs (important) */
+  /* Revoke blob URL on unmount to avoid memory leaks */
   useEffect(() => {
     return () => {
-      if (avatarPreview?.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarPreview);
+      if (avatarPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreviewRef.current);
       }
     };
-  }, [avatarPreview]);
+  }, []);
 
   /* ---------------- UPDATE PROFILE ---------------- */
 
- const handleUpdate = async () => {
-  if (!user?.id) return;
+  const handleUpdate = async () => {
+    if (!user?.id) return;
 
+    try {
+      setIsUpdating(true);
+      let avatarId: number | null = null;
+
+if (selectedFile) {
+  const uploadForm = new FormData();
+  uploadForm.append("files", selectedFile);
   try {
-    setIsUpdating(true);
-    const payload = new FormData();
-    payload.append("username", formData.username || "");
-    payload.append("country", formData.country || "");
-    payload.append("city", formData.city || "");
-    payload.append("about", formData.about || "");
-    payload.append("isShowCity", String(formData.showCity));
+    const uploadResponse = await fetch("http://localhost:1337/api/upload", {
+      method: "POST",
+      body: uploadForm
+    });
 
-    if (selectedFile) {
-      payload.append("files.avatar", selectedFile);
+    const uploadPayload = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      throw new Error(
+        uploadPayload?.error?.message ||
+        `Image upload failed: ${uploadResponse.status}`
+      );
     }
-    await updateUserProfile(Number(user.id), payload);
-    alert("Profile updated successfully!");
-  } catch (err: any) {
-    setError(err.message || "Update failed");
-  } finally {
-    setIsUpdating(false);
-  }
-};
 
+    // ✅ safer extraction
+    const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
+    avatarId = file?.id ? Number(file.id) : null;
+
+    if (!avatarId) {
+      throw new Error("Upload succeeded but no file ID returned.");
+    }
+
+    // ✅ if you want to SET state
+    // setAvatarId(avatarId);
+
+  } catch (error: any) {
+    console.error("Upload error:", error.message);
+    throw error;
+  }
+}
+
+      const payload = new FormData();
+      payload.append("username", formData.username || "");
+      payload.append("country", formData.country || "");
+      payload.append("city", formData.city || "");
+      payload.append("about", formData.about || "");
+      payload.append("isShowCity", String(formData.showCity));
+      payload.append("language", formData.language || "");
+
+      if (avatarId) {
+        payload.append("avatar", String(avatarId)); // send the Strapi file ID
+      }
+
+      await updateUserProfile(Number(user.id), payload);
+
+      toast.success("Profile updated successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Clear selected file — server is now the source of truth
+      setSelectedFile(null);
+    } catch (err: any) {
+      setError(err.message || "Update failed");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   /* ---------------- LOADING UI ---------------- */
 
@@ -258,6 +331,22 @@ export default function ProfileSetting() {
             />
             <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#007782] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
           </label>
+        </div>
+
+        <div className="flex justify-between items-center border-b pb-2">
+          <span className="font-medium">Language</span>
+
+          <select
+            name="language"
+            value={formData.language}
+            onChange={handleInputChange}
+            className="border-none focus:ring-0"
+          >
+            <option value="">Select Language</option>
+            {languages.map((l) => (
+              <option key={l}>{l}</option>
+            ))}
+          </select>
         </div>
       </div>
 

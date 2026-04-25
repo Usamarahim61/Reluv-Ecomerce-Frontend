@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/app/constants/api";
 import { apiRequest } from "./api";
 
 export function login(identifier: string, password: string) {
@@ -42,5 +43,27 @@ return apiRequest(`/users/${id}`, {
 export function logout() {
   localStorage.removeItem("jwt");
   localStorage.removeItem("user");
+}
+// services/auth-service.ts  — add these two functions
+
+export async function loginWithGoogle(token: string) {
+  const res = await fetch(
+    `http://localhost:1337/api/auth/google/callback?access_token=${token}`,
+    { method: "GET" }
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json(); // returns { jwt, user }
+}
+export async function loginWithFacebook(accessToken: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/facebook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: accessToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Facebook login failed");
+  }
+  return res.json(); // expects { jwt, user }
 }
 

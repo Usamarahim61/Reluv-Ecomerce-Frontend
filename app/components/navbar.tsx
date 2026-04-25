@@ -314,13 +314,13 @@ export default function Navbar() {
               )}
 
               {/* Likes */}
-              {user && (
+              {/* {user && (
                 <Link href={`/products/2`}>
                   <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                     <Heart className="w-6 h-6 text-gray-600" />
                   </button>
                 </Link>
-              )}
+              )} */}
               {/* Profile Dropdown */}
               {user && (
                 <div ref={profileRef} className="relative">
@@ -340,7 +340,7 @@ export default function Navbar() {
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                       {/* Profile */}
-                      <Link href={`/member/1`}>
+                      <Link href={`/member/${user?.id}`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                           <span>Profile</span>
                         </div>
