@@ -16,6 +16,14 @@ export type ProductCardItem = {
   likes: number;
   userId?: number | string | null;
 };
+export type MemebersCardItem = {
+  id: number | string;
+  username: string | null;
+  fullName: string | null;
+  country: string | null;
+  city: string | null;
+  avatar?: string | null; 
+};
 
 export type ProductsPage = {
   items: ProductCardItem[];
@@ -276,6 +284,36 @@ export async function searchProducts(
 
   return {
     items: data.map(mapProductToCard),
+    page: 1,
+    pageSize: safePageSize,
+    hasMore: Boolean(payload?.pagination?.hasMore),
+  };
+}
+export async function searchMemebers(
+  query: string,
+  pageSize = 5,
+): Promise<any> {
+  const trimmedQuery = query.trim();
+  const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 5));
+
+  if (trimmedQuery.length < 2) {
+    return {
+      items: [],
+      page: 1,
+      pageSize: safePageSize,
+      hasMore: false,
+    };
+  }
+
+  const search = new URLSearchParams();
+  search.set("q", trimmedQuery);
+  search.set("pageSize", String(safePageSize));
+
+  const payload = await apiRequest(`/products/searchMembers?${search.toString()}`);
+  const data = Array.isArray(payload?.members) ? payload.members : [];
+
+  return {
+    items: data,
     page: 1,
     pageSize: safePageSize,
     hasMore: Boolean(payload?.pagination?.hasMore),
