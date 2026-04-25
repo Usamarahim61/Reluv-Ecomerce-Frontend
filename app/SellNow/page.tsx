@@ -9,6 +9,9 @@ import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 
+const MAX_IMAGES = 6;
+const MAX_FILE_SIZE_MB = 10;
+
 type LeafCategoryEntry = {
   node: CategoryNode;
   path: CategoryNode[];
@@ -102,9 +105,9 @@ export default function UploadItem(): JSX.Element {
         }
 
         const payload = await response.json();
-        
+
         const apiAttributes = payload.attributes || [];
-        
+
         // Deduplicate by code
         const uniqueAttrMap = new Map<string, any>();
         for (const attr of apiAttributes) {
@@ -113,21 +116,18 @@ export default function UploadItem(): JSX.Element {
             uniqueAttrMap.set(key, attr);
           }
         }
-        
+
         const loadedFields: DynamicField[] = Array.from(uniqueAttrMap.values()).map((attr: any) => {
           const config = attr.configuration || {};
-          
-          // Use rawOptions if available (new API format)
+
           let fieldOptions: DynamicFieldOption[] = [];
-          
+
           if (attr.rawOptions && Array.isArray(attr.rawOptions)) {
-            // New format with rawOptions
             fieldOptions = attr.rawOptions.map((opt: any) => ({
               label: opt.title || String(opt.id),
               value: String(opt.value || opt.id),
             }));
           } else if (config.options && Array.isArray(config.options) && config.options.length > 0) {
-            // Legacy format with nested options
             const group = config.options[0];
             if (group && group.options && Array.isArray(group.options)) {
               fieldOptions = group.options.map((opt: any) => ({
@@ -137,7 +137,6 @@ export default function UploadItem(): JSX.Element {
             }
           }
 
-          // Determine field type
           let fieldType: DynamicField["type"] = "text";
           if (
             config.field_type === "select" ||
@@ -152,7 +151,7 @@ export default function UploadItem(): JSX.Element {
 
           return {
             key: attr.code || String(attr.id),
-            label: config.title || attr.code || 'Field',
+            label: config.title || attr.code || "Field",
             type: fieldType,
             required: config.required || false,
             placeholder: config.placeholder || config.field_placeholder,
@@ -160,9 +159,7 @@ export default function UploadItem(): JSX.Element {
           };
         });
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         if (loadedFields.length > 0) {
           setDynamicFields(loadedFields);
@@ -228,9 +225,7 @@ export default function UploadItem(): JSX.Element {
           setDynamicFieldsLoading(false);
         }
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
         setDynamicFields([]);
         setDynamicFieldsError(error instanceof Error ? error.message : "Failed to load fields");
         setDynamicFieldsLoading(false);
@@ -278,30 +273,56 @@ export default function UploadItem(): JSX.Element {
 
   const filteredLeafEntries = useMemo(() => {
     const search = categorySearch.trim().toLowerCase();
-    if (!search) {
-      return [];
-    }
+    if (!search) return [];
     return leafCategoryEntries.filter(({ path }) =>
       path.some((node) => node.name.toLowerCase().includes(search))
     );
   }, [categorySearch, leafCategoryEntries]);
 
   const handleUploadClick = () => {
+    if (images.length >= MAX_IMAGES) {
+      toast.warn(`You can only upload up to ${MAX_IMAGES} photos.`);
+      return;
+    }
     fileInputRef.current?.click();
   };
 
+  // FIX: enforce 6-image limit and 10MB per-file size limit
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map((file) => ({
+    if (!files) return;
+
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      toast.warn(`You can only upload up to ${MAX_IMAGES} photos.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const validFiles: File[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        toast.warn(`"${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit and was skipped.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    const filesToAdd = validFiles.slice(0, remaining);
+
+    if (validFiles.length > remaining) {
+      toast.warn(`Only ${remaining} more photo(s) can be added. Extra files were skipped.`);
+    }
+
+    if (filesToAdd.length > 0) {
+      const newImages = filesToAdd.map((file) => ({
         file,
         previewUrl: URL.createObjectURL(file),
       }));
       setImages((prev) => [...prev, ...newImages]);
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -317,7 +338,6 @@ export default function UploadItem(): JSX.Element {
       setActiveCategoryPath((prev) => [...prev, node]);
       return;
     }
-
     setSelectedCategory(node);
     setCategoryMenuOpen(false);
     setCategorySearch("");
@@ -332,9 +352,10 @@ export default function UploadItem(): JSX.Element {
     setCategorySearch("");
   };
 
-  const currentLevelTitle = activeCategoryPath.length > 0
-    ? activeCategoryPath[activeCategoryPath.length - 1].name
-    : "Select a category";
+  const currentLevelTitle =
+    activeCategoryPath.length > 0
+      ? activeCategoryPath[activeCategoryPath.length - 1].name
+      : "Select a category";
 
   const handleCreateProduct = async () => {
     setSubmitError(null);
@@ -342,6 +363,13 @@ export default function UploadItem(): JSX.Element {
 
     if (!selectedCategory) {
       setSubmitError("Please select a category.");
+      return;
+    }
+
+    // FIX: validate price is a valid number before submitting
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setSubmitError("Please enter a valid price.");
       return;
     }
 
@@ -362,7 +390,9 @@ export default function UploadItem(): JSX.Element {
 
         const uploadPayload = await uploadResponse.json();
         if (!uploadResponse.ok) {
-          throw new Error(uploadPayload?.error?.message || `Failed to upload images: ${uploadResponse.status}`);
+          throw new Error(
+            uploadPayload?.error?.message || `Failed to upload images: ${uploadResponse.status}`
+          );
         }
 
         imageIds = Array.isArray(uploadPayload)
@@ -372,6 +402,11 @@ export default function UploadItem(): JSX.Element {
           : [];
       }
 
+      // FIX: send price as a number, strip empty dynamic field values
+      const cleanedDynamicValues = Object.fromEntries(
+        Object.entries(dynamicFieldValues).filter(([_, v]) => v !== "" && v !== undefined && v !== null)
+      );
+
       const response = await fetch(`${API_BASE_URL}/api/products/sell-now`, {
         method: "POST",
         headers: {
@@ -380,9 +415,9 @@ export default function UploadItem(): JSX.Element {
         body: JSON.stringify({
           title,
           description,
-          price,
+          price: parsedPrice,           // ← number, not string
           categoryId: selectedCategory.id,
-          dynamicValues: dynamicFieldValues,
+          dynamicValues: cleanedDynamicValues, // ← no empty strings
           imageIds,
           userId: user?.id,
         }),
@@ -390,7 +425,9 @@ export default function UploadItem(): JSX.Element {
 
       const payload = await response.json();
       if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error?.message || payload?.message || `Failed to create product: ${response.status}`);
+        throw new Error(
+          payload?.error?.message || payload?.message || `Failed to create product: ${response.status}`
+        );
       }
 
       toast.success("Product created successfully!", {
@@ -407,9 +444,7 @@ export default function UploadItem(): JSX.Element {
       setPrice("");
       setDynamicFieldValues({});
       setImages((prev) => {
-        for (const image of prev) {
-          URL.revokeObjectURL(image.previewUrl);
-        }
+        for (const image of prev) URL.revokeObjectURL(image.previewUrl);
         return [];
       });
       setSelectedCategory(null);
@@ -456,12 +491,14 @@ export default function UploadItem(): JSX.Element {
               </div>
             )}
 
+            {/* FIX: show count, disable when at limit */}
             <button
               onClick={handleUploadClick}
-              className="flex items-center gap-2 px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50 transition-colors"
+              disabled={images.length >= MAX_IMAGES}
+              className="flex items-center gap-2 px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-5 h-5" />
-              <span>Upload photos</span>
+              <span>Upload photos ({images.length}/{MAX_IMAGES})</span>
             </button>
           </div>
 
@@ -583,52 +620,52 @@ export default function UploadItem(): JSX.Element {
                     <p className="p-3 text-sm text-gray-500">No categories available.</p>
                   )}
 
-                  {!categoryLoading && !categoryError && categorySearch && filteredLeafEntries.map(({ node, path }) => (
-                    <button
-                      type="button"
-                      key={`${node.id}-${path.map((item) => item.id).join("-")}`}
-                      onClick={() => {
-                        setSelectedCategory(node);
-                        setCategoryMenuOpen(false);
-                        setCategorySearch("");
-                      }}
-                      className="w-full px-3 py-3 border-b border-gray-100 text-left hover:bg-gray-50"
-                    >
-                      <div className="text-sm font-medium text-gray-900">{node.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {path.map((item) => item.name).join(" > ")}
-                      </div>
-                    </button>
-                  ))}
-
-                  {!categoryLoading && !categoryError && !categorySearch && currentLevelNodes.map((node) => {
-                    const hasChildren = node.categories && node.categories.length > 0;
-                    return (
+                  {!categoryLoading && !categoryError && categorySearch &&
+                    filteredLeafEntries.map(({ node, path }) => (
                       <button
                         type="button"
-                        key={node.id}
-                        onClick={() => handleCategoryRowClick(node)}
-                        className="w-full px-3 py-3 border-b border-gray-100 text-left hover:bg-gray-50 flex items-center justify-between"
+                        key={`${node.id}-${path.map((item) => item.id).join("-")}`}
+                        onClick={() => {
+                          setSelectedCategory(node);
+                          setCategoryMenuOpen(false);
+                          setCategorySearch("");
+                        }}
+                        className="w-full px-3 py-3 border-b border-gray-100 text-left hover:bg-gray-50"
                       >
-                        <span className="text-gray-900">{node.name}</span>
-                        {hasChildren ? (
-                          <ChevronRight className="w-4 h-4 text-gray-500" />
-                        ) : (
-                          <span
-                            className={`h-7 w-7 rounded-full border-2 flex items-center justify-center ${
-                              selectedCategory?.id === node.id
-                                ? "border-[#007782]"
-                                : "border-gray-400"
-                            }`}
-                          >
-                            {selectedCategory?.id === node.id && (
-                              <span className="h-3.5 w-3.5 rounded-full bg-[#007782]" />
-                            )}
-                          </span>
-                        )}
+                        <div className="text-sm font-medium text-gray-900">{node.name}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {path.map((item) => item.name).join(" > ")}
+                        </div>
                       </button>
-                    );
-                  })}
+                    ))}
+
+                  {!categoryLoading && !categoryError && !categorySearch &&
+                    currentLevelNodes.map((node) => {
+                      const hasChildren = node.categories && node.categories.length > 0;
+                      return (
+                        <button
+                          type="button"
+                          key={node.id}
+                          onClick={() => handleCategoryRowClick(node)}
+                          className="w-full px-3 py-3 border-b border-gray-100 text-left hover:bg-gray-50 flex items-center justify-between"
+                        >
+                          <span className="text-gray-900">{node.name}</span>
+                          {hasChildren ? (
+                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                          ) : (
+                            <span
+                              className={`h-7 w-7 rounded-full border-2 flex items-center justify-center ${
+                                selectedCategory?.id === node.id ? "border-[#007782]" : "border-gray-400"
+                              }`}
+                            >
+                              {selectedCategory?.id === node.id && (
+                                <span className="h-3.5 w-3.5 rounded-full bg-[#007782]" />
+                              )}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -649,50 +686,52 @@ export default function UploadItem(): JSX.Element {
               <div className="p-6 text-sm text-gray-500">No additional details for this category.</div>
             )}
 
-            {!dynamicFieldsLoading && !dynamicFieldsError && dynamicFields.map((field) => (
-              <div
-                key={field.key}
-                className="p-6 border-b border-gray-100 last:border-b-0 flex flex-col md:flex-row gap-4 justify-between"
-              >
-                <label className="font-semibold text-gray-900 min-w-[150px]">
-                  {field.label}
-                  {field.required ? " *" : ""}
-                </label>
-                <div className="flex-1">
-                  {field.type === "select" ? (
-                    <select
-                      name={field.key}
-                      value={dynamicFieldValues[field.key] || ""}
-                      onChange={(event) =>
-                        setDynamicFieldValues((prev) => ({ ...prev, [field.key]: event.target.value }))
-                      }
-                      className="w-full border-b border-gray-100 py-1 focus:outline-none text-gray-800 bg-transparent"
-                    >
-                      <option value="">{field.placeholder || `Select ${field.label.toLowerCase()}`}</option>
-                      {(field.options || []).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="flex items-center border-b border-gray-100 py-1">
-                      <input
-                        type={field.type === "number" ? "number" : "text"}
+            {!dynamicFieldsLoading &&
+              !dynamicFieldsError &&
+              dynamicFields.map((field) => (
+                <div
+                  key={field.key}
+                  className="p-6 border-b border-gray-100 last:border-b-0 flex flex-col md:flex-row gap-4 justify-between"
+                >
+                  <label className="font-semibold text-gray-900 min-w-[150px]">
+                    {field.label}
+                    {field.required ? " *" : ""}
+                  </label>
+                  <div className="flex-1">
+                    {field.type === "select" ? (
+                      <select
                         name={field.key}
                         value={dynamicFieldValues[field.key] || ""}
                         onChange={(event) =>
                           setDynamicFieldValues((prev) => ({ ...prev, [field.key]: event.target.value }))
                         }
-                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                        className="w-full focus:outline-none text-gray-800 placeholder-gray-300"
-                      />
-                      {field.unit && <span className="text-gray-500 ml-2">{field.unit}</span>}
-                    </div>
-                  )}
+                        className="w-full border-b border-gray-100 py-1 focus:outline-none text-gray-800 bg-transparent"
+                      >
+                        <option value="">{field.placeholder || `Select ${field.label.toLowerCase()}`}</option>
+                        {(field.options || []).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="flex items-center border-b border-gray-100 py-1">
+                        <input
+                          type={field.type === "number" ? "number" : "text"}
+                          name={field.key}
+                          value={dynamicFieldValues[field.key] || ""}
+                          onChange={(event) =>
+                            setDynamicFieldValues((prev) => ({ ...prev, [field.key]: event.target.value }))
+                          }
+                          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                          className="w-full focus:outline-none text-gray-800 placeholder-gray-300"
+                        />
+                        {field.unit && <span className="text-gray-500 ml-2">{field.unit}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
 
@@ -700,7 +739,7 @@ export default function UploadItem(): JSX.Element {
           <label className="font-semibold text-gray-900 min-w-[150px] w-full md:w-auto">Price</label>
           <div className="flex-1 w-full">
             <div className="flex items-center border-b border-gray-100 py-1">
-              <span className="text-gray-900">EUR</span>
+              <span className="text-gray-900">THB</span>
               <input
                 type="text"
                 placeholder="0.00"
@@ -712,25 +751,20 @@ export default function UploadItem(): JSX.Element {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-sm p-6 flex justify-between items-center">
+        {/* <div className="bg-white border border-gray-200 rounded-sm p-6 flex justify-between items-center">
           <span className="text-gray-600">What do you think of our upload process?</span>
           <button className="px-4 py-2 border border-[#007782] text-[#007782] rounded-md text-sm font-semibold hover:bg-teal-50">
             Give feedback
           </button>
-        </div>
+        </div> */}
 
-        {submitError && (
-          <div className="text-sm text-red-600">{submitError}</div>
-        )}
-
-        {submitSuccess && (
-          <div className="text-sm text-green-700">{submitSuccess}</div>
-        )}
+        {submitError && <div className="text-sm text-red-600">{submitError}</div>}
+        {submitSuccess && <div className="text-sm text-green-700">{submitSuccess}</div>}
 
         <div className="flex justify-end gap-3 pt-6">
-          <button className="px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50">
+          {/* <button className="px-6 py-2 border border-[#007782] text-[#007782] rounded-md font-semibold hover:bg-teal-50">
             Save draft
-          </button>
+          </button> */}
           <button
             type="button"
             onClick={handleCreateProduct}
