@@ -28,6 +28,7 @@ import {
   searchMemebers,
   MemebersCardItem,
 } from "@/services/products-service";
+import { getUser, getUserAvatr } from "@/services/auth-service";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
@@ -47,7 +48,7 @@ export default function Navbar() {
     setShowResults(false);
     router.push(`/products/${id}`);
   }, []);
-    const handleMemberClick = useCallback((id: string | number) => {
+  const handleMemberClick = useCallback((id: string | number) => {
     setSearchQuery("");
     setShowResults(false);
     router.push(`/member/${id}`);
@@ -61,6 +62,8 @@ export default function Navbar() {
     }
   }, []);
   const { user, logout } = useAuth();
+  let LoggedInUser = user;
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -103,8 +106,8 @@ export default function Navbar() {
         }
         if (selectedCata == "Members") {
           const response = await searchMemebers(searchQuery, 5);
-          console.log(response)
-          const result = response?.items
+          console.log(response);
+          const result = response?.items;
           setSearchResultsForMemebers(result);
           setSearchResults([]);
           setShowResults(true);
@@ -124,6 +127,18 @@ export default function Navbar() {
       }
     };
   }, [searchQuery]);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      try {
+        const fetchedUser = await getUserAvatr(Number(user.id));
+        setLoggedInUser(fetchedUser);
+      } catch {
+        console.log("Failed to load profile data.");
+      }
+    };
+    fetchData();
+  }, [user?.id]);
 
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -310,17 +325,16 @@ export default function Navbar() {
                               <button
                                 type="button"
                                 key={`member-${member.id}`}
-                                // onClick={() => handleMemberClick(member.id)} // 👈 create this
                                 className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
                               >
                                 <img
                                   src={
                                     member.avatar
-                                      ? `http://localhost:1337${member.avatar.url}`
+                                      ? `http://localhost:1337${member.avatar?.url}`
                                       : "/avatar-placeholder.png"
                                   }
-                                  // alt={member?.fullName || member?.username}
-                                  // className="w-12 h-12 object-cover rounded-full"
+                                  alt={member?.fullName || member?.username}
+                                  className="w-10 h-10 min-w-[40px] object-cover rounded-full"
                                 />
 
                                 <div className="flex-1 min-w-0">
@@ -409,7 +423,10 @@ export default function Navbar() {
                   >
                     {/* Avatar / fallback icon */}
                     <img
-                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
+                      src={
+                        loggedInUser?.avatar?.url ??
+                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
+                      }
                       alt="Profile"
                       className="w-full h-full object-cover"
                     />
