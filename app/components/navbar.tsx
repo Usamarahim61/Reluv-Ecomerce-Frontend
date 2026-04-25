@@ -22,24 +22,37 @@ import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 import AndroidChrome from "./AndroidChrome";
 import { useAndroidNative } from "./useAndroidNative";
-import { ProductCardItem, searchProducts } from "@/services/products-service";
+import {
+  ProductCardItem,
+  searchProducts,
+  searchMemebers,
+  MemebersCardItem,
+} from "@/services/products-service";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
+  const [searchResultsForMemebers, setSearchResultsForMemebers] = useState<
+    MemebersCardItem[]
+  >([]);
   const [showResults, setShowResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
-  
+
   const handleSearchResultClick = useCallback((id: string | number) => {
     setSearchQuery("");
     setShowResults(false);
     router.push(`/products/${id}`);
   }, []);
-  
+    const handleMemberClick = useCallback((id: string | number) => {
+    setSearchQuery("");
+    setShowResults(false);
+    router.push(`/member/${id}`);
+  }, []);
+
   const handleSearchSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -65,33 +78,46 @@ export default function Navbar() {
     categoriesStatus === "idle" || categoriesStatus === "loading";
   const menuCategories =
     categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
-  
+
   // Debounced search
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-  
+
     if (searchQuery.length < 2) {
       setSearchResults([]);
+      setSearchResultsForMemebers([]);
       setShowResults(false);
       return;
     }
-  
+
     setSearchLoading(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await searchProducts(searchQuery, 5);
-        setSearchResults(response.items);
-        setShowResults(true);
+        if (selectedCata == "Catalogue") {
+          const response = await searchProducts(searchQuery, 5);
+          setSearchResults(response.items);
+          setSearchResultsForMemebers([]);
+          setShowResults(true);
+        }
+        if (selectedCata == "Members") {
+          const response = await searchMemebers(searchQuery, 5);
+          console.log(response)
+          const result = response?.items
+          setSearchResultsForMemebers(result);
+          setSearchResults([]);
+          setShowResults(true);
+        }
       } catch (error) {
         console.error("Search error:", error);
         setSearchResults([]);
+        setSearchResultsForMemebers([]);
       } finally {
         setSearchLoading(false);
       }
     }, 300);
-  
+
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -142,10 +168,10 @@ export default function Navbar() {
   }
 
   const languages = [
-    { code: "ES", label: "Español (Spanish)" },
-    { code: "FR", label: "Français (French)" },
+    // { code: "ES", label: "Español (Spanish)" },
+    // { code: "FR", label: "Français (French)" },
     { code: "EN", label: "English (English)" },
-    { code: "NL", label: "Nederlands (Dutch)" },
+    { code: "TH", label: "Thai (ThaiLand)" },
   ];
 
   const Catagory = [
@@ -223,7 +249,7 @@ export default function Navbar() {
                   onFocus={() => searchQuery && setShowResults(true)}
                   onBlur={() => setTimeout(() => setShowResults(false), 200)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       handleSearchSubmit(e as any);
                     }
                   }}
@@ -232,31 +258,84 @@ export default function Navbar() {
                 {showResults && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
                     {searchLoading ? (
-                      <div className="p-4 text-center text-gray-500">Searching...</div>
-                    ) : searchResults.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">No results</div>
+                      <div className="p-4 text-center text-gray-500">
+                        Searching...
+                      </div>
+                    ) : searchResults.length === 0 &&
+                      searchResultsForMemebers.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        No results
+                      </div>
                     ) : (
-                      searchResults.map((item) => (
-                        <button
-                          type="button"
-                          key={item.id}
-                          onClick={() => handleSearchResultClick(item.id)}
-                          className="p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3 w-full text-left bg-transparent border-none cursor-pointer"
-                        >
-                          <img
-                            src={item.imageUrl || "/placeholder.jpg"}
-                            alt={item.item || item.brand}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{item.brand || item.title}</p>
-                            <p className="text-xs text-gray-500 truncate">{item.item}</p>
+                      <>
+                        {/* 🔹 PRODUCTS */}
+                        {searchResults.length > 0 && (
+                          <div>
+                            {searchResults.map((item) => (
+                              <button
+                                type="button"
+                                key={`product-${item.id}`}
+                                onClick={() => handleSearchResultClick(item.id)}
+                                className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
+                              >
+                                <img
+                                  src={item.imageUrl || "/placeholder.jpg"}
+                                  alt={item.item || item.brand}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">
+                                    {item.brand || item?.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {item.item}
+                                  </p>
+                                </div>
+
+                                <div className="text-right">
+                                  <p className="font-semibold text-sm">
+                                    {item.price}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-sm">{item.price}</p>
+                        )}
+
+                        {/* 🔹 MEMBERS */}
+                        {searchResultsForMemebers.length > 0 && (
+                          <div>
+                            {searchResultsForMemebers.map((member) => (
+                              <button
+                                type="button"
+                                key={`member-${member.id}`}
+                                // onClick={() => handleMemberClick(member.id)} // 👈 create this
+                                className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
+                              >
+                                <img
+                                  src={
+                                    member.avatar
+                                      ? `http://localhost:1337${member.avatar.url}`
+                                      : "/avatar-placeholder.png"
+                                  }
+                                  // alt={member?.fullName || member?.username}
+                                  // className="w-12 h-12 object-cover rounded-full"
+                                />
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">
+                                    {member?.fullName || member?.username}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {member?.city}, {member?.country}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        </button>
-                      ))
+                        )}
+                      </>
                     )}
                   </div>
                 )}

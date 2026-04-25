@@ -283,7 +283,7 @@ const ProfilePage = ({ show = true }: { show?: boolean }) => {
         {/* --- Tab Content --- */}
         {activeTab === "Listings" && (
           <>
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            {/* <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
               <h2 className="text-lg font-semibold">{listings.length} items</h2>
               <div className="flex items-center gap-4 md:gap-6 text-sm">
                 <div className="flex items-center gap-1 cursor-pointer text-gray-600">
@@ -293,7 +293,7 @@ const ProfilePage = ({ show = true }: { show?: boolean }) => {
                   Sort by <span className="font-semibold text-gray-800">Relevance</span> <ChevronDown size={14} />
                 </div>
               </div>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {listings.map((product: any) => (
