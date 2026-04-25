@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getUser, updateUserProfile } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
+import { API_BASE_URL } from "../constants/api";
 
 const MAX_AVATAR_SIZE_MB = 10;
 
@@ -21,7 +22,7 @@ export default function ProfileSetting() {
     country: "",
     city: "",
     showCity: true,
-    language: ""
+    language: "",
   });
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function ProfileSetting() {
           country: data.country || "",
           city: data.city || "",
           showCity: data.isShowCity ?? true,
-          language: data.language || ""
+          language: data.language || "",
         });
 
         if (data.avatar?.url) {
@@ -71,14 +72,14 @@ export default function ProfileSetting() {
   /* ---------------- INPUT HANDLER ---------------- */
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value, type } = e.target;
 
     const val =
-      type === "checkbox"
-        ? (e.target as HTMLInputElement).checked
-        : value;
+      type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
 
     setFormData((prev) => ({ ...prev, [name]: val }));
   };
@@ -91,7 +92,9 @@ export default function ProfileSetting() {
 
     // Validate file size (matches UploadItem's MAX_FILE_SIZE_MB pattern)
     if (file.size > MAX_AVATAR_SIZE_MB * 1024 * 1024) {
-      toast.warn(`"${file.name}" exceeds the ${MAX_AVATAR_SIZE_MB}MB size limit.`);
+      toast.warn(
+        `"${file.name}" exceeds the ${MAX_AVATAR_SIZE_MB}MB size limit.`,
+      );
       // Reset input so the same file can be re-selected after user picks another
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -130,40 +133,41 @@ export default function ProfileSetting() {
       setIsUpdating(true);
       let avatarId: number | null = null;
 
-if (selectedFile) {
-  const uploadForm = new FormData();
-  uploadForm.append("files", selectedFile);
-  try {
-    const uploadResponse = await fetch("http://localhost:1337/api/upload", {
-      method: "POST",
-      body: uploadForm
-    });
+      if (selectedFile) {
+        const uploadForm = new FormData();
+        uploadForm.append("files", selectedFile);
+        try {
+          const uploadResponse = await fetch(
+            `${API_BASE_URL}/api/upload`,
+            {
+              method: "POST",
+              body: uploadForm,
+            },
+          );
+          const uploadPayload = await uploadResponse.json();
+            console.log("uplaod ---",uploadResponse)
+          if (!uploadResponse.ok) {
+            throw new Error(
+              uploadPayload?.error?.message ||
+                `Image upload failed: ${uploadResponse.status}`,
+            );
+          }
 
-    const uploadPayload = await uploadResponse.json();
+          // ✅ safer extraction
+          const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
+          avatarId = file?.id ? Number(file.id) : null;
 
-    if (!uploadResponse.ok) {
-      throw new Error(
-        uploadPayload?.error?.message ||
-        `Image upload failed: ${uploadResponse.status}`
-      );
-    }
+          if (!avatarId) {
+            throw new Error("Upload succeeded but no file ID returned.");
+          }
 
-    // ✅ safer extraction
-    const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
-    avatarId = file?.id ? Number(file.id) : null;
-
-    if (!avatarId) {
-      throw new Error("Upload succeeded but no file ID returned.");
-    }
-
-    // ✅ if you want to SET state
-    // setAvatarId(avatarId);
-
-  } catch (error: any) {
-    console.error("Upload error:", error.message);
-    throw error;
-  }
-}
+          // ✅ if you want to SET state
+          // setAvatarId(avatarId);
+        } catch (error: any) {
+          console.error("Upload error:", error.message);
+          throw error;
+        }
+      }
 
       const payload = new FormData();
       payload.append("username", formData.username || "");

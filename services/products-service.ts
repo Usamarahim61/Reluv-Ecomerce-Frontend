@@ -84,13 +84,13 @@ const formatPrice = (value: unknown): string => {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (trimmed.length === 0) return "";
-    if (trimmed.includes("€")) return trimmed;
+    if (trimmed.includes("TBH")) return trimmed;
     const numeric = Number(trimmed);
-    if (Number.isFinite(numeric)) return `€${numeric.toFixed(2)}`;
+    if (Number.isFinite(numeric)) return `TBH${numeric.toFixed(2)}`;
     return trimmed;
   }
   if (typeof value === "number" && Number.isFinite(value)) {
-    return `€${value.toFixed(2)}`;
+    return `TBH${value.toFixed(2)}`;
   }
   return "";
 };
@@ -172,7 +172,7 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   const condition = formatCondition(product.condition);
   const price = formatPrice(product.price);
   const uploadedAt = product.updatedAt ?? product.createdAt ?? "";
-  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 2.95);
+  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 100);
 
   return {
     id: product.id,

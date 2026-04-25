@@ -150,9 +150,9 @@ export default function Orders() {
             </header>
 
             {/* Result Area */}
-            <div className="flex-grow flex flex-col items-center justify-center p-2 md:p-2">
+            <div className="flex-grow flex flex-col items-center justify-center p-2 md:p-2 ">
               {filteredOrders.length > 0 ? (
-                <div className="w-full bg-white border-2 border-slate-200 rounded-lg divide-y divide-gray-100">
+                <div className="w-full bg-white border-2 border-slate-200 rounded-lg divide-y divide-gray-100 max-h-[550px] overflow-auto">
                   {filteredOrders.map((order) => (
                     <div
                       key={order.id}
