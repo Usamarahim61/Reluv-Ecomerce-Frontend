@@ -151,7 +151,7 @@ const CheckOut: React.FC = () => {
                 <h1 className="font-medium text-gray-900 text-sm md:text-base">{data.title}</h1>
                 <p className="text-gray-500 text-sm">{data.brand}</p>
                 <p className="text-gray-500 text-sm">{data.size}</p>
-                <p className="font-semibold mt-1">€{data.price.toFixed(2)}</p>
+                <p className="font-semibold mt-1">TBH {data.price.toFixed(2)}</p>
               </div>
             </div>
 
@@ -189,7 +189,7 @@ const CheckOut: React.FC = () => {
                     <MapPin className="text-gray-500" />
                     <div>
                       <p className="font-medium">Ship to pick-up point</p>
-                      <p className="text-gray-500 text-sm">€{data.shippingFee.toFixed(2)}</p>
+                      <p className="text-gray-500 text-sm">TBH {data.shippingFee.toFixed(2)}</p>
                     </div>
                   </div>
                   <input
@@ -214,7 +214,7 @@ const CheckOut: React.FC = () => {
                     <Home className="text-gray-500" />
                     <div>
                       <p className="font-medium">Ship to home</p>
-                      <p className="text-gray-500 text-sm">€16.25</p>
+                      <p className="text-gray-500 text-sm">TBH 16.25</p>
                     </div>
                   </div>
                   <input
@@ -264,7 +264,7 @@ const CheckOut: React.FC = () => {
                         </div>
                         <span className="font-medium text-sm">DHL Express</span>
                       </div>
-                      <p className="font-semibold text-sm">€16.25</p>
+                      <p className="font-semibold text-sm">TBH 16.25</p>
                       <div className="flex items-center gap-2 mt-2 text-gray-500">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path
@@ -366,21 +366,21 @@ const CheckOut: React.FC = () => {
               <div className="space-y-3 mb-6 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Order</span>
-                  <span>€{data.price.toFixed(2)}</span>
+                  <span>TBH {data.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 underline decoration-dotted">
                     Buyer Protection fee
                   </span>
-                  <span>€{data.buyerProtectionFee.toFixed(2)}</span>
+                  <span>TBH {data.buyerProtectionFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
-                  <span>€{data.shippingFee.toFixed(2)}</span>
+                  <span>TBH {data.shippingFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-4 border-t">
                   <span>Total to pay</span>
-                  <span>€{totalToPay.toFixed(2)}</span>
+                  <span>TBH {totalToPay.toFixed(2)}</span>
                 </div>
               </div>
 

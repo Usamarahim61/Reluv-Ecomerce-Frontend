@@ -273,7 +273,7 @@ export default function ProductDetailPage() {
   );
   const color = toText(product?.color, "N/A");
   const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
-  const shippingFromPrice = toText(product?.shippingFromPrice, "EUR 2.95");
+  const shippingFromPrice = toText(product?.shippingFromPrice, "TBH 100");
   const seller = product?.user ?? {};
   const isOwnProduct =
     user?.id &&
@@ -303,9 +303,9 @@ export default function ProductDetailPage() {
     brand,
     size,
     price: getPriceValue(price) || 0,
-    currency: getCurrencyCode(price) || "EUR",
+    currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
-    buyerProtectionFee: 2.45,
+    buyerProtectionFee: 100.00,
     shippingFee: getPriceValue(shippingFromPrice) || 0,
     sellerId: seller?.id,
   };
