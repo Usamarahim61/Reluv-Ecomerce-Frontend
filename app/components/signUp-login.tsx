@@ -1,8 +1,8 @@
 'use client';
 
-import { X, EyeOff, Eye, Loader2 } from "lucide-react";
+import { X, EyeOff, Eye, Loader2, AlertCircle, WifiOff, XCircle } from "lucide-react";
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { login, register, loginWithGoogle, loginWithFacebook } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
 
@@ -12,6 +12,38 @@ const GOOGLE_CLIENT_ID = "139090663543-35knp1pnf47rc7qrnbgf6jf4nkbts4ij.apps.goo
 // ─── Facebook OAuth config ─────────────────────────────────────────────────
 const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID!;
 
+// ─── Error types ───────────────────────────────────────────────────────────
+type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
+
+interface AuthError {
+  kind: AuthErrorKind;
+  message: string;
+}
+
+function classifyError(err: any): AuthError {
+  const msg: string = err?.message || "";
+
+  if (!navigator.onLine || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch")) {
+    return { kind: "network", message: "No internet connection. Please check your network and try again." };
+  }
+  if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
+    return { kind: "cancelled", message: "Sign-in was cancelled. Try again when you're ready." };
+  }
+  if (
+    msg.toLowerCase().includes("invalid") ||
+    msg.toLowerCase().includes("credentials") ||
+    msg.toLowerCase().includes("password") ||
+    msg.toLowerCase().includes("user not found") ||
+    msg.toLowerCase().includes("email")
+  ) {
+    return { kind: "auth", message: msg || "Incorrect email or password. Please try again." };
+  }
+  if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("exists")) {
+    return { kind: "auth", message: "An account with this email already exists. Try logging in instead." };
+  }
+  return { kind: "unknown", message: msg || "Something went wrong. Please try again." };
+}
+
 // ─── Popup helper ──────────────────────────────────────────────────────────
 function openPopup(url: string, title: string) {
   const w = 500, h = 600;
@@ -20,6 +52,35 @@ function openPopup(url: string, title: string) {
   return window.open(url, title, `width=${w},height=${h},left=${left},top=${top}`);
 }
 
+// ─── Error Banner ──────────────────────────────────────────────────────────
+function ErrorBanner({ error, onDismiss }: { error: AuthError; onDismiss: () => void }) {
+  const icons: Record<AuthErrorKind, React.ReactNode> = {
+    network: <WifiOff size={15} className="shrink-0 mt-0.5" />,
+    auth: <XCircle size={15} className="shrink-0 mt-0.5" />,
+    cancelled: <AlertCircle size={15} className="shrink-0 mt-0.5" />,
+    unknown: <AlertCircle size={15} className="shrink-0 mt-0.5" />,
+  };
+
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-md px-3 py-2.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200 animate-in fade-in slide-in-from-top-1 duration-200"
+    >
+      {icons[error.kind]}
+      <span className="flex-1 leading-snug">{error.message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-red-400 hover:text-red-600 transition-colors ml-1 mt-0.5"
+        aria-label="Dismiss error"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────
 export default function SignUpLogin({
   onClose,
   initialView = "initial",
@@ -33,16 +94,41 @@ export default function SignUpLogin({
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<"google" | "facebook" | null>(null);
-  const [error, setError] = useState("");
 
-  // ── Google Sign-In via GSI popup ─────────────────────────────────────────
+  // ── Unified loading state: null = idle, "email" | "google" | "facebook" = in-flight
+  const [loadingProvider, setLoadingProvider] = useState<"email" | "google" | "facebook" | null>(null);
+  const isBusy = loadingProvider !== null;
+
+  // ── Unified error state
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = useCallback((err: AuthError) => {
+    setAuthError(err);
+    // Auto-dismiss after 6 s (skip for network errors – user needs to act)
+    if (err.kind !== "network") {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setAuthError(null), 6000);
+    }
+  }, []);
+
+  const dismissError = useCallback(() => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setAuthError(null);
+  }, []);
+
+  // Clear error when switching views or typing
+  useEffect(() => { dismissError(); }, [view]);
+  useEffect(() => { if (authError) dismissError(); }, [email, password, username]);
+
+  // Cleanup on unmount
+  useEffect(() => () => { if (errorTimerRef.current) clearTimeout(errorTimerRef.current); }, []);
+
+  // ── Google Sign-In ────────────────────────────────────────────────────────
   const handleGoogleLogin = useCallback(() => {
-    setSocialLoading("google");
-    setError("");
+    setLoadingProvider("google");
+    dismissError();
 
-    // Build Google OAuth URL
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: `${window.location.origin}/auth/callback/google`,
@@ -56,43 +142,52 @@ export default function SignUpLogin({
       "Google Sign-In"
     );
 
-    // Listen for the popup to post back the token
+    if (!popup) {
+      showError({ kind: "unknown", message: "Popup was blocked. Please allow popups for this site and try again." });
+      setLoadingProvider(null);
+      return;
+    }
+
     const handler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== "GOOGLE_AUTH_SUCCESS") return;
-
       window.removeEventListener("message", handler);
-      popup?.close();
+      clearInterval(poll);
 
       try {
         const data = await loginWithGoogle(event.data.token);
         setAuthLogin(data.jwt, data.user);
+        popup.close();
         onClose();
       } catch (err: any) {
-        setError(err.message || "Google login failed");
+        showError(classifyError(err));
       } finally {
-        setSocialLoading(null);
+        setLoadingProvider(null);
       }
     };
 
     window.addEventListener("message", handler);
 
-    // Fallback: detect popup closed without message
     const poll = setInterval(() => {
-      if (popup?.closed) {
+      if (popup.closed) {
         clearInterval(poll);
         window.removeEventListener("message", handler);
-        setSocialLoading(null);
+        // Only show "cancelled" if we're still loading (no success yet)
+        setLoadingProvider((prev) => {
+          if (prev === "google") {
+            // User closed popup without completing — silent cancel, no error
+          }
+          return null;
+        });
       }
     }, 500);
-  }, [setAuthLogin, onClose]);
+  }, [setAuthLogin, onClose, showError, dismissError]);
 
-  // ── Facebook Login via FB SDK ─────────────────────────────────────────────
+  // ── Facebook Login ────────────────────────────────────────────────────────
   const handleFacebookLogin = useCallback(() => {
-    setSocialLoading("facebook");
-    setError("");
+    setLoadingProvider("facebook");
+    dismissError();
 
-    // Lazy-load the FB SDK if not already present
     const initFB = () => {
       (window as any).FB.login(
         (response: any) => {
@@ -102,11 +197,11 @@ export default function SignUpLogin({
                 setAuthLogin(data.jwt, data.user);
                 onClose();
               })
-              .catch((err: any) => setError(err.message || "Facebook login failed"))
-              .finally(() => setSocialLoading(null));
+              .catch((err: any) => showError(classifyError(err)))
+              .finally(() => setLoadingProvider(null));
           } else {
-            // User cancelled
-            setSocialLoading(null);
+            // User cancelled the Facebook dialog — silent, no error shown
+            setLoadingProvider(null);
           }
         },
         { scope: "email,public_profile" }
@@ -116,7 +211,6 @@ export default function SignUpLogin({
     if ((window as any).FB) {
       initFB();
     } else {
-      // Inject the FB SDK script
       const script = document.createElement("script");
       script.src = "https://connect.facebook.net/en_US/sdk.js";
       script.async = true;
@@ -130,41 +224,41 @@ export default function SignUpLogin({
         initFB();
       };
       script.onerror = () => {
-        setError("Failed to load Facebook SDK");
-        setSocialLoading(null);
+        showError({ kind: "network", message: "Failed to load Facebook. Check your connection and try again." });
+        setLoadingProvider(null);
       };
       document.body.appendChild(script);
     }
-  }, [setAuthLogin, onClose]);
+  }, [setAuthLogin, onClose, showError, dismissError]);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Email Login / Register ─────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoadingProvider("email");
+    dismissError();
     try {
       const data = await login(email, password);
       setAuthLogin(data.jwt, data.user);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      showError(classifyError(err));
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoadingProvider("email");
+    dismissError();
     try {
       const data = await register(username, email, password);
       setAuthLogin(data.jwt, data.user);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      showError(classifyError(err));
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   }
 
@@ -180,12 +274,14 @@ export default function SignUpLogin({
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-1 sm:hidden" />
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 sm:right-6 sm:top-6 text-gray-400 hover:text-black p-1"
+          disabled={isBusy}
+          className="absolute right-4 top-4 sm:right-6 sm:top-6 text-gray-400 hover:text-black p-1 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <X size={24} />
         </button>
 
         <div className="px-6 py-8 sm:px-10 sm:py-10">
+          {/* ── Initial view ── */}
           {view === "initial" && (
             <>
               <h2 className="text-xl sm:text-2xl font-bold text-center leading-tight mb-8">
@@ -195,19 +291,22 @@ export default function SignUpLogin({
                 <SocialButton
                   icon="https://www.svgrepo.com/show/475656/google-color.svg"
                   text="Continue with Google"
-                  loading={socialLoading === "google"}
+                  isLoading={loadingProvider === "google"}
+                  isDisabled={isBusy && loadingProvider !== "google"}
                   onClick={handleGoogleLogin}
                 />
                 <SocialButton
                   icon="https://www.svgrepo.com/show/475647/facebook-color.svg"
                   text="Continue with Facebook"
-                  loading={socialLoading === "facebook"}
+                  isLoading={loadingProvider === "facebook"}
+                  isDisabled={isBusy && loadingProvider !== "facebook"}
                   onClick={handleFacebookLogin}
                 />
                 <SocialButton
                   icon="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg"
                   text="Continue with Apple"
-                  onClick={() => {}} // wire up Apple later
+                  isDisabled={isBusy}
+                  onClick={() => {}}
                 />
               </div>
 
@@ -219,20 +318,32 @@ export default function SignUpLogin({
 
               <button
                 onClick={() => setView("register")}
-                className="w-full bg-[#007782] text-white rounded-md py-3 font-semibold hover:bg-[#00656f]"
+                disabled={isBusy}
+                className="w-full bg-[#007782] text-white rounded-md py-3 font-semibold hover:bg-[#00656f] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Register with email
               </button>
               <p className="mt-6 text-center text-sm text-gray-600">
                 Already have an account?{" "}
-                <span onClick={() => setView("login")} className="text-[#007782] cursor-pointer hover:underline font-bold">
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => setView("login")}
+                  className="text-[#007782] cursor-pointer hover:underline font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Log in
-                </span>
+                </button>
               </p>
-              {error && <p className="mt-3 text-red-500 text-xs font-medium text-center">{error}</p>}
+
+              {authError && (
+                <div className="mt-4">
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                </div>
+              )}
             </>
           )}
 
+          {/* ── Login / Register view ── */}
           {(view === "login" || view === "register") && (
             <div className="flex flex-col">
               <h2 className="text-2xl font-semibold text-center mb-8">
@@ -246,7 +357,8 @@ export default function SignUpLogin({
                       placeholder="Username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]"
+                      disabled={isBusy}
+                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782] disabled:opacity-50"
                     />
                     <p className="text-[10px] text-gray-500 mt-1">Visible to other users.</p>
                   </div>
@@ -256,7 +368,8 @@ export default function SignUpLogin({
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]"
+                  disabled={isBusy}
+                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782] disabled:opacity-50"
                 />
                 <div className="relative border-b border-gray-300 focus-within:border-[#007782]">
                   <input
@@ -264,24 +377,36 @@ export default function SignUpLogin({
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full py-3 outline-none pr-10"
+                    disabled={isBusy}
+                    className="w-full py-3 outline-none pr-10 disabled:opacity-50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isBusy}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-40"
                   >
                     {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
+
                 {view === "register" && (
                   <div className="space-y-4 pt-2">
                     <label className="flex items-start gap-3 cursor-pointer group">
-                      <input type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
+                      <input
+                        type="checkbox"
+                        disabled={isBusy}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0"
+                      />
                       <span className="text-xs text-gray-600">I want to receive personalized offers and updates.</span>
                     </label>
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input required type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
+                      <input
+                        required
+                        type="checkbox"
+                        disabled={isBusy}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0"
+                      />
                       <span className="text-xs text-gray-600">
                         I accept the <span className="text-[#007782] font-medium">Terms & Conditions</span> and{" "}
                         <span className="text-[#007782] font-medium">Privacy Policy</span>.
@@ -289,22 +414,26 @@ export default function SignUpLogin({
                     </label>
                   </div>
                 )}
-                {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
+
+                {authError && <ErrorBanner error={authError} onDismiss={dismissError} />}
+
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#007782] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#005f68] flex items-center justify-center gap-2"
+                  disabled={isBusy}
+                  className="w-full bg-[#007782] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#005f68] flex items-center justify-center gap-2 disabled:cursor-not-allowed"
                 >
-                  {loading && <Loader2 size={16} className="animate-spin" />}
-                  {loading ? "Please wait..." : "Continue"}
+                  {loadingProvider === "email" && <Loader2 size={16} className="animate-spin" />}
+                  {loadingProvider === "email" ? "Please wait…" : "Continue"}
                 </button>
               </form>
+
               <button
+                type="button"
                 onClick={() => setView("initial")}
-                className="mt-6 text-[#007782] text-sm font-medium hover:underline self-center"
+                disabled={isBusy}
+                className="mt-6 text-[#007782] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {view === "register" && <span>Already have an account? Log In</span>}
-                {view === "login" && <span>Don't have an account? Register</span>}
+                {view === "register" ? "Already have an account? Log in" : "Don't have an account? Register"}
               </button>
             </div>
           )}
@@ -314,25 +443,28 @@ export default function SignUpLogin({
   );
 }
 
+// ─── SocialButton ──────────────────────────────────────────────────────────
 function SocialButton({
   icon,
   text,
   onClick,
-  loading = false,
+  isLoading = false,
+  isDisabled = false,
 }: {
   icon: string;
   text: string;
   onClick: () => void;
-  loading?: boolean;
+  isLoading?: boolean;
+  isDisabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={loading}
-      className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2.5 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      disabled={isLoading || isDisabled}
+      className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2.5 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {loading ? (
+      {isLoading ? (
         <Loader2 size={20} className="animate-spin text-gray-400" />
       ) : (
         <Image src={icon} alt="" width={20} height={20} />

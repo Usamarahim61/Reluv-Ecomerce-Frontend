@@ -133,9 +133,7 @@ export default function ShopClient() {
       }
     };
     loadOptions();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [category, subCategory, item]);
 
   useEffect(() => {
@@ -145,9 +143,7 @@ export default function ShopClient() {
       }
     };
     document.addEventListener("mousedown", onDocumentClick);
-    return () => {
-      document.removeEventListener("mousedown", onDocumentClick);
-    };
+    return () => { document.removeEventListener("mousedown", onDocumentClick); };
   }, []);
 
   useEffect(() => {
@@ -169,9 +165,7 @@ export default function ShopClient() {
       }
     };
     loadCategoryTree();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const currentLevelNodes = useMemo(() => {
@@ -216,6 +210,15 @@ export default function ShopClient() {
     setCategorySearch("");
   };
 
+  const clearAllFilters = () => {
+    setConditionFilter("Condition");
+    setSizeFilter("Size");
+    setBrandFilter("Brand");
+    setColourFilter("Colour");
+    setMaterialFilter("Material");
+    setSortBy("Newest");
+  };
+
   const conditionOptions = useMemo(() => ["Condition", ...backendFilterOptions.condition], [backendFilterOptions.condition]);
   const sizeOptions = useMemo(() => ["Size", ...backendFilterOptions.size], [backendFilterOptions.size]);
   const brandOptions = useMemo(() => ["Brand", ...backendFilterOptions.brand], [backendFilterOptions.brand]);
@@ -243,8 +246,6 @@ export default function ShopClient() {
 
   return (
     <div className="min-h-screen bg-[#f3f3f3]">
-      {/* < /> */}
-
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-4">
         <nav className="mb-1 flex items-center gap-2 text-[12px] text-[#6f6f6f]">
           <Link href="/" className="underline hover:text-[#007782]">Home</Link>
@@ -374,62 +375,26 @@ export default function ShopClient() {
               ) : null}
             </div>
 
-            <select
-              value={sizeFilter}
-              onChange={(e) => setSizeFilter(e.target.value)}
-              className={pillSelectClass}
-            >
-              {sizeOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)} className={pillSelectClass}>
+              {sizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
-            <select
-              value={brandFilter}
-              onChange={(e) => setBrandFilter(e.target.value)}
-              className={pillSelectClass}
-            >
-              {brandOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} className={pillSelectClass}>
+              {brandOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
-            <select
-              value={conditionFilter}
-              onChange={(e) => setConditionFilter(e.target.value)}
-              className={pillSelectClass}
-            >
-              {conditionOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} className={pillSelectClass}>
+              {conditionOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
-            <select
-              value={colourFilter}
-              onChange={(e) => setColourFilter(e.target.value)}
-              className={pillSelectClass}
-            >
-              {colourOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={colourFilter} onChange={(e) => setColourFilter(e.target.value)} className={pillSelectClass}>
+              {colourOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
             <div className={staticPillClass}>
               Price <ChevronDown className="ml-1 inline-block" size={18} />
             </div>
-            <select
-              value={materialFilter}
-              onChange={(e) => setMaterialFilter(e.target.value)}
-              className={pillSelectClass}
-            >
-              {materialOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={materialFilter} onChange={(e) => setMaterialFilter(e.target.value)} className={pillSelectClass}>
+              {materialOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className={pillSelectClass}
-            >
-              {sortOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={pillSelectClass}>
+              {sortOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </div>
 
@@ -438,17 +403,7 @@ export default function ShopClient() {
               {pageTitle} <X className="ml-1 inline-block" size={17} />
             </button>
             {hasActiveFilters ? (
-              <button
-                onClick={() => {
-                  setConditionFilter("Condition");
-                  setSizeFilter("Size");
-                  setBrandFilter("Brand");
-                  setColourFilter("Colour");
-                  setMaterialFilter("Material");
-                  setSortBy("Newest");
-                }}
-                className="text-[14px] font-medium text-[#007782] md:text-[16px]"
-              >
+              <button onClick={clearAllFilters} className="text-[14px] font-medium text-[#007782] md:text-[16px]">
                 Clear filters
               </button>
             ) : null}
@@ -471,15 +426,15 @@ export default function ShopClient() {
           </div>
         ) : null}
 
-        {loading ? <p className="py-8 text-center text-sm text-gray-500">Loading products...</p> : null}
-        {error ? <p className="py-2 text-sm text-red-500">{error}</p> : null}
-
+        {/* ProductFeed handles loading / error / empty / products internally */}
         <ProductFeed
           productList={items}
           onLoadMore={() => loadProducts(page + 1)}
           isLoadingMore={loadingMore}
           isLoading={loading}
           hasMore={hasMore}
+          error={error}
+          onRetry={() => loadProducts(1, true)}
           className="px-0 py-0"
           gridClassName="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4"
         />

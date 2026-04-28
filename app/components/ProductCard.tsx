@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Heart, ShieldCheck } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProductProps {
   id: string | number;
@@ -10,20 +11,25 @@ interface ProductProps {
   price: unknown;
   totalPrice: unknown;
   imageUrl?: unknown;
-  likes: number;
+  likes: number,
   variant?: "default" | "android";
 }
 
 const toDisplayText = (value: unknown): string => {
   if (value == null) return "";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value);
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     const candidates = [obj.title, obj.name, obj.label, obj.slug, obj.value];
     for (const candidate of candidates) {
-      if (typeof candidate === "string" && candidate.trim().length > 0) return candidate;
+      if (typeof candidate === "string" && candidate.trim().length > 0)
+        return candidate;
       if (typeof candidate === "number") return String(candidate);
     }
   }
@@ -55,6 +61,7 @@ export default function ProductCard({
   likes,
   variant = "default",
 }: ProductProps) {
+  const { user } = useAuth();
   const safeImageUrl = toImageUrl(imageUrl);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
   const brandText = toDisplayText(brand);
@@ -64,6 +71,46 @@ export default function ProductCard({
   const totalPriceText = toDisplayText(totalPrice);
   const showInDemand = Number(likes || 0) >= 50;
   const isAndroid = variant === "android";
+
+  const AddLike = async (e: React.MouseEvent) => {
+    e.preventDefault(); // 🚨 prevent Link navigation
+    e.stopPropagation();
+    try {
+       const payload = {
+      data: {
+        likeCount: Number(likes || 0) + 1,
+      },
+    };
+
+    console.log("SENDING:", payload);
+      // 🔹 1. Update product likes
+      const res = await fetch(`${API_BASE_URL}/api/products/p46zv8yr0ajmnefy9lcqtsq7`, {
+        method: "PUT",
+         headers: {
+        "Content-Type": "application/json",
+        //  Authorization: `Bearer ${token}`, // if needed
+      },
+      body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error(result?.error?.message || "Failed to like product");
+        return;
+      }
+      // 🔹 2. Add product to user favorites
+      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          fav_products: {
+            id : productId, // ✅ attach product
+          },
+        }),
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <Link href={`/products/${productId}`}>
@@ -88,7 +135,13 @@ export default function ProductCard({
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
-            <div className={isAndroid ? "h-full w-full bg-[#f2f4f7]" : "h-full w-full bg-[#efefec]"} />
+            <div
+              className={
+                isAndroid
+                  ? "h-full w-full bg-[#f2f4f7]"
+                  : "h-full w-full bg-[#efefec]"
+              }
+            />
           )}
 
           {showInDemand ? (
@@ -110,11 +163,20 @@ export default function ProductCard({
                 : "absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-[#d7d7d7] bg-white px-2.5 py-1 text-[11px] font-medium text-[#5e5e5e] shadow-sm"
             }
           >
-            <Heart size={13} className={isAndroid ? "text-[#6b7280]" : "text-[#6e6e6e]"} /> {likes}
+            <Heart
+              onClick={AddLike}
+              size={13}
+              className={isAndroid ? "text-[#6b7280]" : "text-[#6e6e6e]"}
+            />{" "}
+            {likes}
           </button>
         </div>
 
-        <div className={isAndroid ? "space-y-0.5 pt-2 text-[#1f2937]" : "space-y-0.5 pt-2"}>
+        <div
+          className={
+            isAndroid ? "space-y-0.5 pt-2 text-[#1f2937]" : "space-y-0.5 pt-2"
+          }
+        >
           <p
             className={
               isAndroid
@@ -157,4 +219,3 @@ export default function ProductCard({
     </Link>
   );
 }
-

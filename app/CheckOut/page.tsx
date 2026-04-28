@@ -27,11 +27,15 @@ const CheckOutContent: React.FC = () => {
 
   const [openCardModal, setOpenCardModal] = useState(false);
   const [openPickupModal, setOpenPickupModal] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">("pickup");
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">(
+    "pickup",
+  );
   const [cardDetails, setCardDetails] = useState<any>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [SameNumberForFutureOrders, setSameNumberForFutureOrders] = useState(false);
+  const [SameNumberForFutureOrders, setSameNumberForFutureOrders] =
+    useState(false);
   const [pickupAddress, setPickupAddress] = useState("");
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -59,6 +63,9 @@ const CheckOutContent: React.FC = () => {
 
   const handlePlaceOrder = async () => {
     try {
+      if (isPlacingOrder) return; // prevent double click
+
+      // ❌ validations (same as yours)
       if (!cardDetails) {
         toast.error("Please add card details", toastConfig);
         return;
@@ -75,9 +82,14 @@ const CheckOutContent: React.FC = () => {
       }
 
       if (deliveryMethod === "home" && !userAddress) {
-        toast.error("Your address is missing. Please update your profile.", toastConfig);
+        toast.error(
+          "Your address is missing. Please update your profile.",
+          toastConfig,
+        );
         return;
       }
+
+      setIsPlacingOrder(true); // 🔥 START LOADING
 
       const payload = {
         productId: searchParams.get("productId"),
@@ -104,10 +116,7 @@ const CheckOutContent: React.FC = () => {
         },
       };
 
-      console.log("Order Payload:", payload);
-
-      const PLACE_ORDER_ENDPOINT = `${API_BASE_URL}/api/orders/place-order`;
-      const res = await fetch(PLACE_ORDER_ENDPOINT, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/place-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -116,7 +125,10 @@ const CheckOutContent: React.FC = () => {
       const result = await res.json();
 
       if (!res.ok) {
-        toast.error(result?.message || "Failed to place order. Please try again.", toastConfig);
+        toast.error(
+          result?.message || "Failed to place order. Please try again.",
+          toastConfig,
+        );
         return;
       }
 
@@ -124,6 +136,8 @@ const CheckOutContent: React.FC = () => {
     } catch (error) {
       console.error("Order Error:", error);
       toast.error("Something went wrong. Please try again.", toastConfig);
+    } finally {
+      setIsPlacingOrder(false); // 🔥 STOP LOADING (always runs)
     }
   };
 
@@ -132,7 +146,7 @@ const CheckOutContent: React.FC = () => {
       <ToastContainer />
       <div className="max-w-6xl mx-auto p-4 md:p-8 bg-gray-50 min-h-screen">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* -- Left Column -- */}
+          {/* ── Left Column ── */}
           <div className="lg:col-span-2 space-y-6">
             {/* Product Header */}
             <div className="flex gap-4 bg-white p-4 rounded-sm shadow-sm">
@@ -142,10 +156,14 @@ const CheckOutContent: React.FC = () => {
                 className="w-20 h-24 object-cover rounded-sm"
               />
               <div>
-                <h1 className="font-medium text-gray-900 text-sm md:text-base">{data.title}</h1>
+                <h1 className="font-medium text-gray-900 text-sm md:text-base">
+                  {data.title}
+                </h1>
                 <p className="text-gray-500 text-sm">{data.brand}</p>
                 <p className="text-gray-500 text-sm">{data.size}</p>
-                <p className="font-semibold mt-1">TBH {data.price.toFixed(2)}</p>
+                <p className="font-semibold mt-1">
+                  TBH {data.price.toFixed(2)}
+                </p>
               </div>
             </div>
 
@@ -183,7 +201,9 @@ const CheckOutContent: React.FC = () => {
                     <MapPin className="text-gray-500" />
                     <div>
                       <p className="font-medium">Ship to pick-up point</p>
-                      <p className="text-gray-500 text-sm">TBH {data.shippingFee.toFixed(2)}</p>
+                      <p className="text-gray-500 text-sm">
+                        TBH {data.shippingFee.toFixed(2)}
+                      </p>
                     </div>
                   </div>
                   <input
@@ -226,7 +246,9 @@ const CheckOutContent: React.FC = () => {
             <section className="mt-6 space-y-6">
               {deliveryMethod === "pickup" ? (
                 <div>
-                  <h2 className="text-lg font-semibold mb-2">Delivery details</h2>
+                  <h2 className="text-lg font-semibold mb-2">
+                    Delivery details
+                  </h2>
                   <div
                     onClick={() => setOpenPickupModal(true)}
                     className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between border border-gray-200 cursor-pointer hover:border-teal-500 transition-colors"
@@ -250,17 +272,26 @@ const CheckOutContent: React.FC = () => {
                 <div className="space-y-6">
                   {/* DHL Delivery Details */}
                   <div>
-                    <h2 className="text-lg font-semibold mb-2">Delivery details</h2>
+                    <h2 className="text-lg font-semibold mb-2">
+                      Delivery details
+                    </h2>
                     <div className="bg-white p-4 rounded-sm shadow-sm border border-gray-200">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="bg-[#FFCC00] px-1 rounded-sm flex items-center">
-                          <span className="text-[10px] font-black text-red-600">DHL</span>
+                          <span className="text-[10px] font-black text-red-600">
+                            DHL
+                          </span>
                         </div>
                         <span className="font-medium text-sm">DHL Express</span>
                       </div>
                       <p className="font-semibold text-sm">TBH 16.25</p>
                       <div className="flex items-center gap-2 mt-2 text-gray-500">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -268,14 +299,18 @@ const CheckOutContent: React.FC = () => {
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        <p className="text-xs">Home delivery, 2 - 4 business days</p>
+                        <p className="text-xs">
+                          Home delivery, 2 - 4 business days
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Contact Details */}
                   <div>
-                    <h2 className="text-lg font-semibold mb-2">Your contact details</h2>
+                    <h2 className="text-lg font-semibold mb-2">
+                      Your contact details
+                    </h2>
                     <div className="bg-white p-4 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between border border-gray-200 gap-4">
                       <div className="flex items-center flex-1 w-full border-b md:border-b-0 pb-2 md:pb-0 border-gray-100">
                         <input
@@ -291,13 +326,17 @@ const CheckOutContent: React.FC = () => {
                           htmlFor="save-number"
                           className="text-[11px] md:text-xs text-gray-500 text-right leading-tight"
                         >
-                          <span className="font-bold">Same for future orders</span>
+                          <span className="font-bold">
+                            Same for future orders
+                          </span>
                         </label>
                         <input
                           id="save-number"
                           type="checkbox"
                           checked={SameNumberForFutureOrders}
-                          onChange={(e) => setSameNumberForFutureOrders(e.target.checked)}
+                          onChange={(e) =>
+                            setSameNumberForFutureOrders(e.target.checked)
+                          }
                           className="w-5 h-5 accent-[#007782] rounded border-gray-300 cursor-pointer"
                         />
                       </div>
@@ -320,10 +359,13 @@ const CheckOutContent: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium">Bank card</p>
-                    <p className="text-xs text-gray-500">Use a credit or debit card</p>
+                    <p className="text-xs text-gray-500">
+                      Use a credit or debit card
+                    </p>
                     {cardDetails ? (
                       <p className="text-xs text-teal-600 mt-1 font-medium">
-                        •••• •••• •••• {String(cardDetails.cardNumber).slice(-4)}
+                        •••• •••• ••••{" "}
+                        {String(cardDetails.cardNumber).slice(-4)}
                       </p>
                     ) : (
                       <div className="flex gap-2 mt-1">
@@ -380,14 +422,22 @@ const CheckOutContent: React.FC = () => {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={!cardDetails}
-                className="w-full bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4"
+                disabled={!cardDetails || isPlacingOrder}
+                className="w-full bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4 flex items-center justify-center gap-2"
               >
-                Pay
+                {isPlacingOrder ? (
+                  <>
+                    <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></span>
+                    Processing...
+                  </>
+                ) : (
+                  "Pay"
+                )}
               </button>
 
               <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1 uppercase tracking-tight">
-                <span className="mb-0.5">🔒</span> Your payment details are encrypted and secure
+                <span className="mb-0.5">🔒</span> Your payment details are
+                encrypted and secure
               </p>
             </div>
           </div>

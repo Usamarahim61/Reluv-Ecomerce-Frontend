@@ -8,6 +8,7 @@ type User = {
   email: string;
   city?: string;
   country?: string;
+  avatar: string
 };
 
 type AuthContextType = {
@@ -45,9 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     localStorage.removeItem("jwt");
     localStorage.removeItem("user");
-
     setJwt(null);
     setUser(null);
+    window.location.replace("/");
   };
 
   return (

@@ -1,6 +1,7 @@
 import { apiRequest } from "./api";
 
 export type ProductCardItem = {
+  documentId?: string;
   id: number | string;
   brand: string;
   category?: string;
@@ -188,6 +189,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
   const userId = attributes.user?.id ?? entry?.user?.id ?? null;
 
   return {
+    documentId: entry.documentId ?? String(entry.id),
     id: entry.id,
     brand,
     category,

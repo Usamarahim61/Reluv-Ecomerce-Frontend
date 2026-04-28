@@ -59,7 +59,7 @@ export async function loginWithGoogle(token: string) {
     { method: "GET" }
   );
   if (!res.ok) throw new Error(await res.text());
-  return res.json(); // returns { jwt, user }
+  return res.json(); 
 }
 export async function loginWithFacebook(accessToken: string) {
   const res = await fetch(`${API_BASE_URL}/auth/facebook`, {
