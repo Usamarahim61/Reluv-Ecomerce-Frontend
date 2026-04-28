@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { CreditCard, MapPin, Home, ChevronRight, Edit2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import CardDetailsModal from "../components/AddCard";
@@ -7,6 +7,7 @@ import PickupPointModal from "../components/PickupPointModal";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "../constants/api";
 import { toast, ToastContainer } from "react-toastify";
+// @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
 
 interface ProductData {
@@ -20,7 +21,7 @@ interface ProductData {
   currency: string;
 }
 
-const CheckOut: React.FC = () => {
+const CheckOutContent: React.FC = () => {
   const { user } = useAuth();
   const userAddress = `${user?.city ?? ""} ${user?.country ?? ""}`.trim();
 
@@ -58,25 +59,21 @@ const CheckOut: React.FC = () => {
 
   const handlePlaceOrder = async () => {
     try {
-      // ❌ Card validation
       if (!cardDetails) {
         toast.error("Please add card details", toastConfig);
         return;
       }
 
-      // ❌ Pickup address validation
       if (deliveryMethod === "pickup" && !pickupAddress) {
         toast.error("Please select a pick-up point", toastConfig);
         return;
       }
 
-      // ❌ Phone validation for home delivery
       if (deliveryMethod === "home" && !phoneNumber) {
         toast.error("Phone number is required for home delivery", toastConfig);
         return;
       }
 
-      // ❌ Address validation for home delivery
       if (deliveryMethod === "home" && !userAddress) {
         toast.error("Your address is missing. Please update your profile.", toastConfig);
         return;
@@ -133,13 +130,10 @@ const CheckOut: React.FC = () => {
   return (
     <>
       <ToastContainer />
-
       <div className="max-w-6xl mx-auto p-4 md:p-8 bg-gray-50 min-h-screen">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* ── Left Column ── */}
+          {/* -- Left Column -- */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* Product Header */}
             <div className="flex gap-4 bg-white p-4 rounded-sm shadow-sm">
               <img
@@ -357,7 +351,7 @@ const CheckOut: React.FC = () => {
             </section>
           </div>
 
-          {/* ── Right Column: Price Summary ── */}
+          {/* -- Right Column: Price Summary -- */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-sm shadow-sm sticky top-8">
               <h2 className="text-lg font-semibold mb-4 border-b pb-2 text-gray-500">
@@ -400,7 +394,7 @@ const CheckOut: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* -- Modals -- */}
       <CardDetailsModal
         isOpen={openCardModal}
         onClose={() => setOpenCardModal(false)}
@@ -419,4 +413,13 @@ const CheckOut: React.FC = () => {
   );
 };
 
+const CheckOut: React.FC = () => {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading checkout...</div>}>
+      <CheckOutContent />
+    </Suspense>
+  );
+};
+
 export default CheckOut;
+

@@ -122,7 +122,7 @@ export default function AndroidChrome({
             <Plus size={18} />
             Sell
           </Link>
-          <Link href="/Orders" className="flex flex-col items-center gap-1">
+          <Link href="/Messages" className="flex flex-col items-center gap-1">
             <Inbox size={18} />
             Inbox
           </Link>

@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-import AndroidChrome from "./components/AndroidChrome";
 import { useAndroidNative } from "./components/useAndroidNative";
 import ProductFeed from "./components/ProductFeed";
 import Footer from "./components/Footer";
@@ -204,7 +203,6 @@ function AndroidHome({
 }) {
   return (
     <div className="min-h-screen bg-[#f7f7f8] text-[#1f2937] pb-24">
-      <AndroidChrome />
       <ProductFeed
         productList={products}
         onLoadMore={onLoadMore}

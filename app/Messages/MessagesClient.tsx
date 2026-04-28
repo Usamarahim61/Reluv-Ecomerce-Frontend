@@ -8,6 +8,7 @@ import { ConversationItem, MessageItem } from "@/services/messages-service";
 import { getChatSocket, disconnectChatSocket } from "@/lib/chat-socket";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { useAndroidNative } from "@/app/components/useAndroidNative";
 import {
   addOptimisticMessage,
   fetchConversations,
@@ -28,6 +29,7 @@ const formatTime = (value?: string | null) => {
 
 export default function MessagesClient() {
   const { user } = useAuth();
+  const { isAndroid } = useAndroidNative();
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
   const conversations = useAppSelector((state) => state.messages.conversations);
@@ -58,7 +60,7 @@ export default function MessagesClient() {
     if (buyer?.id === user.id) return seller;
     if (seller?.id === user.id) return buyer;
     return buyer || seller;
-  }, [activeConversation, user?.id]);
+  }, [activeConversation, user]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -160,14 +162,20 @@ export default function MessagesClient() {
   return (
     <>
       
-      <div className="md:mt-5 flex flex-col h-[calc(100vh-70px)] md:h-[85vh] max-w-7xl mx-auto bg-white font-sans text-[#111111] md:border md:border-gray-300 overflow-hidden">
+      <div
+        className={`md:mt-5 flex flex-col max-w-7xl mx-auto bg-white font-sans text-[#111111] md:border md:border-gray-300 overflow-hidden ${
+          isAndroid
+            ? "h-[calc(100dvh-190px)] pb-[1px]"
+            : "h-[calc(100vh-70px)] md:h-[85vh]"
+        }`}
+      >
         <div className="flex border-b border-gray-200 text-sm font-medium">
           <div className={`w-full md:w-80 p-4 border-r border-gray-200 ${viewMessage ? "hidden md:block" : "block"}`}>
             Inbox
           </div>
           <div className={`flex-1 p-4 flex justify-between items-center bg-white ${!viewMessage ? "hidden md:flex" : "flex"}`}>
             <button onClick={() => setViewMessage(false)} className="md:hidden text-[#007782] font-medium">
-              â† Back
+            Back
             </button>
             <div className="flex items-center gap-1 mx-auto md:mx-0">
               <span className="font-semibold text-lg">{peerUser?.username || "Conversation"}</span>

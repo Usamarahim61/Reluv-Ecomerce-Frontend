@@ -17,7 +17,6 @@ export default function ReluvGroup({ searchParams }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <ReluvGroup />
     
       <main className="flex-grow">
         {view === 'sustainability' && <Sustainability />}

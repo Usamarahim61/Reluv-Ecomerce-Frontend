@@ -75,6 +75,8 @@ export type ProductDetailItem = {
   likes: number;
   images: string[];
   user:any
+  attributeValues?: Record<string, string>;
+  attributes?: Array<{ id?: number | string; code?: string; name?: string; value?: string }>;
   rating: number;
 };
 
@@ -133,6 +135,42 @@ const getImageUrls = (images: any): string[] => {
   return [];
 };
 
+const normalizeAttributeCode = (value: unknown): string =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const getAttributeValue = (product: any, ...codes: string[]): string => {
+  const attributes = Array.isArray(product?.attributes) ? product.attributes : [];
+  if (attributes.length === 0) return "";
+
+  const wanted = new Set(codes.map((code) => normalizeAttributeCode(code)));
+  for (const attr of attributes) {
+    const code = normalizeAttributeCode(attr?.code);
+    if (!wanted.has(code)) continue;
+    const value = String(attr?.value ?? "").trim();
+    if (value) return value;
+  }
+  return "";
+};
+
+const getAttributeValueMap = (product: any): Record<string, string> => {
+  const attributes = Array.isArray(product?.attributes) ? product.attributes : [];
+  const result: Record<string, string> = {};
+
+  for (const attr of attributes) {
+    const code = normalizeAttributeCode(attr?.code);
+    if (!code) continue;
+    const value = String(attr?.value ?? "").trim();
+    if (!value) continue;
+    result[code] = value;
+  }
+
+  return result;
+};
+
 const mapProductToCard = (entry: any): ProductCardItem => {
   const attributes = entry ?? {};
   const brand = attributes.brand ?? "";
@@ -169,7 +207,10 @@ const mapProductToCard = (entry: any): ProductCardItem => {
 
 const mapProductToDetail = (entry: any): ProductDetailItem => {
   const product = entry ?? {};
-  const condition = formatCondition(product.condition);
+  const attributeValues = getAttributeValueMap(product);
+  const condition = formatCondition(
+    product.condition ?? getAttributeValue(product, "condition"),
+  );
   const price = formatPrice(product.price);
   const uploadedAt = product.updatedAt ?? product.createdAt ?? "";
   const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 100);
@@ -178,13 +219,17 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
     id: product.id,
     title: product.title ?? "",
     description: product.description ?? "",
-    brand: product.brand ?? "",
-    category: product.category ?? product.categoryId ?? "",
-    subCategory: product.subCategory ?? product.subcategory ?? "",
-    size: product.size ?? "",
+    brand: product.brand ?? getAttributeValue(product, "brand") ?? "",
+    category: product.category ?? product.categoryId ?? getAttributeValue(product, "category") ?? "",
+    subCategory:
+      product.subCategory ??
+      product.subcategory ??
+      getAttributeValue(product, "sub_category", "subcategory", "clothing_type") ??
+      "",
+    size: product.size ?? getAttributeValue(product, "size") ?? "",
     condition,
-    material: product.material ?? product.fabric ?? "",
-    color: product.color ?? "",
+    material: product.material ?? product.fabric ?? getAttributeValue(product, "material", "fabric") ?? "",
+    color: product.color ?? getAttributeValue(product, "color", "colour") ?? "",
     uploadedAt,
     shippingFromPrice,
     price,
@@ -192,7 +237,9 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
     likes: Number(product.likeCount ?? 0) || 0,
     images: getImageUrls(product.images),
     rating: Number(product.rating ?? 4) || 4.5,
-    user: product.user
+    user: product.user,
+    attributeValues,
+    attributes: Array.isArray(product.attributes) ? product.attributes : [],
   };
 };
 

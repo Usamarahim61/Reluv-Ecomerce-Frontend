@@ -81,6 +81,7 @@ export default function Payments(): JSX.Element {
       <CardDetailsModal
         isOpen={openCardModal}
         onClose={() => setOpenCardModal(false)}
+        onSave={(card) => console.log("Card saved:", card)}
       />
 
       <AddBankAccount

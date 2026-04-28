@@ -29,6 +29,7 @@ import {
   MemebersCardItem,
 } from "@/services/products-service";
 import { getUser, getUserAvatr } from "@/services/auth-service";
+import { BACKEND_URL } from "@/constants";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
@@ -41,7 +42,7 @@ export default function Navbar() {
   >([]);
   const [showResults, setShowResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSearchResultClick = useCallback((id: string | number) => {
     setSearchQuery("");
@@ -301,7 +302,7 @@ export default function Navbar() {
 
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm truncate">
-                                    {item.brand || item?.title}
+                                    {item.brand || item.item}
                                   </p>
                                   <p className="text-xs text-gray-500 truncate">
                                     {item.item}
@@ -330,10 +331,10 @@ export default function Navbar() {
                                 <img
                                   src={
                                     member.avatar
-                                      ? `http://localhost:1337${member.avatar?.url}`
+                                      ? `${BACKEND_URL}/${member.avatar}`
                                       : "/avatar-placeholder.png"
                                   }
-                                  alt={member?.fullName || member?.username}
+                                  alt={member?.fullName || member?.username || "avatar"}
                                   className="w-10 h-10 min-w-[40px] object-cover rounded-full"
                                 />
 
@@ -670,3 +671,4 @@ export default function Navbar() {
     </>
   );
 }
+
