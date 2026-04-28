@@ -1,5 +1,6 @@
 "use client";
 
+import { BACKEND_URL } from "@/constants";
 import { useAuth } from "@/context/AuthContext";
 import { getUser, updateUserProfile } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";

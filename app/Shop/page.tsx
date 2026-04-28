@@ -13,7 +13,7 @@ import {
 import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /* ─── constants ───────────────────────────────────────────── */
 const defaultFilterOptions: ProductFilterOptions = {
@@ -59,7 +59,7 @@ const getLeafCategoryEntries = (
   });
 
 /* ─── component ───────────────────────────────────────────── */
-export default function ShopPage() {
+function ShopPageContent() {
   const { isAndroid } = useAndroidNative();
   const router       = useRouter();
   const pathname     = usePathname();
@@ -84,6 +84,12 @@ export default function ShopPage() {
   const [colourFilter,    setColourFilter]    = useState(FILTER_DEFAULTS.colour);
   const [materialFilter,  setMaterialFilter]  = useState(FILTER_DEFAULTS.material);
   const [sortBy,          setSortBy]          = useState(FILTER_DEFAULTS.sortBy);
+  const [priceMenuOpen,   setPriceMenuOpen]   = useState(false);
+  const [minPrice,        setMinPrice]        = useState<number | null>(null);
+  const [maxPrice,        setMaxPrice]        = useState<number | null>(null);
+  const [priceMinInput,   setPriceMinInput]   = useState('');
+  const [priceMaxInput,   setPriceMaxInput]   = useState('');
+  const [priceError,      setPriceError]      = useState<string | null>(null);
 
   /* filter options */
   const [filterOptions,        setFilterOptions]        = useState<ProductFilterOptions>(defaultFilterOptions);
@@ -98,6 +104,7 @@ export default function ShopPage() {
   const [categoryTreeFetched, setCategoryTreeFetched] = useState(false); // guard: fetch once
   const [activeCategoryPath,  setActiveCategoryPath]  = useState<CategoryTreeNode[]>([]);
   const categoryMenuRef = useRef<HTMLDivElement | null>(null);
+  const priceMenuRef    = useRef<HTMLDivElement | null>(null);
 
   const [showShippingBanner, setShowShippingBanner] = useState(true);
 
@@ -122,6 +129,8 @@ export default function ShopPage() {
           colour:    colourFilter    === FILTER_DEFAULTS.colour    ? '' : colourFilter,
           material:  materialFilter  === FILTER_DEFAULTS.material  ? '' : materialFilter,
           sortBy,
+          minPrice,
+          maxPrice,
         });
 
         setHasMore(data.hasMore);
@@ -134,7 +143,7 @@ export default function ShopPage() {
         setLoadingMore(false);
       }
     },
-    [category, subCategory, item, brandFilter, sizeFilter, conditionFilter, colourFilter, materialFilter, sortBy],
+    [category, subCategory, item, brandFilter, sizeFilter, conditionFilter, colourFilter, materialFilter, sortBy, minPrice, maxPrice],
   );
 
   // re-fetch from page 1 whenever filters/category change
@@ -183,6 +192,7 @@ export default function ShopPage() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!categoryMenuRef.current?.contains(e.target as Node)) setCategoryMenuOpen(false);
+      if (!priceMenuRef.current?.contains(e.target as Node)) setPriceMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -222,6 +232,8 @@ export default function ShopPage() {
     brandFilter     !== FILTER_DEFAULTS.brand     ||
     colourFilter    !== FILTER_DEFAULTS.colour    ||
     materialFilter  !== FILTER_DEFAULTS.material  ||
+    minPrice !== null ||
+    maxPrice !== null ||
     !!category || !!subCategory || !!item;
 
   /* ── category navigation helpers ── */
@@ -251,7 +263,52 @@ export default function ShopPage() {
     setColourFilter(FILTER_DEFAULTS.colour);
     setMaterialFilter(FILTER_DEFAULTS.material);
     setSortBy(FILTER_DEFAULTS.sortBy);
+    setMinPrice(null);
+    setMaxPrice(null);
+    setPriceMinInput('');
+    setPriceMaxInput('');
+    setPriceError(null);
   };
+
+  const handleApplyPrice = () => {
+    setPriceError(null);
+    const minRaw = priceMinInput.trim();
+    const maxRaw = priceMaxInput.trim();
+
+    const minParsed = minRaw === '' ? null : Number(minRaw);
+    const maxParsed = maxRaw === '' ? null : Number(maxRaw);
+
+    if ((minParsed != null && (!Number.isFinite(minParsed) || minParsed < 0)) ||
+        (maxParsed != null && (!Number.isFinite(maxParsed) || maxParsed < 0))) {
+      setPriceError('Please enter valid prices.');
+      return;
+    }
+
+    if (minParsed != null && maxParsed != null && minParsed > maxParsed) {
+      setPriceError('Min price cannot be greater than max price.');
+      return;
+    }
+
+    setMinPrice(minParsed);
+    setMaxPrice(maxParsed);
+    setPriceMenuOpen(false);
+  };
+
+  const handleClearPrice = () => {
+    setMinPrice(null);
+    setMaxPrice(null);
+    setPriceMinInput('');
+    setPriceMaxInput('');
+    setPriceError(null);
+    setPriceMenuOpen(false);
+  };
+
+  const priceLabel = useMemo(() => {
+    if (minPrice == null && maxPrice == null) return 'Price';
+    if (minPrice != null && maxPrice != null) return `Price ${minPrice} - ${maxPrice}`;
+    if (minPrice != null) return `Price >= ${minPrice}`;
+    return `Price <= ${maxPrice}`;
+  }, [minPrice, maxPrice]);
 
   /* ── style constants ── */
   const pillSelectClass =
@@ -401,7 +458,7 @@ export default function ShopPage() {
                   <select
                     key={value}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e:any) => onChange(e.target.value)}
                     disabled={filterOptionsLoading}
                     className={`${pillSelectClass} ${filterOptionsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -409,13 +466,70 @@ export default function ShopPage() {
                   </select>
                 ))}
 
-                <div className={staticPillClass}>
-                  Price <ChevronDown className="ml-1 inline-block" size={18} />
+                <div className="relative" ref={priceMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPriceError(null);
+                      setPriceMinInput(minPrice != null ? String(minPrice) : '');
+                      setPriceMaxInput(maxPrice != null ? String(maxPrice) : '');
+                      setPriceMenuOpen((prev) => !prev);
+                    }}
+                    className={`${staticPillClass} ${minPrice != null || maxPrice != null ? 'border-[#2a9ca4] bg-[#dbf0f1] text-[#194d52]' : ''}`}
+                  >
+                    {priceLabel} <ChevronDown className="ml-1 inline-block" size={18} />
+                  </button>
+
+                  {priceMenuOpen && (
+                    <div className="absolute left-0 top-full z-30 mt-2 w-[300px] rounded-xl border border-[#d5dfe4] bg-white p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)]">
+                      <p className="mb-3 text-sm font-medium text-[#2f2f2f]">Select price range</p>
+
+                      <div className="mb-3 grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={priceMinInput}
+                          onChange={(e) => setPriceMinInput(e.target.value)}
+                          placeholder="Min"
+                          className="w-full rounded-lg border border-[#d7e1e6] bg-white px-3 py-2 text-sm outline-none focus:border-[#007782] focus:ring-2 focus:ring-[#007782]/15"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={priceMaxInput}
+                          onChange={(e) => setPriceMaxInput(e.target.value)}
+                          placeholder="Max"
+                          className="w-full rounded-lg border border-[#d7e1e6] bg-white px-3 py-2 text-sm outline-none focus:border-[#007782] focus:ring-2 focus:ring-[#007782]/15"
+                        />
+                      </div>
+
+                      {priceError ? <p className="mb-3 text-xs text-red-500">{priceError}</p> : null}
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={handleClearPrice}
+                          className="rounded-md border border-[#bec7cc] px-3 py-1.5 text-sm text-[#2f2f2f] hover:bg-[#f6f8f9]"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApplyPrice}
+                          className="rounded-md bg-[#007782] px-3 py-1.5 text-sm text-white hover:bg-[#00656f]"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <select
                   value={materialFilter}
-                  onChange={(e) => setMaterialFilter(e.target.value)}
+                  onChange={(e:any) => setMaterialFilter(e.target.value)}
                   disabled={filterOptionsLoading}
                   className={`${pillSelectClass} ${filterOptionsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
@@ -424,7 +538,7 @@ export default function ShopPage() {
 
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e:any) => setSortBy(e.target.value)}
                   className={pillSelectClass}
                 >
                   {sortOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
@@ -490,5 +604,19 @@ export default function ShopPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-10 text-center text-sm text-gray-500">
+          Loading shop...
+        </div>
+      }
+    >
+      <ShopPageContent />
+    </Suspense>
   );
 }
