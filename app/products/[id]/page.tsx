@@ -1,5 +1,4 @@
-"use client";
-import { useAuth } from "@/context/AuthContext";
+import ProductDetailClient from "./ProductDetailClient";
 
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/lib/hooks";

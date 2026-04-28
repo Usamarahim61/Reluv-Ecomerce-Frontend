@@ -248,19 +248,23 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   const condition = formatCondition(product.condition);
   const price = formatPrice(product.price);
   const uploadedAt = product.updatedAt ?? product.createdAt ?? "";
-  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 2.95);
+  const shippingFromPrice = formatPrice(product.shippingFromPrice ?? product.shipping_price ?? 100);
 
   return {
     id: product.id,
     title: product.title ?? "",
     description: product.description ?? "",
-    brand: product.brand ?? "",
-    category: product.category ?? product.categoryId ?? "",
-    subCategory: product.subCategory ?? product.subcategory ?? "",
-    size: product.size ?? "",
+    brand: product.brand ?? getAttributeValue(product, "brand") ?? "",
+    category: product.category ?? product.categoryId ?? getAttributeValue(product, "category") ?? "",
+    subCategory:
+      product.subCategory ??
+      product.subcategory ??
+      getAttributeValue(product, "sub_category", "subcategory", "clothing_type") ??
+      "",
+    size: product.size ?? getAttributeValue(product, "size") ?? "",
     condition,
-    material: product.material ?? product.fabric ?? "",
-    color: product.color ?? "",
+    material: product.material ?? product.fabric ?? getAttributeValue(product, "material", "fabric") ?? "",
+    color: product.color ?? getAttributeValue(product, "color", "colour") ?? "",
     uploadedAt,
     shippingFromPrice,
     price,
@@ -268,7 +272,9 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
     likes: Number(product.likeCount ?? 0) || 0,
     images: getImageUrls(product.images),
     rating: Number(product.rating ?? 4) || 4.5,
-    user: product.user
+    user: product.user,
+    attributeValues,
+    attributes: Array.isArray(product.attributes) ? product.attributes : [],
   };
 };
 
