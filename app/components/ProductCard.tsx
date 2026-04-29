@@ -73,24 +73,22 @@ export default function ProductCard({
   const isAndroid = variant === "android";
 
   const AddLike = async (e: React.MouseEvent) => {
-    e.preventDefault(); // 🚨 prevent Link navigation
+    e.preventDefault(); 
     e.stopPropagation();
     try {
-       const payload = {
-      data: {
-        likeCount: Number(likes || 0) + 1,
-      },
-    };
-
-    console.log("SENDING:", payload);
       // 🔹 1. Update product likes
-      const res = await fetch(`${API_BASE_URL}/api/products/p46zv8yr0ajmnefy9lcqtsq7`, {
+      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
         method: "PUT",
          headers: {
         "Content-Type": "application/json",
         //  Authorization: `Bearer ${token}`, // if needed
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+    data: {
+      likeCount: Number(likes || 0) + 1,
+    },
+  }),
+
       });
       const result = await res.json();
 

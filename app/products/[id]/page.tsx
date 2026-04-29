@@ -1,6 +1,48 @@
-import { CategoryNode } from "@/lib/categoryUtils";
-import ProductDetailClient from "./ProductDetailClient";
 
+"use client";
+import ProductDetailClient from "./ProductDetailClient";
+import { useAuth } from "@/context/AuthContext";
+
+import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/lib/hooks";
+import { fetchConversations } from "@/lib/features/messagesSlice";
+import { createConversationForProduct } from "@/services/messages-service";
+
+import ImageCarousel from "@/app/components/ImageCarousel";
+import ImageZoom from "@/app/components/ImageZoom";
+import Footer from "@/app/components/Footer";
+import ProductCard from "@/app/components/ProductCard";
+import { API_BASE_URL } from "@/app/constants/api";
+import { CATEGORY_TREE_ENDPOINT, CategoryNode } from "@/lib/categoryUtils";
+import {
+  fetchProductById,
+  fetchProductsForHome,
+  fetchProductsByUserId,
+  fetchFilteredProducts,
+  ProductCardItem,
+  ProductDetailItem,
+} from "@/services/products-service";
+import {
+  ChevronRight,
+  Clock,
+  Flag,
+  Heart,
+  Info,
+  MapPin,
+  PlusSquare,
+  Share2,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+type BreadcrumbItem = { label: string; slug: string };
+const toText = (value: unknown, fallback = ""): string => {
+  if (typeof value === "string") return value.trim() || fallback;
+  if (typeof value === "number") return String(value);
+  return fallback;
+};
 const findCategoryPath = (
   nodes: CategoryNode[],
   targetName: string,
@@ -199,6 +241,23 @@ function ProductErrorScreen({ message, onRetry }: { message: string; onRetry: ()
     </div>
   );
 }
+const toRelativeUploadTime = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim().length === 0)
+    return "18 min ago";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "18 min ago";
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} h ago`;
+  return `${Math.floor(diffHours / 24)} d ago`;
+};
+const toAbsoluteImageUrl = (url: string): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+};
 
 /* ─── component ───────────────────────────────────────────── */
 export default function ProductDetailPage() {
