@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { getUser, updateUserProfile, AccountUpdate } from "@/services/auth-service";
+import { getUser, updateUserProfile, AccountUpdate, getUserAvatr } from "@/services/auth-service";
 
 type RequestStatus = "idle" | "loading" | "succeeded" | "failed";
 
@@ -26,6 +26,10 @@ export const fetchUserById = createAsyncThunk(
   async (id: number, { rejectWithValue }) => {
     try {
       const data = await getUser(id);
+      const userAvatar = await getUserAvatr(id);
+        if (userAvatar.avatar?.url) {
+          data.avatar = userAvatar.avatar;
+        }
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : "Failed to load user");

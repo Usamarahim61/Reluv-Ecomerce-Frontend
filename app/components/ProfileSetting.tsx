@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { getUser, updateUserProfile } from "@/services/auth-service";
+import { getUser, getUserAvatr, updateUserProfile } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
@@ -53,7 +53,7 @@ export default function ProfileSetting() {
       try {
         setLoading(true);
         const data = await getUser(Number(user.id));
-
+        const userAvatar = await getUserAvatr(Number(user.id));
         setFormData({
           username: data.username || "",
           about: data.about || "",
@@ -63,10 +63,10 @@ export default function ProfileSetting() {
           language: data.language || "",
         });
 
-        if (data.avatar?.url) {
+        if (userAvatar.avatar?.url) {
           // Server URL — not a blob, no need to track for revocation
-          setAvatarPreview(data.avatar.url);
-          avatarPreviewRef.current = data.avatar.url;
+          setAvatarPreview(userAvatar.avatar.url);
+          avatarPreviewRef.current = userAvatar.avatar.url;
         }
       } catch {
         setError("Failed to load profile data.");

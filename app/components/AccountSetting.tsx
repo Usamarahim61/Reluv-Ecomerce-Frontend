@@ -24,7 +24,6 @@ export default function AccountSetting() {
       try {
         setLoading(true);
         const data: any= await getUser(Number(user.id));
-
         setFormData({
           email: data.email || "",
           phoneNumber: data.phoneNumber || "",

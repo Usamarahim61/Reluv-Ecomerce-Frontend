@@ -8,14 +8,13 @@ import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchProducts } from "@/lib/features/productsSlice";
 import type { ProductCardItem } from "@/services/products-service";
+import { HomeSkeleton, NavbarSkeleton, ProductGridEmpty, ProductGridSkeleton } from "./components/Skeletons";
 
 export default function Home() {
   const { isAndroid, isReady } = useAndroidNative();
   const dispatch = useAppDispatch();
   const pageSize = 20;
   const [showBanner, setShowBanner] = useState(true);
-  const [openInBox, setOpenInBox] = useState(false);
-
   const products = useAppSelector((state) => state.products.items);
   const status = useAppSelector((state) => state.products.status);
   const error = useAppSelector((state) => state.products.error);
@@ -34,67 +33,13 @@ export default function Home() {
     const nextPage = page + 1;
     dispatch(fetchProducts({ page: nextPage, pageSize }));
   };
-  if (!isReady) {
-    return (
-      <div className="min-h-[300px] flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          {/* Spinner */}
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-teal-600 border-gray-200" />
-
-          {/* Center Text */}
-          <span className="absolute text-teal-600 font-semibold text-sm">
-            Reluv
-          </span>
-        </div>
-      </div>
-    );
-  }
-  // if (!isReady) {
-  //     return (
-  //       <div
-  //         className="min-h-screen flex items-center justify-center"
-  //         style={{
-  //           background: 'linear-gradient(135deg, #10b981 0%, #0f766e 50%, #047857 100%)',
-  //         }}
-  //       >
-  //         <div
-  //           className="text-center"
-  //           style={{
-  //             fontFamily: 'var(--font-great-vibes)',
-  //           }}
-  //         >
-  //           <span
-  //             className="inline-block"
-  //             style={{
-  //               fontSize: 'clamp(4rem, 15vw, 8rem)',
-  //               fontWeight: 400,
-  //               background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%)',
-  //               WebkitBackgroundClip: 'text',
-  //               backgroundClip: 'text',
-  //               WebkitTextFillColor: 'transparent',
-  //               filter: 'drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4))',
-  //               animation: 'reluv-glow 1.5s ease-in-out infinite alternate',
-  //             }}
-  //           >
-  //             Reluv
-  //           </span>
-  //         </div>
-  //         <style jsx global>{`
-  //           @keyframes reluv-glow {
-  //             0% {
-  //               filter: drop-shadow(0 20px 40px rgba(16, 185, 129, 0.4));
-  //               transform: scale(1);
-  //             }
-  //             100% {
-  //               filter: drop-shadow(0 30px 60px rgba(16, 185, 129, 0.6));
-  //               transform: scale(1.03);
-  //             }
-  //           }
-  //         `}</style>
-  //       </div>
-  //     );
-  //   }
-
+  if (!isReady) return (
+  <>
+    <NavbarSkeleton />
+    <HomeSkeleton />
+     <ProductGridSkeleton  />
+  </>
+);
   if (isAndroid) {
     return (
       <AndroidHome

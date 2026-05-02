@@ -1,12 +1,9 @@
 "use client";
-import ProductDetailClient from "./ProductDetailClient";
 import { useAuth } from "@/context/AuthContext";
-
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/lib/hooks";
 import { fetchConversations } from "@/lib/features/messagesSlice";
 import { createConversationForProduct } from "@/services/messages-service";
-
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
 import MobileImageCarousel from "@/app/components/MobileImageCarousel";
@@ -37,6 +34,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
+import { ProductDetailSkeleton, ProductErrorScreen } from "@/app/components/Skeletons";
 type BreadcrumbItem = { label: string; slug: string };
 const toText = (value: unknown, fallback = ""): string => {
   if (typeof value === "string") return value.trim() || fallback;
@@ -63,191 +61,6 @@ function getPriceValue(priceString: string) {
 function getCurrencyCode(priceString: string) {
   const curMatch = priceString.match(/[^\d.\s]+/);
   return curMatch ? curMatch[0] : null;
-}
-
-/* ─── Skeleton Components ──────────────────────────────────── */
-function ProductDetailSkeleton() {
-  return (
-    <main className="min-h-screen bg-[#f3f3f3] pb-14 pt-4">
-      <div className="mx-auto w-full max-w-320 px-4">
-        {/* breadcrumb skeleton */}
-        <div className="mb-3 flex items-center gap-2">
-          <div className="h-3 w-10 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-3 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-3 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
-        </div>
-
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          {/* ── LEFT COLUMN skeleton ── */}
-          <section className="space-y-3">
-            {/* image gallery skeleton */}
-            <div className="rounded-sm p-2">
-              <div className="grid min-h-[540px] grid-cols-1 gap-2 sm:grid-cols-4">
-                {/* main large image */}
-                <div className="animate-pulse rounded-md bg-gray-200 sm:col-span-2 sm:row-span-2" />
-                {/* smaller thumbnails */}
-                {[...Array(3)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="aspect-square animate-pulse rounded-md bg-gray-200 sm:col-span-1"
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* action icons skeleton */}
-            <div className="flex items-center justify-end gap-3 pr-1">
-              <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
-            </div>
-
-            {/* member items skeleton */}
-            <section className="space-y-3 pt-1">
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-              <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
-                    <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
-                    <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
-                    <div className="h-3 w-1/3 rounded bg-gray-200" />
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* similar items skeleton */}
-            <section className="space-y-3 pt-4">
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-              <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
-                    <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
-                    <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
-                    <div className="h-3 w-1/3 rounded bg-gray-200" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          </section>
-
-          {/* ── RIGHT COLUMN skeleton ── */}
-          <aside className="space-y-3">
-            {/* main product info card */}
-            <div className="rounded-sm border border-[#e3e3e3] bg-white p-4 space-y-3">
-              {/* title */}
-              <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
-              {/* size / condition / brand */}
-              <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
-              {/* description lines */}
-              <div className="space-y-1.5">
-                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
-              </div>
-              {/* price */}
-              <div className="border-b border-[#ececec] pb-3 space-y-1.5">
-                <div className="h-7 w-28 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-40 animate-pulse rounded bg-gray-200" />
-              </div>
-              {/* details grid */}
-              <div className="rounded-sm bg-[#f7f7f7] p-2 space-y-2">
-                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-4">
-                    <div className="h-3 animate-pulse rounded bg-gray-200" />
-                    <div className="h-3 animate-pulse rounded bg-gray-200" />
-                  </div>
-                ))}
-              </div>
-              {/* shipping */}
-              <div className="flex justify-between border-b border-[#ececec] pb-3">
-                <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
-              </div>
-              {/* buttons */}
-              <div className="space-y-2">
-                <div className="h-9 w-full animate-pulse rounded-[4px] bg-gray-200" />
-                <div className="h-9 w-full animate-pulse rounded-[4px] bg-gray-200" />
-              </div>
-            </div>
-
-            {/* buyer protection card */}
-            <div className="flex gap-3 rounded-sm border border-[#e3e3e3] bg-white p-3">
-              <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-gray-200" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
-              </div>
-            </div>
-
-            {/* seller card */}
-            <div className="rounded-sm border border-[#e3e3e3] bg-white">
-              {/* seller header */}
-              <div className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 animate-pulse rounded-full bg-gray-200" />
-                  <div className="space-y-1.5">
-                    <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
-                    <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
-                  </div>
-                </div>
-                <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
-              </div>
-              {/* badge */}
-              <div className="border-y border-[#f0f0f0] p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 animate-pulse rounded-md bg-gray-200" />
-                  <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
-                </div>
-                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
-              </div>
-              {/* location / last seen */}
-              <div className="space-y-2 p-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-36 animate-pulse rounded bg-gray-200" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-28 animate-pulse rounded bg-gray-200" />
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function ProductErrorScreen({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center px-4">
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-8 py-14 text-center max-w-sm w-full">
-        <span className="mb-3 text-5xl">😕</span>
-        <h2 className="mb-1 text-[18px] font-semibold text-red-700">
-          Something went wrong
-        </h2>
-        <p className="mb-5 text-[14px] text-red-500">{message}</p>
-        <button
-          onClick={onRetry}
-          className="rounded-full bg-[#007782] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  );
 }
 const toRelativeUploadTime = (value: unknown): string => {
   if (typeof value !== "string" || value.trim().length === 0)

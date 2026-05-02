@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 
 interface ProductProps {
   id: string | number;
+  documentId?: string | number;
   brand: unknown;
   title: unknown;
   size: unknown;
@@ -12,7 +13,7 @@ interface ProductProps {
   price: unknown;
   totalPrice: unknown;
   imageUrl?: unknown;
-  likes: number,
+  likes: number;
   variant?: "default" | "android";
 }
 
@@ -53,6 +54,7 @@ const toImageUrl = (value: unknown): string | null => {
 
 export default function ProductCard({
   id,
+  documentId,
   brand,
   title,
   size,
@@ -67,6 +69,9 @@ export default function ProductCard({
   const safeImageUrl = toImageUrl(imageUrl);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
   const nameText = toDisplayText(title);
+  const productDocumentId = encodeURIComponent(
+    String(documentId ?? "").trim() || "0",
+  );
   const brandText = toDisplayText(brand);
   const sizeText = toDisplayText(size);
   const conditionText = toDisplayText(condition);
@@ -76,23 +81,25 @@ export default function ProductCard({
   const isAndroid = variant === "android";
 
   const AddLike = async (e: React.MouseEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.stopPropagation();
     try {
       // 🔹 1. Update product likes
-      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-        method: "PUT",
-         headers: {
-        "Content-Type": "application/json",
-        //  Authorization: `Bearer ${token}`, // if needed
-      },
-      body: JSON.stringify({
-    data: {
-      likeCount: Number(likes || 0) + 1,
-    },
-  }),
-
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/products/${productDocumentId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            //  Authorization: `Bearer ${token}`, // if needed
+          },
+          body: JSON.stringify({
+            data: {
+              likeCount: Number(likes || 0) + 1,
+            },
+          }),
+        },
+      );
       const result = await res.json();
 
       if (!res.ok) {
@@ -102,10 +109,12 @@ export default function ProductCard({
       // 🔹 2. Add product to user favorites
       await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          //  Authorization: `Bearer ${token}`, // if needed
+        },
         body: JSON.stringify({
-          fav_products: {
-            id : productId, // ✅ attach product
-          },
+          fav_products: [Number(productId)],
         }),
       });
     } catch (error) {

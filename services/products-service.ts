@@ -1,7 +1,7 @@
 import { apiRequest } from "./api";
 
 export type ProductCardItem = {
-  documentId?: string;
+  documentId?: string | number ;
   id: number | string;
   brand: string;
   title: string;
@@ -259,6 +259,7 @@ export async function fetchProductsForHome(
   const data = Array.isArray(payload?.products)
     ? (payload.products as any[])
     : [];
+  console.log("Fetched products for home:",  data );
   const items = data.map(mapProductToCard);
 
   return {

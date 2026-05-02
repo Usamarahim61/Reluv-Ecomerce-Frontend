@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/app/constants/api";
 import { apiRequest } from "./api";
 
+// localStorage.getItem("jwt")
 export function login(identifier: string, password: string) {
   return apiRequest("/auth/local", {
     method: "POST",
@@ -16,8 +17,8 @@ export function register(username: string, email: string, password: string) {
 }
 export function getUser(id: number) {
   return apiRequest(
-    `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*&populate[avatar][populate]=*`,
-     { method: "GET",
+    `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*`,
+     { method: "GET"
     }
   );
 }
