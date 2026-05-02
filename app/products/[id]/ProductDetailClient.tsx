@@ -1,4 +1,3 @@
-
 "use client";
 import ProductDetailClient from "./ProductDetailClient";
 import { useAuth } from "@/context/AuthContext";
@@ -225,12 +224,20 @@ function ProductDetailSkeleton() {
   );
 }
 
-function ProductErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ProductErrorScreen({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center px-4">
       <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-8 py-14 text-center max-w-sm w-full">
         <span className="mb-3 text-5xl">😕</span>
-        <h2 className="mb-1 text-[18px] font-semibold text-red-700">Something went wrong</h2>
+        <h2 className="mb-1 text-[18px] font-semibold text-red-700">
+          Something went wrong
+        </h2>
         <p className="mb-5 text-[14px] text-red-500">{message}</p>
         <button
           onClick={onRetry}
@@ -472,7 +479,7 @@ export default function ProductDetailPage() {
     price: getPriceValue(price) || 0,
     currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
-    buyerProtectionFee: 100.00,
+    buyerProtectionFee: 100.0,
     shippingFee: getPriceValue(shippingFromPrice) || 0,
     sellerId: seller?.id,
   };
@@ -495,7 +502,7 @@ export default function ProductDetailPage() {
       alert("Failed to start conversation. Please try again.");
     }
   };
-  
+
   /* ─── LOADING / ERROR SCREENS ────────────────────────────── */
   if (isProductLoading) {
     return <ProductDetailSkeleton />;
@@ -562,7 +569,7 @@ export default function ProductDetailPage() {
                           <div className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-lg font-semibold text-white">
                             + {productImages.length - visibleImages.length}
                           </div>
-                          <button  className="absolute bottom-2 right-2 rounded-sm bg-white p-1.5 shadow-sm">
+                          <button className="absolute bottom-2 right-2 rounded-sm bg-white p-1.5 shadow-sm">
                             <Heart size={18} className="text-gray-400" />
                           </button>
                         </div>
@@ -686,22 +693,44 @@ export default function ProductDetailPage() {
                     In demand: 3 buyers recently sent offers
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <span>Brand</span>{" "}
+                    {/* Static fields */}
+                    <span>Brand</span>
                     <span className="text-[#333]">{brand}</span>
-                    <span>Size</span>{" "}
+
+                    <span>Size</span>
                     <span className="text-[#333]">{size}</span>
-                    <span>Condition</span>{" "}
+
+                    <span>Condition</span>
                     <span className="text-[#333]">{condition}</span>
-                    <span>Colour</span>{" "}
+
+                    <span>Colour</span>
                     <span className="text-[#333]">{color}</span>
-                    <span>Uploaded</span>{" "}
+
+                    {/* Dynamic attributes from backend */}
+                    {product?.attributes
+                      ?.filter((attr) => {
+                        // Skip attributes already shown as static fields
+                        const skipCodes = new Set([
+                          "brand",
+                          "size",
+                          "condition",
+                          "colour",
+                          "color",
+                        ]);
+                        return (
+                          attr.name &&
+                          attr.value &&
+                          !skipCodes.has(attr.code?.toLowerCase() ?? "")
+                        );
+                      })
+                      .map((attr, index) => (
+                        <React.Fragment key={attr.id ?? index}>
+                          <span>{attr.name}</span>
+                          <span className="text-[#333]">{attr.value}</span>
+                        </React.Fragment>
+                      ))}
+                    <span>Uploaded</span>
                     <span className="text-[#333]">{uploadedAt}</span>
-                    {product?.attributes?.map((attr, index) => (
-                      <React.Fragment key={attr.id || index}>
-                        <span>{attr.name}</span>{" "}
-                        <span className="text-[#333]">{attr.value}</span>
-                      </React.Fragment>
-                    ))}
                   </div>
                 </div>
 
