@@ -1,4 +1,6 @@
+
 "use client";
+import ProductDetailClient from "./ProductDetailClient";
 import { useAuth } from "@/context/AuthContext";
 
 import { useRouter } from "next/navigation";
@@ -8,6 +10,7 @@ import { createConversationForProduct } from "@/services/messages-service";
 
 import ImageCarousel from "@/app/components/ImageCarousel";
 import ImageZoom from "@/app/components/ImageZoom";
+import MobileImageCarousel from "@/app/components/MobileImageCarousel";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
 import { API_BASE_URL } from "@/app/constants/api";
@@ -34,36 +37,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-
-/* ─── helpers ─────────────────────────────────────────────── */
-const toAbsoluteImageUrl = (url: string): string => {
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${API_BASE_URL}${url}`;
-};
-
+import React, { useEffect, useMemo, useState } from "react";
+type BreadcrumbItem = { label: string; slug: string };
 const toText = (value: unknown, fallback = ""): string => {
   if (typeof value === "string") return value.trim() || fallback;
   if (typeof value === "number") return String(value);
   return fallback;
 };
-
-const toRelativeUploadTime = (value: unknown): string => {
-  if (typeof value !== "string" || value.trim().length === 0)
-    return "18 min ago";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "18 min ago";
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} h ago`;
-  return `${Math.floor(diffHours / 24)} d ago`;
-};
-
-type BreadcrumbItem = { label: string; slug: string };
-
 const findCategoryPath = (
   nodes: CategoryNode[],
   targetName: string,
@@ -83,11 +63,205 @@ function getPriceValue(priceString: string) {
 
 function getCurrencyCode(priceString: string) {
   const curMatch = priceString.match(/[^\d.\s]+/);
-  return curMatch ? curMatch[0] : null; // ← was curMatch[1], which is always undefined
+  return curMatch ? curMatch[0] : null;
 }
 
+/* ─── Skeleton Components ──────────────────────────────────── */
+function ProductDetailSkeleton() {
+  return (
+    <main className="min-h-screen bg-[#f3f3f3] pb-14 pt-4">
+      <div className="mx-auto w-full max-w-320 px-4">
+        {/* breadcrumb skeleton */}
+        <div className="mb-3 flex items-center gap-2">
+          <div className="h-3 w-10 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-3 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-3 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+        </div>
+
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+          {/* ── LEFT COLUMN skeleton ── */}
+          <section className="space-y-3">
+            {/* image gallery skeleton */}
+            <div className="rounded-sm p-2">
+              <div className="grid min-h-[540px] grid-cols-1 gap-2 sm:grid-cols-4">
+                {/* main large image */}
+                <div className="animate-pulse rounded-md bg-gray-200 sm:col-span-2 sm:row-span-2" />
+                {/* smaller thumbnails */}
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-square animate-pulse rounded-md bg-gray-200 sm:col-span-1"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* action icons skeleton */}
+            <div className="flex items-center justify-end gap-3 pr-1">
+              <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
+            </div>
+
+            {/* member items skeleton */}
+            <section className="space-y-3 pt-1">
+              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
+                    <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
+                    <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
+                    <div className="h-3 w-1/3 rounded bg-gray-200" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* similar items skeleton */}
+            <section className="space-y-3 pt-4">
+              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
+                    <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
+                    <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
+                    <div className="h-3 w-1/3 rounded bg-gray-200" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </section>
+
+          {/* ── RIGHT COLUMN skeleton ── */}
+          <aside className="space-y-3">
+            {/* main product info card */}
+            <div className="rounded-sm border border-[#e3e3e3] bg-white p-4 space-y-3">
+              {/* title */}
+              <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+              {/* size / condition / brand */}
+              <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
+              {/* description lines */}
+              <div className="space-y-1.5">
+                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
+              </div>
+              {/* price */}
+              <div className="border-b border-[#ececec] pb-3 space-y-1.5">
+                <div className="h-7 w-28 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-40 animate-pulse rounded bg-gray-200" />
+              </div>
+              {/* details grid */}
+              <div className="rounded-sm bg-[#f7f7f7] p-2 space-y-2">
+                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="grid grid-cols-2 gap-4">
+                    <div className="h-3 animate-pulse rounded bg-gray-200" />
+                    <div className="h-3 animate-pulse rounded bg-gray-200" />
+                  </div>
+                ))}
+              </div>
+              {/* shipping */}
+              <div className="flex justify-between border-b border-[#ececec] pb-3">
+                <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+              </div>
+              {/* buttons */}
+              <div className="space-y-2">
+                <div className="h-9 w-full animate-pulse rounded-[4px] bg-gray-200" />
+                <div className="h-9 w-full animate-pulse rounded-[4px] bg-gray-200" />
+              </div>
+            </div>
+
+            {/* buyer protection card */}
+            <div className="flex gap-3 rounded-sm border border-[#e3e3e3] bg-white p-3">
+              <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-gray-200" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+              </div>
+            </div>
+
+            {/* seller card */}
+            <div className="rounded-sm border border-[#e3e3e3] bg-white">
+              {/* seller header */}
+              <div className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 animate-pulse rounded-full bg-gray-200" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+                    <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+                  </div>
+                </div>
+                <div className="h-4 w-4 animate-pulse rounded bg-gray-200" />
+              </div>
+              {/* badge */}
+              <div className="border-y border-[#f0f0f0] p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 animate-pulse rounded-md bg-gray-200" />
+                  <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+                </div>
+                <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
+              </div>
+              {/* location / last seen */}
+              <div className="space-y-2 p-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-200" />
+                  <div className="h-3 w-36 animate-pulse rounded bg-gray-200" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-3.5 animate-pulse rounded bg-gray-200" />
+                  <div className="h-3 w-28 animate-pulse rounded bg-gray-200" />
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function ProductErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center px-4">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-8 py-14 text-center max-w-sm w-full">
+        <span className="mb-3 text-5xl">😕</span>
+        <h2 className="mb-1 text-[18px] font-semibold text-red-700">Something went wrong</h2>
+        <p className="mb-5 text-[14px] text-red-500">{message}</p>
+        <button
+          onClick={onRetry}
+          className="rounded-full bg-[#007782] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+const toRelativeUploadTime = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim().length === 0)
+    return "18 min ago";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "18 min ago";
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} h ago`;
+  return `${Math.floor(diffHours / 24)} d ago`;
+};
+const toAbsoluteImageUrl = (url: string): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+};
+
 /* ─── component ───────────────────────────────────────────── */
-export default function ProductDetailClient() {
+export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -147,7 +321,6 @@ export default function ProductDetailClient() {
       setFeedError(null);
 
       try {
-        // fire seller-items and brand-items in parallel; fall back to home feed only if both fail
         const [sellerResult, brandResult] = await Promise.allSettled([
           product.user?.id
             ? fetchProductsByUserId(product.user.id)
@@ -162,7 +335,6 @@ export default function ProductDetailClient() {
 
         if (!isMounted) return;
 
-        /* member items */
         let memberMatches: ProductCardItem[] = [];
         if (sellerResult.status === "fulfilled") {
           memberMatches = sellerResult.value
@@ -170,7 +342,6 @@ export default function ProductDetailClient() {
             .slice(0, 20);
         }
 
-        /* similar items */
         let similarMatches: ProductCardItem[] = [];
         if (brandResult.status === "fulfilled") {
           similarMatches = brandResult.value.items
@@ -178,7 +349,6 @@ export default function ProductDetailClient() {
             .slice(0, 20);
         }
 
-        // only hit the home feed when BOTH primary sources failed
         if (!memberMatches.length && !similarMatches.length) {
           const feed = await fetchProductsForHome(1, 40);
           if (!isMounted) return;
@@ -188,10 +358,8 @@ export default function ProductDetailClient() {
           memberMatches = others.slice(0, 20);
           similarMatches = others.slice(20, 40);
         } else if (!memberMatches.length) {
-          // seller call failed but brand succeeded — use brand items as member fallback too
           memberMatches = similarMatches.slice(0, 20);
         } else if (!similarMatches.length) {
-          // brand call failed but seller succeeded — use seller items as similar fallback
           similarMatches = memberMatches.slice(0, 20);
         }
 
@@ -265,7 +433,6 @@ export default function ProductDetailClient() {
   const brand = toText(product?.brand, "No brand");
   const size = toText(product?.size, "One size");
   const condition = toText(product?.condition, "Good");
-  const material = toText(product?.material, "Not specified");
   const price = toText(product?.price, "TBH 0.00");
   const description = toText(
     product?.description,
@@ -273,7 +440,7 @@ export default function ProductDetailClient() {
   );
   const color = toText(product?.color, "N/A");
   const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
-  const shippingFromPrice = toText(product?.shippingFromPrice, "EUR 2.95");
+  const shippingFromPrice = toText(product?.shippingFromPrice, "TBH 100");
   const seller = product?.user ?? {};
   const isOwnProduct =
     user?.id &&
@@ -303,9 +470,9 @@ export default function ProductDetailClient() {
     brand,
     size,
     price: getPriceValue(price) || 0,
-    currency: getCurrencyCode(price) || "EUR",
+    currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
-    buyerProtectionFee: 2.45,
+    buyerProtectionFee: 100.00,
     shippingFee: getPriceValue(shippingFromPrice) || 0,
     sellerId: seller?.id,
   };
@@ -328,27 +495,18 @@ export default function ProductDetailClient() {
       alert("Failed to start conversation. Please try again.");
     }
   };
-
+  
   /* ─── LOADING / ERROR SCREENS ────────────────────────────── */
   if (isProductLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (productError) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center px-4">
-        <p className="text-red-500 text-sm">{productError}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="text-sm text-[#007782] underline"
-        >
-          Try again
-        </button>
-      </div>
+      <ProductErrorScreen
+        message={productError}
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
@@ -381,7 +539,13 @@ export default function ProductDetailClient() {
             {/* ── LEFT COLUMN ── */}
             <section className="space-y-3">
               {/* image gallery */}
-              <div className="rounded-sm  p-2">
+              {/* Mobile/Android Carousel View */}
+              <div className="sm:hidden">
+                <MobileImageCarousel images={productImages} title={name} />
+              </div>
+
+              {/* Desktop Grid View */}
+              <div className="hidden sm:block rounded-sm p-2">
                 <div className={`grid gap-2 ${galleryGridClass}`}>
                   {visibleImages.map((img, index) => (
                     <div
@@ -398,7 +562,7 @@ export default function ProductDetailClient() {
                           <div className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-lg font-semibold text-white">
                             + {productImages.length - visibleImages.length}
                           </div>
-                          <button className="absolute bottom-2 right-2 rounded-sm bg-white p-1.5 shadow-sm">
+                          <button  className="absolute bottom-2 right-2 rounded-sm bg-white p-1.5 shadow-sm">
                             <Heart size={18} className="text-gray-400" />
                           </button>
                         </div>
@@ -414,6 +578,7 @@ export default function ProductDetailClient() {
                 <Flag size={15} className="cursor-pointer" />
                 <Share2 size={15} className="cursor-pointer" />
               </div>
+
               {!isOwnProduct && (
                 <>
                   {/* member items */}
@@ -422,15 +587,28 @@ export default function ProductDetailClient() {
                       Member items
                     </h2>
                     {isFeedLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-7 w-7 border-t-2 border-teal-600" />
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="animate-pulse">
+                            <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
+                            <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
+                            <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
+                            <div className="h-3 w-1/3 rounded bg-gray-200" />
+                          </div>
+                        ))}
                       </div>
                     ) : feedError ? (
-                      <p className="text-xs text-red-400">{feedError}</p>
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-red-100 bg-red-50 px-4 py-8 text-center">
+                        <span className="mb-2 text-3xl">😕</span>
+                        <p className="text-[13px] text-red-500">{feedError}</p>
+                      </div>
                     ) : memberItems.length === 0 ? (
-                      <p className="text-xs text-gray-400">
-                        No items found from this seller.
-                      </p>
+                      <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                        <span className="mb-2 text-3xl">🛍️</span>
+                        <p className="text-[13px] text-gray-400">
+                          No items found from this seller.
+                        </p>
+                      </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
                         {memberItems.map((item) => (
@@ -445,12 +623,29 @@ export default function ProductDetailClient() {
                     <h2 className="text-sm font-semibold text-[#222]">
                       Similar items
                     </h2>
-                    {isFeedLoading ? null : feedError ? (
-                      <p className="text-xs text-red-400">{feedError}</p>
+                    {isFeedLoading ? (
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="animate-pulse">
+                            <div className="mb-2 aspect-[3/4] w-full rounded-xl bg-gray-200" />
+                            <div className="mb-1.5 h-3 w-3/4 rounded bg-gray-200" />
+                            <div className="mb-1 h-3 w-1/2 rounded bg-gray-200" />
+                            <div className="h-3 w-1/3 rounded bg-gray-200" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : feedError ? (
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-red-100 bg-red-50 px-4 py-8 text-center">
+                        <span className="mb-2 text-3xl">😕</span>
+                        <p className="text-[13px] text-red-500">{feedError}</p>
+                      </div>
                     ) : similarItems.length === 0 ? (
-                      <p className="text-xs text-gray-400">
-                        No similar items found.
-                      </p>
+                      <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                        <span className="mb-2 text-3xl">🛍️</span>
+                        <p className="text-[13px] text-gray-400">
+                          No similar items found.
+                        </p>
+                      </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-5">
                         {similarItems.map((item) => (
@@ -463,7 +658,7 @@ export default function ProductDetailClient() {
               )}
             </section>
 
-            {/* ── RIGHT COLUMN (aside) — unchanged ── */}
+            {/* ── RIGHT COLUMN (aside) ── */}
             <aside className="space-y-3">
               <div className="rounded-sm border border-[#e3e3e3] bg-white p-4">
                 <h1 className="text-[13px] font-medium leading-[1.3] text-[#333]">
@@ -497,12 +692,16 @@ export default function ProductDetailClient() {
                     <span className="text-[#333]">{size}</span>
                     <span>Condition</span>{" "}
                     <span className="text-[#333]">{condition}</span>
-                    <span>Material</span>{" "}
-                    <span className="text-[#333]">{material}</span>
                     <span>Colour</span>{" "}
                     <span className="text-[#333]">{color}</span>
                     <span>Uploaded</span>{" "}
                     <span className="text-[#333]">{uploadedAt}</span>
+                    {product?.attributes?.map((attr, index) => (
+                      <React.Fragment key={attr.id || index}>
+                        <span>{attr.name}</span>{" "}
+                        <span className="text-[#333]">{attr.value}</span>
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
 

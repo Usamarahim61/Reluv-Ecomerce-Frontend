@@ -1,6 +1,5 @@
 "use client";
 
-import { BACKEND_URL } from "@/constants";
 import { useAuth } from "@/context/AuthContext";
 import { getUser, updateUserProfile } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
@@ -32,8 +31,17 @@ export default function ProfileSetting() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const countries = ["Spain", "France", "Germany", "Netherlands"];
-  const cities = ["Madrid", "Barcelona", "Valencia", "Seville"];
+  const countries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
+  
+  const cityByCountry: { [key: string]: string[] } = {
+    "Thailand": ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani"],
+    "Cambodia": ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Kompong Cham"],
+    "Laos": ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
+    "Vietnam": ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
+    "Myanmar": ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
+  };
+  
+  const cities = formData.country ? cityByCountry[formData.country] : [];
   const languages = ["en", "th"];
 
   /* ---------------- FETCH USER DATA ---------------- */
@@ -82,7 +90,14 @@ export default function ProfileSetting() {
     const val =
       type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
 
-    setFormData((prev) => ({ ...prev, [name]: val }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: val };
+      // Reset city when country changes
+      if (name === "country") {
+        updated.city = "";
+      }
+      return updated;
+    });
   };
 
   /* ---------------- PHOTO HANDLER ---------------- */
@@ -301,8 +316,9 @@ export default function ProfileSetting() {
             onChange={handleInputChange}
             className="border-none focus:ring-0"
           >
+            <option value="">Select country</option>
             {countries.map((c) => (
-              <option key={c}>{c}</option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>

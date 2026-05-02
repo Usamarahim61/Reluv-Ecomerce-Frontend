@@ -1,4 +1,3 @@
-import ReluvGroup from '../components/Reluv-Group-Navbar';
 import ReluvGroupFooter from '../components/Reluv-Group-Footer';
 
 import Sustainability from '../sustainability/page';

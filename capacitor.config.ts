@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Reluv',
   webDir: 'public',
   server: {
-    url: 'http://192.168.100.134:3000',
-    cleartext: true
-  }
+    url: 'http://10.0.2.2:3000',
+    cleartext: true,
+  },
 };
 
 export default config;

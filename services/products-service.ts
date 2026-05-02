@@ -4,6 +4,7 @@ export type ProductCardItem = {
   documentId?: string;
   id: number | string;
   brand: string;
+  title: string;
   category?: string;
   subCategory?: string;
   item?: string;
@@ -176,6 +177,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
   const attributes = entry ?? {};
   const brand = attributes.brand ?? "";
   const category = attributes.category ?? "";
+  const title = attributes.title ?? "";
   const subCategory = attributes.subCategory ?? attributes.subcategory ?? "";
   const item = attributes.item ?? "";
   const color = attributes.color ?? attributes.colour ?? "";
@@ -193,6 +195,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
     id: entry.id,
     brand,
     category,
+    title,
     subCategory,
     item,
     color,

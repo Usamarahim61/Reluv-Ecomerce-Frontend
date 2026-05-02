@@ -29,11 +29,18 @@ import {
   MemebersCardItem,
 } from "@/services/products-service";
 import { getUser, getUserAvatr } from "@/services/auth-service";
-import { BACKEND_URL } from "@/constants";
+import { API_BASE_URL } from "@/app/constants/api";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
+
+  // Helper function to format absolute image URL
+  const toAbsoluteImageUrl = (url: string | undefined | null): string => {
+    if (!url) return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${API_BASE_URL}${url}`;
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
@@ -331,7 +338,7 @@ export default function Navbar() {
                                 <img
                                   src={
                                     member.avatar
-                                      ? `${BACKEND_URL}/${member.avatar}`
+                                      ? `${API_BASE_URL}${member.avatar}`
                                       : "/avatar-placeholder.png"
                                   }
                                   alt={member?.fullName || member?.username || "avatar"}
@@ -422,16 +429,15 @@ export default function Navbar() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
                   >
-                    {/* Avatar / fallback icon */}
+                    {/* Avatar from backend */}
                     <img
-                      src={
-                        loggedInUser?.avatar?.url ??
-                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
-                      }
+                      src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
                       alt="Profile"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+                      }}
                     />
-                    {/* <User className="w-5 h-5 text-gray-600" /> */}
                   </button>
 
                   {profileOpen && (
@@ -459,14 +465,14 @@ export default function Navbar() {
                       <span>Personalization</span>
                     </div> */}
                       {/* Balance */}
-                      <Link href={`/Balance`}>
+                      {/* <Link href={`/Balance`}>
                         <div className="px-4 py-2 flex items-center justify-between">
                           <span className="flex items-center gap-2">
                             Balance
                           </span>
                           <span className="font-semibold text-sm">$0.00</span>
                         </div>
-                      </Link>
+                      </Link> */}
                       {/* My orders */}
                       <Link href={`/Orders`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">

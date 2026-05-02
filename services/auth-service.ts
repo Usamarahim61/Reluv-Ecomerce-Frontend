@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "@/app/constants/api";
 import { apiRequest } from "./api";
-import { BACKEND_URL } from "@/constants";
 
 export function login(identifier: string, password: string) {
   return apiRequest("/auth/local", {
@@ -55,11 +54,11 @@ export function logout() {
 
 export async function loginWithGoogle(token: string) {
   const res = await fetch(
-    `${BACKEND_URL}/api/auth/google/callback?access_token=${token}`,
+    `${API_BASE_URL}/auth/google/callback?access_token=${token}`,
     { method: "GET" }
   );
   if (!res.ok) throw new Error(await res.text());
-  return res.json(); 
+  return res.json();
 }
 export async function loginWithFacebook(accessToken: string) {
   const res = await fetch(`${API_BASE_URL}/auth/facebook`, {

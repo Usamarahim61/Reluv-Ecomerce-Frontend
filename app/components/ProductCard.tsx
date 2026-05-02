@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 interface ProductProps {
   id: string | number;
   brand: unknown;
+  title: unknown;
   size: unknown;
   condition: unknown;
   price: unknown;
@@ -53,6 +54,7 @@ const toImageUrl = (value: unknown): string | null => {
 export default function ProductCard({
   id,
   brand,
+  title,
   size,
   condition,
   price,
@@ -64,6 +66,7 @@ export default function ProductCard({
   const { user } = useAuth();
   const safeImageUrl = toImageUrl(imageUrl);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
+  const nameText = toDisplayText(title);
   const brandText = toDisplayText(brand);
   const sizeText = toDisplayText(size);
   const conditionText = toDisplayText(condition);
@@ -182,7 +185,7 @@ export default function ProductCard({
                 : "truncate text-[15px] leading-[1.2] text-[#4b4b4b]"
             }
           >
-            {brandText}
+            {nameText} · {brandText}
           </p>
           <p
             className={
