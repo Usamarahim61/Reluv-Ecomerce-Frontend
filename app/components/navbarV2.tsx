@@ -11,13 +11,15 @@ import {
   User,
   BellOff,
   ShoppingBag,
+  LogOut,
 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import type { RootState } from "@/lib/store";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
@@ -64,16 +66,15 @@ export default function NavbarV2() {
     router.push(`/member/${id}`);
   }, []);
 
-  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+  const handleSearchSubmit = useCallback((e: FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       setShowResults(false);
       router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
     }
-  }, []);
+  }, [router, searchQuery]);
   const { user, logout } = useAuth();
-  let LoggedInUser = user;
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [loggedInUser, setLoggedInUser] = useState<{ avatar?: { url?: string } } | null>(null);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -83,9 +84,9 @@ export default function NavbarV2() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const dispatch = useAppDispatch();
-  const categoryTree = useAppSelector((state: any) => state.categories.tree);
+  const categoryTree = useAppSelector((state: RootState) => state.categories.tree);
   const categoriesStatus = useAppSelector(
-    (state: any) => state.categories.status,
+    (state: RootState) => state.categories.status,
   );
   const categoriesLoading =
     categoriesStatus === "idle" || categoriesStatus === "loading";
@@ -284,7 +285,7 @@ export default function NavbarV2() {
                   onBlur={() => setTimeout(() => setShowResults(false), 200)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handleSearchSubmit(e as any);
+                      handleSearchSubmit(e);
                     }
                   }}
                 />
@@ -498,9 +499,14 @@ export default function NavbarV2() {
                       <div className="border-t border-gray-200 my-1" />
 
                       {/* Logout */}
-                      <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2 text-red-600">
-                        <span onClick={logout}>Log out</span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+                      >
+                        <LogOut size={16} />
+                        <span>Log out</span>
+                      </button>
                     </div>
                   )}
                 </div>

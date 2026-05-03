@@ -1,11 +1,13 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const serverUrl = process.env.CAPACITOR_SERVER_URL || 'http://192.168.100.134:3000';
+
 const config: CapacitorConfig = {
   appId: 'com.reluv.app',
   appName: 'Reluv',
   webDir: 'public',
   server: {
-    url: 'http://10.0.2.2:3000',
+    url: serverUrl,
     cleartext: true,
   },
 };

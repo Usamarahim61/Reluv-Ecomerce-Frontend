@@ -258,9 +258,8 @@ export default function Home() {
 
         {/* Dark CTA Section */}
         <section className="max-w-7xl mx-auto px-4 py-16">
-          <div className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white">
+          <div className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
             {/* Dot pattern background deco */}
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', size: '20px 20px' }} />
             
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
               <div className="max-w-xl">

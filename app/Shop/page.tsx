@@ -9,11 +9,12 @@ import {
   fetchProductFilterOptions,
   ProductCardItem,
   ProductFilterOptions,
+  searchProducts,
 } from '@/services/products-service';
 import { Bookmark, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 
 /* ─── constants ───────────────────────────────────────────── */
 const defaultFilterOptions: ProductFilterOptions = {
@@ -68,6 +69,7 @@ function ShopPageContent() {
   const category    = searchParams.get('category')    || '';
   const subCategory = searchParams.get('subCategory') || '';
   const item        = searchParams.get('item')        || '';
+  const searchQuery = searchParams.get('search')      || '';
 
   /* product list state */
   const [items,       setItems]       = useState<ProductCardItem[]>([]);
@@ -78,12 +80,12 @@ function ShopPageContent() {
   const [loadError,   setLoadError]   = useState<string | null>(null);
 
   /* filter state */
-  const [conditionFilter, setConditionFilter] = useState(FILTER_DEFAULTS.condition);
-  const [sizeFilter,      setSizeFilter]      = useState(FILTER_DEFAULTS.size);
-  const [brandFilter,     setBrandFilter]     = useState(FILTER_DEFAULTS.brand);
-  const [colourFilter,    setColourFilter]    = useState(FILTER_DEFAULTS.colour);
-  const [materialFilter,  setMaterialFilter]  = useState(FILTER_DEFAULTS.material);
-  const [sortBy,          setSortBy]          = useState(FILTER_DEFAULTS.sortBy);
+  const [conditionFilter, setConditionFilter] = useState<string>(FILTER_DEFAULTS.condition);
+  const [sizeFilter,      setSizeFilter]      = useState<string>(FILTER_DEFAULTS.size);
+  const [brandFilter,     setBrandFilter]     = useState<string>(FILTER_DEFAULTS.brand);
+  const [colourFilter,    setColourFilter]    = useState<string>(FILTER_DEFAULTS.colour);
+  const [materialFilter,  setMaterialFilter]  = useState<string>(FILTER_DEFAULTS.material);
+  const [sortBy,          setSortBy]          = useState<string>(FILTER_DEFAULTS.sortBy);
   const [priceMenuOpen,   setPriceMenuOpen]   = useState(false);
   const [minPrice,        setMinPrice]        = useState<number | null>(null);
   const [maxPrice,        setMaxPrice]        = useState<number | null>(null);
@@ -108,7 +110,7 @@ function ShopPageContent() {
 
   const [showShippingBanner, setShowShippingBanner] = useState(true);
 
-  const pageTitle = item || subCategory || category || 'Shop';
+  const pageTitle = searchQuery ? `Search: ${searchQuery}` : item || subCategory || category || 'Shop';
 
   /* ── load products ── */
   const loadProducts = useCallback(
@@ -117,25 +119,27 @@ function ShopPageContent() {
       else         { setLoadingMore(true); }
 
       try {
-        const data = await fetchFilteredProducts({
-          page: nextPage,
-          pageSize: 40,
-          category,
-          subCategory,
-          item,
-          brand:     brandFilter     === FILTER_DEFAULTS.brand     ? '' : brandFilter,
-          size:      sizeFilter      === FILTER_DEFAULTS.size      ? '' : sizeFilter,
-          condition: conditionFilter === FILTER_DEFAULTS.condition ? '' : conditionFilter,
-          colour:    colourFilter    === FILTER_DEFAULTS.colour    ? '' : colourFilter,
-          material:  materialFilter  === FILTER_DEFAULTS.material  ? '' : materialFilter,
-          sortBy,
-          minPrice,
-          maxPrice,
-        });
+        const data = searchQuery.trim()
+          ? await searchProducts(searchQuery, 20)
+          : await fetchFilteredProducts({
+              page: nextPage,
+              pageSize: 40,
+              category,
+              subCategory,
+              item,
+              brand:     brandFilter     === FILTER_DEFAULTS.brand     ? '' : brandFilter,
+              size:      sizeFilter      === FILTER_DEFAULTS.size      ? '' : sizeFilter,
+              condition: conditionFilter === FILTER_DEFAULTS.condition ? '' : conditionFilter,
+              colour:    colourFilter    === FILTER_DEFAULTS.colour    ? '' : colourFilter,
+              material:  materialFilter  === FILTER_DEFAULTS.material  ? '' : materialFilter,
+              sortBy,
+              minPrice,
+              maxPrice,
+            });
 
-        setHasMore(data.hasMore);
+        setHasMore(searchQuery.trim() ? false : data.hasMore);
         setPage(nextPage);
-        setItems((prev) => (replace ? data.items : [...prev, ...data.items]));
+        setItems((prev) => (replace || searchQuery.trim() ? data.items : [...prev, ...data.items]));
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load products.');
       } finally {
@@ -143,7 +147,7 @@ function ShopPageContent() {
         setLoadingMore(false);
       }
     },
-    [category, subCategory, item, brandFilter, sizeFilter, conditionFilter, colourFilter, materialFilter, sortBy, minPrice, maxPrice],
+    [category, subCategory, item, searchQuery, brandFilter, sizeFilter, conditionFilter, colourFilter, materialFilter, sortBy, minPrice, maxPrice],
   );
 
   // re-fetch from page 1 whenever filters/category change
@@ -234,6 +238,7 @@ function ShopPageContent() {
     materialFilter  !== FILTER_DEFAULTS.material  ||
     minPrice !== null ||
     maxPrice !== null ||
+    !!searchQuery ||
     !!category || !!subCategory || !!item;
 
   /* ── category navigation helpers ── */
@@ -458,7 +463,7 @@ function ShopPageContent() {
                   <select
                     key={value}
                     value={value}
-                    onChange={(e:any) => onChange(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
                     disabled={filterOptionsLoading}
                     className={`${pillSelectClass} ${filterOptionsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -529,7 +534,7 @@ function ShopPageContent() {
 
                 <select
                   value={materialFilter}
-                  onChange={(e:any) => setMaterialFilter(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setMaterialFilter(e.target.value)}
                   disabled={filterOptionsLoading}
                   className={`${pillSelectClass} ${filterOptionsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
@@ -538,7 +543,7 @@ function ShopPageContent() {
 
                 <select
                   value={sortBy}
-                  onChange={(e:any) => setSortBy(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value)}
                   className={pillSelectClass}
                 >
                   {sortOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}

@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 import { BACKEND_URL } from "./constants";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    optimizePackageImports: ['lucide-react'],
-  },
+  // experimental: {
+  //   optimizePackageImports: ['lucide-react'],
+  // },
   images: {
     remotePatterns: [
       {
