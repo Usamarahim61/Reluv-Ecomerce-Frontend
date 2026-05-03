@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import Providers from "./providers";
 import Script from "next/script";
 import Navbar from "./components/navbar";
+import NavbarV2 from "./components/navbarV2";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,7 +69,7 @@ export default function RootLayout({
       >
         <Providers>
          <AuthProvider>
-          <Navbar />
+          <NavbarV2 />
 
         {children}
          </AuthProvider>

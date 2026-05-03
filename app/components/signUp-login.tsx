@@ -319,7 +319,7 @@ export default function SignUpLogin({
               <button
                 onClick={() => setView("register")}
                 disabled={isBusy}
-                className="w-full bg-[#007782] text-white rounded-md py-3 font-semibold hover:bg-[#00656f] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#cb6f4d] text-white rounded-md py-3 font-semibold cursor-pointer hover:bg-[#cb6f4d] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Register with email
               </button>
@@ -329,7 +329,7 @@ export default function SignUpLogin({
                   type="button"
                   disabled={isBusy}
                   onClick={() => setView("login")}
-                  className="text-[#007782] cursor-pointer hover:underline font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-[#cb6f4d] cursor-pointer hover:underline font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Log in
                 </button>
@@ -358,7 +358,7 @@ export default function SignUpLogin({
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       disabled={isBusy}
-                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782] disabled:opacity-50"
+                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
                     />
                     <p className="text-[10px] text-gray-500 mt-1">Visible to other users.</p>
                   </div>
@@ -369,9 +369,9 @@ export default function SignUpLogin({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isBusy}
-                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782] disabled:opacity-50"
+                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
                 />
-                <div className="relative border-b border-gray-300 focus-within:border-[#007782]">
+                <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
                   <input
                     type={showPassword ? "text" : "password"}
                     placeholder="Password"
@@ -396,7 +396,7 @@ export default function SignUpLogin({
                       <input
                         type="checkbox"
                         disabled={isBusy}
-                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0"
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#cb6f4d] shrink-0"
                       />
                       <span className="text-xs text-gray-600">I want to receive personalized offers and updates.</span>
                     </label>
@@ -405,11 +405,11 @@ export default function SignUpLogin({
                         required
                         type="checkbox"
                         disabled={isBusy}
-                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0"
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#cb6f4d] shrink-0"
                       />
                       <span className="text-xs text-gray-600">
-                        I accept the <span className="text-[#007782] font-medium">Terms & Conditions</span> and{" "}
-                        <span className="text-[#007782] font-medium">Privacy Policy</span>.
+                        I accept the <span className="text-[#cb6f4d] font-medium">Terms & Conditions</span> and{" "}
+                        <span className="text-[#cb6f4d] font-medium">Privacy Policy</span>.
                       </span>
                     </label>
                   </div>
@@ -420,7 +420,7 @@ export default function SignUpLogin({
                 <button
                   type="submit"
                   disabled={isBusy}
-                  className="w-full bg-[#007782] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#005f68] flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#cb6f4d] flex items-center justify-center gap-2 disabled:cursor-not-allowed"
                 >
                   {loadingProvider === "email" && <Loader2 size={16} className="animate-spin" />}
                   {loadingProvider === "email" ? "Please wait…" : "Continue"}
@@ -431,7 +431,7 @@ export default function SignUpLogin({
                 type="button"
                 onClick={() => setView("initial")}
                 disabled={isBusy}
-                className="mt-6 text-[#007782] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-6 text-[#cb6f4d] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {view === "register" ? "Already have an account? Log in" : "Don't have an account? Register"}
               </button>

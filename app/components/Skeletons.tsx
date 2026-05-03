@@ -14,12 +14,18 @@ interface ProductGridEmptyProps {
   wrapper?: string;
 }
 
-export function ProductGridError({ wrapper = "", error, onRetry }: ProductGridErrorProps) {
+export function ProductGridError({
+  wrapper = "",
+  error,
+  onRetry,
+}: ProductGridErrorProps) {
   return (
     <section className={wrapper}>
       <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-6 py-14 text-center">
         <span className="mb-3 text-5xl">😕</span>
-        <h2 className="mb-1 text-[18px] font-semibold text-red-700">Something went wrong</h2>
+        <h2 className="mb-1 text-[18px] font-semibold text-red-700">
+          Something went wrong
+        </h2>
         <p className="mb-5 max-w-sm text-[14px] text-red-500">{error}</p>
         {onRetry && (
           <button
@@ -34,9 +40,9 @@ export function ProductGridError({ wrapper = "", error, onRetry }: ProductGridEr
   );
 }
 
-export function ProductGridSkeleton({ 
-  wrapper = "max-w-7xl mx-auto px-4 py-6", 
-  grid = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-10" 
+export function ProductGridSkeleton({
+  wrapper = "max-w-7xl mx-auto px-4 py-6",
+  grid = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-10",
 }: ProductGridSkeletonProps) {
   return (
     <section className={wrapper}>
@@ -59,9 +65,12 @@ export function ProductGridEmpty({ wrapper = "" }: ProductGridEmptyProps) {
     <section className={wrapper}>
       <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
         <span className="mb-4 text-6xl">🛍️</span>
-        <h2 className="mb-2 text-[20px] font-semibold text-[#1d1d1d]">No items found</h2>
+        <h2 className="mb-2 text-[20px] font-semibold text-[#1d1d1d]">
+          No items found
+        </h2>
         <p className="max-w-sm text-[14px] text-[#6f6f6f]">
-          We couldn&apos;t find anything matching your filters. Try adjusting or clearing them to see more results.
+          We couldn&apos;t find anything matching your filters. Try adjusting or
+          clearing them to see more results.
         </p>
       </div>
     </section>
@@ -94,7 +103,10 @@ export function NavbarSkeleton() {
       <div className="hidden sm:block max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-6 py-2">
           {[...Array(7)].map((_, i) => (
-            <div key={i} className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+            <div
+              key={i}
+              className="h-3 w-16 animate-pulse rounded bg-gray-200"
+            />
           ))}
         </div>
       </div>
@@ -104,7 +116,8 @@ export function NavbarSkeleton() {
 
 export function HomeSkeleton() {
   return (
-    <div className="min-h-screen flex flex-col">
+    // <div className="min-h-screen flex flex-col">
+    <div className=" flex flex-col">
       <section className="relative h-[400px] md:h-[500px] lg:h-[600px] w-full bg-gray-200 overflow-hidden animate-pulse">
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
@@ -118,12 +131,12 @@ export function HomeSkeleton() {
           <div className="h-3 w-28 mx-auto animate-pulse rounded bg-gray-200" />
         </div>
       </section>
-      <section className="max-w-7xl mx-auto w-full px-4 py-4 md:py-6">
+      {/* <section className="max-w-7xl mx-auto w-full px-4 py-4 md:py-6">
         <div className="flex justify-between items-center border border-gray-100 rounded-sm p-3 md:p-4 mb-4 md:mb-8 bg-white shadow-sm">
           <div className="h-3 w-64 animate-pulse rounded bg-gray-200" />
           <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }
@@ -145,7 +158,10 @@ export function ProductDetailSkeleton() {
               <div className="grid min-h-[540px] grid-cols-1 gap-2 sm:grid-cols-4">
                 <div className="animate-pulse rounded-md bg-gray-200 sm:col-span-2 sm:row-span-2" />
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="aspect-square animate-pulse rounded-md bg-gray-200 sm:col-span-1" />
+                  <div
+                    key={i}
+                    className="aspect-square animate-pulse rounded-md bg-gray-200 sm:col-span-1"
+                  />
                 ))}
               </div>
             </div>
@@ -253,12 +269,20 @@ export function ProductDetailSkeleton() {
     </main>
   );
 }
-export function ProductErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
+export function ProductErrorScreen({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center px-4">
       <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-8 py-14 text-center max-w-sm w-full">
         <span className="mb-3 text-5xl">😕</span>
-        <h2 className="mb-1 text-[18px] font-semibold text-red-700">Something went wrong</h2>
+        <h2 className="mb-1 text-[18px] font-semibold text-red-700">
+          Something went wrong
+        </h2>
         <p className="mb-5 text-[14px] text-red-500">{message}</p>
         <button
           onClick={onRetry}

@@ -3,6 +3,7 @@ import ProductCard from '@/app/components/ProductCard';
 import { ChevronDown } from 'lucide-react';
 import type { ProductCardItem } from '@/services/products-service';
 import { ProductGridError, ProductGridSkeleton, ProductGridEmpty } from "../components/Skeletons";
+import ProductCardV2 from './ProductCardV2';
 
 export default function ProductFeed({
   productList,
@@ -48,7 +49,7 @@ if (!productList || productList.length === 0) {
     <section className={wrapper}>
       <div className={grid}>
         {productList.map((item, index) => (
-          <ProductCard key={index} {...item} variant={cardVariant} />
+          <ProductCardV2 key={index} {...item} variant={cardVariant} />
         ))}
       </div>
 

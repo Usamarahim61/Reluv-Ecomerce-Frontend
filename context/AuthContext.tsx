@@ -9,7 +9,8 @@ type User = {
   email: string;
   city?: string;
   country?: string;
-  avatar: string
+  avatar: string,
+  fav_products?: any
 };
 
 type AuthContextType = {

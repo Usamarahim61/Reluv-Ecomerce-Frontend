@@ -10,6 +10,7 @@ import {
   Heart,
   User,
   BellOff,
+  ShoppingBag,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -31,13 +32,14 @@ import {
 import { getUser, getUserAvatr } from "@/services/auth-service";
 import { API_BASE_URL } from "@/app/constants/api";
 
-export default function Navbar() {
+export default function NavbarV2() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
 
   // Helper function to format absolute image URL
   const toAbsoluteImageUrl = (url: string | undefined | null): string => {
-    if (!url) return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+    if (!url)
+      return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
     return `${API_BASE_URL}${url}`;
   };
@@ -208,8 +210,17 @@ export default function Navbar() {
         <div className="border-b border-gray-300">
           <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-2 ">
             {/* Logo */}
-            <Link href="/">
-              <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#cb6f4d] font-serif">
+            <Link href="/" className="flex items-center gap-2 group">
+              {/* The Icon/Logo Box */}
+              <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
+                <ShoppingBag
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-[#cb6f4d]"
+                  strokeWidth={2.5}
+                />
+              </div>
+
+              {/* The Text */}
+              <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
                 Reluv
               </h1>
             </Link>
@@ -262,7 +273,7 @@ export default function Navbar() {
 
               {/* Search bar (tablet + desktop) */}
               <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
-                <Search className="text-[#007782] w-5 h-5" />
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search for items"
@@ -277,7 +288,7 @@ export default function Navbar() {
                     }
                   }}
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
                 {showResults && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
                     {searchLoading ? (
@@ -341,7 +352,11 @@ export default function Navbar() {
                                       ? `${API_BASE_URL}${member.avatar}`
                                       : "/avatar-placeholder.png"
                                   }
-                                  alt={member?.fullName || member?.username || "avatar"}
+                                  alt={
+                                    member?.fullName ||
+                                    member?.username ||
+                                    "avatar"
+                                  }
                                   className="w-10 h-10 min-w-[40px] object-cover rounded-full"
                                 />
 
@@ -415,13 +430,13 @@ export default function Navbar() {
               )}
 
               {/* Likes */}
-              {/* {user && (
-                <Link href={`/products/2`}>
+              {user && (
+                <Link href={`/FavItems`}>
                   <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                     <Heart className="w-6 h-6 text-gray-600" />
                   </button>
                 </Link>
-              )} */}
+              )}
               {/* Profile Dropdown */}
               {user && (
                 <div ref={profileRef} className="relative">
@@ -435,7 +450,8 @@ export default function Navbar() {
                       alt="Profile"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+                        e.currentTarget.src =
+                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
                       }}
                     />
                   </button>
@@ -493,22 +509,22 @@ export default function Navbar() {
               {!user && (
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
+                  className="hidden sm:inline-block cursor-pointer text-[#cb6f4d] border border-[#cb6f4d] px-3 py-1.5 rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
               )}
               <Link href={`/SellNow`}>
-                <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
-                  Sell Now
+                <button className="hidden sm:inline-block bg-[#cb6f4d] cursor-pointer text-white px-3 py-1.5 rounded-2xl text-sm">
+                  + Sell Now
                 </button>
               </Link>
               {/* Desktop + Tablet Help */}
-              <Link href={`/help`}>
+              {/* <Link href={`/help`}>
                 <button className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100">
                   <HelpCircle className="w-7 h-7 text-gray-600" />
                 </button>
-              </Link>
+              </Link> */}
               {/* Desktop + Tablet Language */}
               <div ref={LangRef} className="relative hidden sm:block">
                 <button
@@ -610,13 +626,13 @@ export default function Navbar() {
 
               {/* Search */}
               <div className="flex-1 flex items-center bg-gray-100 px-3 py-2 border border-gray-200 rounded-md">
-                <Search className="text-[#007782] w-5 h-5" />
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search items"
                   className="bg-transparent outline-none flex-1 px-2"
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
               </div>
             </div>
             {/* Auth buttons */}
@@ -624,11 +640,11 @@ export default function Navbar() {
               <div className="flex flex-col gap-2 mb-3">
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="w-full px-4 py-2 border border-[#007782] text-[#007782] rounded text-sm"
+                  className="w-full px-4 py-2 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
-                <button className="w-full px-4 py-2 bg-[#007782] text-white rounded text-sm">
+                <button className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
                   Sell
                 </button>
               </div>
@@ -664,7 +680,7 @@ export default function Navbar() {
                 <Link
                   key={cat.label}
                   href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
-                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#007782] rounded"
+                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#cb6f4d] rounded"
                 >
                   <span>{cat.label}</span>
                 </Link>
@@ -677,4 +693,3 @@ export default function Navbar() {
     </>
   );
 }
-

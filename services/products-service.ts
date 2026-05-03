@@ -17,6 +17,7 @@ export type ProductCardItem = {
   imageUrl?: string | null;
   likes: number;
   userId?: number | string | null;
+  fav_products?: any
 };
 export type MemebersCardItem = {
   id: number | string;

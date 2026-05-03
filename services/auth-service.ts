@@ -29,6 +29,13 @@ export function getUserAvatr(id: number) {
     }
   );
 }
+export function getUserFav_Products(id: number) {
+  return apiRequest(
+    `/users/${id}?populate[fav_products][populate]=*`,
+     { method: "GET",
+    }
+  );
+}
 export function AccountUpdate(id: number, data: any) {
   return apiRequest(`/users/${id}`, {
     method: "PUT",

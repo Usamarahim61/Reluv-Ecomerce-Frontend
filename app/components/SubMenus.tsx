@@ -51,7 +51,7 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
         {!loading && safeSubCategories.map((cat) => (
           <div
             key={cat.label}
-            className="flex items-center cursor-pointer py-2 px-1 hover:text-[#007782]"
+            className="flex items-center cursor-pointer py-2 px-1 hover:text-[#cb6f4d]"
             onMouseEnter={() => handleCategoryHover(cat)}
           >
             <Link
@@ -75,7 +75,7 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
                 key={child.label}
                 className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-100 ${
                   selectedChild === child.label
-                    ? "bg-gray-100 font-semibold text-[#007782]"
+                    ? "bg-gray-100 font-semibold text-[#cb6f4d]"
                     : "text-gray-600"
                 }`}
                 onMouseEnter={() => setSelectedChild(child.label)}
@@ -102,7 +102,7 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
                 <Link
                   href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(selectedChild || "")}&item=${encodeURIComponent(slug || item)}`}
                   key={item}
-                  className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#007782] hover:font-semibold whitespace-nowrap"
+                  className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#cb6f4d] hover:font-semibold whitespace-nowrap"
                 >
                   {item}
                 </Link>

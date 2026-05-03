@@ -114,7 +114,7 @@ export default function ProductCard({
           //  Authorization: `Bearer ${token}`, // if needed
         },
         body: JSON.stringify({
-          fav_products: [Number(productId)],
+          fav_products: [Number(productDocumentId)],
         }),
       });
     } catch (error) {
