@@ -61,11 +61,22 @@ export function logout() {
 // services/auth-service.ts  — add these two functions
 
 export async function loginWithGoogle(token: string) {
-  const res = await fetch(
-    `${API_BASE_URL}/auth/google/callback?access_token=${token}`,
-    { method: "GET" }
-  );
-  if (!res.ok) throw new Error(await res.text());
+  const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: token }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    let message = errorText || "Google login failed";
+    try {
+      const parsed = JSON.parse(errorText);
+      message = parsed?.error?.message || parsed?.message || message;
+    } catch {
+      message = errorText || "Google login failed";
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 export async function loginWithFacebook(accessToken: string) {
