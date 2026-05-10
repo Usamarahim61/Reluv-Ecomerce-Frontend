@@ -1,7 +1,7 @@
 // components/Footer.tsx
 "use client";
 
-import { Facebook, Linkedin, Instagram } from 'lucide-react';
+import { Facebook, Linkedin, Instagram, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { Capacitor } from '@capacitor/core';
 
@@ -50,13 +50,32 @@ export default function Footer() {
         <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-3 lg:grid-cols-4">
           {sections.map((section) => (
             <div key={section.title}>
-              <h4 className="mb-4 text-[16px] text-gray-500">{section.title}</h4>
-              <ul className="space-y-3">
+              {
+                section.title === 'Reluv' ? (
+            <Link href="/" className="flex items-center gap-2 group">
+              {/* The Icon/Logo Box */}
+              <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
+                <ShoppingBag size={20}
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-[#cb6f4d]"
+                  strokeWidth={2.5}
+                />
+              </div>
+
+              {/* The Text */}
+              <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
+                Reluv
+              </h1>
+            </Link>
+                ) : (
+              <h4 className="mb-4 text-[16px] text-gray-500 pl-10">{section.title}</h4>
+                )
+}
+              <ul className="space-y-3 pl-10">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-[14px] text-gray-600 transition-colors hover:text-[#007782]"
+                      className="text-[14px] text-gray-600 transition-colors hover:text-[#cb6f4d]"
                     >
                       {link.label}
                     </Link>

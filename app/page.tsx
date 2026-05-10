@@ -138,9 +138,9 @@ export default function Home() {
                   </button>
                 </Link>
 
-                <Link href="/BrowseProducts">
+                <Link href="/Shop">
                   <button onClick={() => setShowBrowse(true)} className="w-full rounded-xl border border-gray-200 bg-[#fbfbfb] py-3.5 text-[16px] font-semibold text-gray-800 transition-colors hover:bg-gray-50">
-                    Start shopping
+                    Start Shopping
                   </button>
                 </Link>
               </div>
@@ -170,7 +170,7 @@ export default function Home() {
 
             {/* See all Link with brand color and hover state */}
             <Link
-              href="/BrowseProducts"
+              href="/Shop"
               className="group flex items-center gap-1 px-3 py-1 rounded-md transition-all duration-200 hover:bg-[rgb(203,111,77)]"
               style={{ color: "rgb(203, 111, 77)" }}
             >
@@ -247,7 +247,7 @@ export default function Home() {
                   Start selling
                 </button>
               </Link>
-              <Link href="/BrowseProducts">
+              <Link href="/Shop">
                 <button className="px-8 py-3 bg-white border border-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-50 transition-colors">
                   Browse items
                 </button>
@@ -257,8 +257,8 @@ export default function Home() {
         </section>
 
         {/* Dark CTA Section */}
-        <section className="max-w-7xl mx-auto px-4 py-16">
-          <div className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+        <section className="max-w-8xl mx-auto px-4 py-16">
+          <div className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white" style={{ backgroundImage: 'radial-gradient(circle, #fff .25px, transparent 1px)', backgroundSize: '20px 20px' }}>
             {/* Dot pattern background deco */}
             
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
@@ -284,8 +284,8 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <FooterV2 />
-        {/* <Footer /> */}
+        {/* <FooterV2 /> */}
+        <Footer />
       </div>
     )
   );

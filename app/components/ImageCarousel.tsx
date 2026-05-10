@@ -59,7 +59,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute -top-12 sm:-top-14 right-0 z-50 rounded-full bg-black/50 backdrop-blur-md p-2 sm:p-3 text-white transition-all hover:bg-black/70 hover:scale-110 border cursor-pointer border-white/20 outline-none"
+          className="absolute  right-0 z-50 rounded-full bg-black/50 backdrop-blur-md p-2 sm:p-3 text-white transition-all hover:bg-black/70 hover:scale-110 border cursor-pointer border-white/20 outline-none"
           aria-label="Close"
         >
           <X size={20} className="sm:w-6 sm:h-6" />
