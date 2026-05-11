@@ -69,7 +69,44 @@ function ShopPageContent() {
   const category    = searchParams.get('category')    || '';
   const subCategory = searchParams.get('subCategory') || '';
   const item        = searchParams.get('item')        || '';
-  const searchQuery = searchParams.get('search')      || '';
+  const searchQuery = searchParams.get('search') || '';
+
+  /* local search input state — drives the URL param with debounce */
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep local input in sync if URL param changes externally (e.g. navbar)
+  useEffect(() => { setSearchInput(searchQuery); }, [searchQuery]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (val.trim()) params.set('search', val.trim());
+      else params.delete('search');
+      router.push(`${pathname}?${params.toString()}`);
+    }, 350);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const params = new URLSearchParams(searchParams.toString());
+    if (searchInput.trim()) params.set('search', searchInput.trim());
+    else params.delete('search');
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('search');
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); }, []);
 
   /* product list state */
   const [items,       setItems]       = useState<ProductCardItem[]>([]);
@@ -356,15 +393,25 @@ function ShopPageContent() {
             {/* top bar: search + controls */}
             <div className="mb-3 flex items-center gap-3">
               {/* search input */}
-              <div className="relative flex-1">
+              <form onSubmit={handleSearchSubmit} className="relative flex-1">
                 <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-[#aaa]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input
                   type="text"
-                  readOnly
+                  value={searchInput}
+                  onChange={handleSearchChange}
                   placeholder="Search by name or brand..."
-                  className="w-full rounded-full border border-[#d4d4d4] bg-white py-2.5 pl-10 pr-4 text-sm text-[#333] placeholder:text-[#aaa] outline-none focus:border-[#333]"
+                  className="w-full rounded-full border border-[#d4d4d4] bg-white py-2.5 pl-10 pr-10 text-sm text-[#333] placeholder:text-[#aaa] outline-none focus:border-[#333]"
                 />
-              </div>
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#aaa] hover:text-[#555]"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </form>
 
               {/* Filters toggle button */}
               <button
@@ -653,6 +700,18 @@ function ShopPageContent() {
             {hasActiveFilters && !filtersOpen && (
               <div className="mb-4 flex flex-wrap items-center gap-3 rounded-3xl border border-[#e8e4dc] bg-white/90 px-3 py-3 shadow-sm shadow-[#b7b0a214]">
                 <div className="flex flex-wrap items-center gap-2">
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#1a1a1a] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#333]"
+                    >
+                      🔍 {searchQuery}
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white hover:text-[#1a1a1a]">
+                        <X size={11} />
+                      </span>
+                    </button>
+                  )}
                   {category && (
                     <button
                       type="button"
