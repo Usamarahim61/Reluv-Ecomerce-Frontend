@@ -44,7 +44,7 @@ const ReluvGroupFooter: React.FC = () => {
           
           <div className="flex-1">
             <span
-              className="text-[#007782] text-3xl font-bold cursor-pointer"
+              className="text-[#cb6f4d] text-3xl font-bold cursor-pointer"
               onClick={() => onNavigate('/ReluvGroup?view=sustainability')}
             >
               Reluv
@@ -63,9 +63,9 @@ const ReluvGroupFooter: React.FC = () => {
                     <li key={linkIdx}>
                       <button
                         onClick={() => link.href !== '#' && onNavigate(link.href)}
-                        className={`text-[15px] hover:text-[#007782] text-left ${
+                        className={`text-[15px] hover:text-[#cb6f4d] text-left ${
                           pathname === link.href
-                            ? "text-[#007782] font-semibold underline"
+                            ? "text-[#cb6f4d] font-semibold underline"
                             : "text-slate-600"
                         }`}
                       >

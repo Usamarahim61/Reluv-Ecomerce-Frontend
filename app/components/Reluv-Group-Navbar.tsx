@@ -27,7 +27,7 @@ export default function ReluvGroup() {
             className="flex items-center cursor-pointer" 
             onClick={() => navigateTo('/newsroom')}
           >
-             <span className="text-[#007782] text-3xl font-bold tracking-tighter">Reluv</span>
+             <span className="text-[#cb6f4d] text-3xl font-bold tracking-tighter">Reluv</span>
           </div>
 
           {/* Nav Links mapped to your Footer paths */}
@@ -35,7 +35,7 @@ export default function ReluvGroup() {
             <button
               onClick={() => navigateTo('/newsroom')}
               className={`text-[15px] font-medium transition-colors ${
-                currentPath === '/newsroom' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+                currentPath === '/newsroom' ? "text-[#cb6f4d]" : "text-slate-600 hover:text-[#cb6f4d]"
               }`}
             >
               Newsroom
@@ -44,7 +44,7 @@ export default function ReluvGroup() {
             <button
                  onClick={() => navigateTo('/mediaAssets')}
               className={`text-[15px] font-medium transition-colors ${
-                currentPath === '/mediaAssets' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+                currentPath === '/mediaAssets' ? "text-[#cb6f4d]" : "text-slate-600 hover:text-[#cb6f4d]"
               }`}
             >
               Media Assets
@@ -53,7 +53,7 @@ export default function ReluvGroup() {
             <button
               onClick={() => navigateTo('/sustainability')}
               className={`text-[15px] font-medium transition-colors ${
-                currentPath === '/sustainability' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+                currentPath === '/sustainability' ? "text-[#cb6f4d]" : "text-slate-600 hover:text-[#cb6f4d]"
               }`}
             >
               Sustainability
@@ -62,7 +62,7 @@ export default function ReluvGroup() {
             <button
               onClick={() => navigateTo('/ReluvVentures')}
               className={`text-[15px] font-medium transition-colors ${
-                currentPath === '/ReluvVentures' ? "text-[#007782]" : "text-slate-600 hover:text-[#007782]"
+                currentPath === '/ReluvVentures' ? "text-[#cb6f4d]" : "text-slate-600 hover:text-[#cb6f4d]"
               }`}
             >
               Reluv Ventures

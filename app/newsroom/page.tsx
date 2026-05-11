@@ -87,7 +87,7 @@ const newsroom = () => {
             <h1 className="text-3xl md:text-4xl font-bold mb-6">
               Reluv has landed in New York
             </h1>
-            <button className="bg-[#007782] text-white px-6 py-2 rounded font-medium hover:bg-[#005f68] transition-colors">
+            <button className="bg-[#cb6f4d] text-white px-6 py-2 rounded font-medium hover:bg-[#005f68] transition-colors">
               Read more
             </button>
           </div>
@@ -113,7 +113,7 @@ const newsroom = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h2 className="text-xl font-bold mb-2 group-hover:text-[#007782] transition-colors">
+              <h2 className="text-xl font-bold mb-2 group-hover:text-[#cb6f4d] transition-colors">
                 {item.title}
               </h2>
               <p className="text-sm text-slate-500">{item.date}</p>
@@ -132,7 +132,7 @@ const newsroom = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h3 className="text-lg font-bold mb-2 leading-tight group-hover:text-[#007782] transition-colors">
+              <h3 className="text-lg font-bold mb-2 leading-tight group-hover:text-[#cb6f4d] transition-colors">
                 {item.title}
               </h3>
               <p className="text-sm text-slate-500">{item.date}</p>
@@ -142,7 +142,7 @@ const newsroom = () => {
 
         {/* Show More Button */}
         <div className="flex justify-center mb-24">
-          <button className="bg-[#007782] text-white px-10 py-3 rounded-lg font-bold hover:bg-[#005f68] transition-colors shadow-md">
+          <button className="bg-[#cb6f4d] text-white px-10 py-3 rounded-lg font-bold hover:bg-[#005f68] transition-colors shadow-md">
             Show more
           </button>
         </div>
@@ -154,7 +154,7 @@ const newsroom = () => {
             For more Reluv information, news and announcements, or editorial requests, 
             please contact our press office. We’d love to talk to you!
           </p>
-          <button className="bg-[#007782] text-white px-10 py-3 rounded-lg font-bold hover:bg-[#005f68] transition-colors shadow-md">
+          <button className="bg-[#cb6f4d] text-white px-10 py-3 rounded-lg font-bold hover:bg-[#005f68] transition-colors shadow-md">
             Contact us
           </button>
         </section>

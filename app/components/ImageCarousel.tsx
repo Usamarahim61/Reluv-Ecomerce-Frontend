@@ -131,7 +131,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 }}
                 className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border-2 rounded transition-all ${
                   index === currentImageIndex
-                    ? 'border-[#007782] scale-105'
+                    ? 'border-[#cb6f4d] scale-105'
                     : 'border-gray-400 hover:border-gray-300'
                 }`}
               >

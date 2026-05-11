@@ -32,7 +32,7 @@ export default function Referrals(): JSX.Element {
             Get 5 € to shop on Reluv when your friend lists 3 items within 7 days of signing up. Get 10 € more when they sell an item within the first 30 days.
           </p>
           <p className="text-[11px] text-gray-500">
-            The referral program is subject to <a href="#" className="text-[#007782] underline">terms</a>.
+            The referral program is subject to <a href="#" className="text-[#cb6f4d] underline">terms</a>.
           </p>
 
           <div className="space-y-3">
@@ -41,7 +41,7 @@ export default function Referrals(): JSX.Element {
             </div>
             <button
               onClick={copyToClipboard}
-              className="w-full bg-[#007782] text-white font-bold py-2.5 rounded hover:bg-[#005f68] transition-colors"
+              className="w-full bg-[#cb6f4d] text-white font-bold py-2.5 rounded hover:bg-[#005f68] transition-colors"
             >
               Copy invite link
             </button>
@@ -65,7 +65,7 @@ export default function Referrals(): JSX.Element {
           {/* Step 1 */}
           <div className="flex flex-col items-center space-y-4">
             <div className="w-24 h-24 bg-[#f0f9f9] rounded-full flex items-center justify-center mb-2">
-              <Mail className="w-10 h-10 text-[#007782]" />
+              <Mail className="w-10 h-10 text-[#cb6f4d]" />
             </div>
             <h3 className="font-bold text-lg">Invite your friends</h3>
             <p className="text-sm text-gray-500 leading-relaxed px-4">
@@ -76,7 +76,7 @@ export default function Referrals(): JSX.Element {
           {/* Step 2 */}
           <div className="flex flex-col items-center space-y-4">
             <div className="w-24 h-24 bg-[#f0f9f9] rounded-full flex items-center justify-center mb-2">
-              <Smartphone className="w-10 h-10 text-[#007782]" />
+              <Smartphone className="w-10 h-10 text-[#cb6f4d]" />
             </div>
             <h3 className="font-bold text-lg">Wait for friends to list</h3>
             <p className="text-sm text-gray-500 leading-relaxed px-4">
@@ -87,7 +87,7 @@ export default function Referrals(): JSX.Element {
           {/* Step 3 */}
           <div className="flex flex-col items-center space-y-4">
             <div className="w-24 h-24 bg-[#f0f9f9] rounded-full flex items-center justify-center mb-2">
-              <Ticket className="w-10 h-10 text-[#007782]" />
+              <Ticket className="w-10 h-10 text-[#cb6f4d]" />
             </div>
             <h3 className="font-bold text-lg">Spend vouchers on Reluv</h3>
             <p className="text-sm text-gray-500 leading-relaxed px-4">

@@ -151,7 +151,7 @@ const MobileImageCarousel: React.FC<MobileImageCarouselProps> = ({ images, title
               onClick={() => setCurrentImageIndex(index)}
               className={`relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 transition-all ${
                 index === currentImageIndex
-                  ? 'border-[#007782] scale-105'
+                  ? 'border-[#cb6f4d] scale-105'
                   : 'border-gray-300 opacity-60 hover:opacity-100'
               }`}
               aria-label={`View image ${index + 1}`}
@@ -175,7 +175,7 @@ const MobileImageCarousel: React.FC<MobileImageCarouselProps> = ({ images, title
               onClick={() => setCurrentImageIndex(index)}
               className={`h-2 rounded-full transition-all ${
                 index === currentImageIndex
-                  ? 'w-6 bg-[#007782]'
+                  ? 'w-6 bg-[#cb6f4d]'
                   : 'w-2 bg-gray-300 hover:bg-gray-400'
               }`}
               aria-label={`Go to image ${index + 1}`}

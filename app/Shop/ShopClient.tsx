@@ -240,7 +240,7 @@ export default function ShopClient() {
     !!item;
 
   const pillSelectClass =
-    "rounded-full border border-[#c7d0d5] bg-white px-4 py-1.5 text-[14px] text-[#2f2f2f] shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition hover:border-[#9fb1bb] hover:bg-[#fbfcfc] focus:border-[#007782] focus:ring-2 focus:ring-[#007782]/20 md:text-[16px]";
+    "rounded-full border border-[#c7d0d5] bg-white px-4 py-1.5 text-[14px] text-[#2f2f2f] shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition hover:border-[#9fb1bb] hover:bg-[#fbfcfc] focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/20 md:text-[16px]";
   const staticPillClass =
     "rounded-full border border-[#c7d0d5] bg-white px-4 py-1.5 text-[14px] text-[#2f2f2f] shadow-[0_1px_2px_rgba(0,0,0,0.04)] md:text-[16px]";
 
@@ -248,9 +248,9 @@ export default function ShopClient() {
     <div className="min-h-screen bg-[#f3f3f3]">
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-4">
         <nav className="mb-1 flex items-center gap-2 text-[12px] text-[#6f6f6f]">
-          <Link href="/" className="underline hover:text-[#007782]">Home</Link>
+          <Link href="/" className="underline hover:text-[#cb6f4d]">Home</Link>
           <ChevronRight size={11} className="text-[#9f9f9f]" />
-          <Link href="/Shop" className="underline hover:text-[#007782]">Shop</Link>
+          <Link href="/Shop" className="underline hover:text-[#cb6f4d]">Shop</Link>
           {category ? (
             <>
               <ChevronRight size={11} className="text-[#9f9f9f]" />
@@ -285,7 +285,7 @@ export default function ShopClient() {
               <button
                 type="button"
                 onClick={() => setCategoryMenuOpen((prev) => !prev)}
-                className="rounded-full border border-[#2a9ca4] bg-[#dbf0f1] px-4 py-1.5 text-[14px] text-[#194d52] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition hover:bg-[#cfe8ea] focus:outline-none focus:ring-2 focus:ring-[#007782]/20 md:text-[16px]"
+                className="rounded-full border border-[#2a9ca4] bg-[#dbf0f1] px-4 py-1.5 text-[14px] text-[#194d52] shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition hover:bg-[#cfe8ea] focus:outline-none focus:ring-2 focus:ring-[#cb6f4d]/20 md:text-[16px]"
               >
                 Category <ChevronDown className="ml-1 inline-block" size={18} />
               </button>
@@ -298,7 +298,7 @@ export default function ShopClient() {
                       value={categorySearch}
                       onChange={(event) => setCategorySearch(event.target.value)}
                       placeholder="Find a category"
-                      className="w-full rounded-lg border border-[#d7e1e6] bg-white px-3 py-2 text-sm outline-none transition placeholder:text-[#8ea0aa] focus:border-[#007782] focus:ring-2 focus:ring-[#007782]/15"
+                      className="w-full rounded-lg border border-[#d7e1e6] bg-white px-3 py-2 text-sm outline-none transition placeholder:text-[#8ea0aa] focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/15"
                     />
                     <div className="flex items-center justify-between">
                       {categorySearch ? (
@@ -306,7 +306,7 @@ export default function ShopClient() {
                       ) : (
                         <>
                           {activeCategoryPath.length > 0 ? (
-                            <button type="button" onClick={handleBackLevel} className="inline-flex items-center gap-1 text-[#007782] hover:underline">
+                            <button type="button" onClick={handleBackLevel} className="inline-flex items-center gap-1 text-[#cb6f4d] hover:underline">
                               <ChevronLeft size={14} />
                               <span className="text-sm">Back</span>
                             </button>
@@ -403,7 +403,7 @@ export default function ShopClient() {
               {pageTitle} <X className="ml-1 inline-block" size={17} />
             </button>
             {hasActiveFilters ? (
-              <button onClick={clearAllFilters} className="text-[14px] font-medium text-[#007782] md:text-[16px]">
+              <button onClick={clearAllFilters} className="text-[14px] font-medium text-[#cb6f4d] md:text-[16px]">
                 Clear filters
               </button>
             ) : null}

@@ -16,7 +16,7 @@ const ReluvAdForm = () => {
     <>
     <div className="min-h-screen bg-[#F2F2F2] font-sans">
       {/* Hero Header */}
-      <header className="bg-[#007782] text-white pt-24 pb-24 relative overflow-hidden">
+      <header className="bg-[#cb6f4d] text-white pt-24 pb-24 relative overflow-hidden">
         <div className="absolute inset-y-0 right-0 w-full md:w-[56%] lg:w-[60%] pointer-events-none">
           <Image
             src="https://static-assets.vinted.com/images/landing/advertising/hero-web.png"
@@ -95,7 +95,7 @@ const ReluvAdForm = () => {
                     <textarea 
                       onChange={(e) => setCharCount(300 - e.target.value.length)}
                       maxLength={300}
-                      className="w-full border-b border-gray-200 focus:border-[#007782] outline-none py-2 resize-none h-32 text-gray-800 transition-colors"
+                      className="w-full border-b border-gray-200 focus:border-[#cb6f4d] outline-none py-2 resize-none h-32 text-gray-800 transition-colors"
                     />
                     <div className="text-xs text-gray-400 mt-2">{charCount} characters left</div>
                   </div>
@@ -106,11 +106,11 @@ const ReluvAdForm = () => {
             {/* Footer and Submit */}
             <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-6">
               <p className="text-[13px] text-gray-500">
-                For more information on how we process your personal data, read our <a href="#" className="underline text-[#007782]">Privacy Policy</a>.
+                For more information on how we process your personal data, read our <a href="#" className="underline text-[#cb6f4d]">Privacy Policy</a>.
               </p>
               <button 
                 type="submit"
-                className="bg-[#007782] text-white px-8 py-2.5 rounded-md font-medium hover:bg-[#005f69] transition-colors"
+                className="bg-[#cb6f4d] text-white px-8 py-2.5 rounded-md font-medium hover:bg-[#005f69] transition-colors"
               >
                 Submit
               </button>
@@ -134,7 +134,7 @@ const FormSection = ({ num, title, children, isOpen, onToggle, isLast }:{num:any
       className="w-full flex items-center justify-between py-6 group"
     >
       <div className="flex items-center gap-4">
-        <span className="w-6 h-6 bg-[#007782] text-white rounded-full flex items-center justify-center text-xs font-bold">
+        <span className="w-6 h-6 bg-[#cb6f4d] text-white rounded-full flex items-center justify-center text-xs font-bold">
           {num}
         </span>
         <h3 className="text-[17px] font-semibold text-gray-800">{title}</h3>
@@ -153,7 +153,7 @@ const InputRow = ({ label, placeholder, type = "text" }: { label: string; placeh
     <input 
       type={type} 
       placeholder={placeholder}
-      className="md:w-2/3 border-b border-gray-200 focus:border-[#007782] outline-none py-2 text-gray-800 placeholder-gray-300 transition-colors"
+      className="md:w-2/3 border-b border-gray-200 focus:border-[#cb6f4d] outline-none py-2 text-gray-800 placeholder-gray-300 transition-colors"
     />
   </div>
 );
@@ -161,7 +161,7 @@ const InputRow = ({ label, placeholder, type = "text" }: { label: string; placeh
 const SelectRow = ({ label, options }: { label: string; options: string[] }) => (
   <div className="flex flex-col md:flex-row md:items-center py-4 border-b border-gray-50 last:border-0">
     <label className="md:w-1/3 text-[15px] font-medium text-gray-700 mb-1 md:mb-0">{label}</label>
-    <select className="md:w-2/3 border-b border-gray-200 focus:border-[#007782] outline-none py-2 bg-transparent text-gray-800 appearance-none cursor-pointer">
+    <select className="md:w-2/3 border-b border-gray-200 focus:border-[#cb6f4d] outline-none py-2 bg-transparent text-gray-800 appearance-none cursor-pointer">
       <option value="">Please select</option>
       {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
     </select>

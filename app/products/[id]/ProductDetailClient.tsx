@@ -510,12 +510,12 @@ export default function ProductDetailPage() {
             </nav>
 
             <div className="flex items-center gap-2">
-              <button className="pdp-share-btn">
+              {/* <button className="pdp-share-btn">
                 <Flag size={14} className="text-[#888]" />
               </button>
               <button className="pdp-share-btn">
                 <Share2 size={14} className="text-[#888]" />
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -598,7 +598,7 @@ export default function ProductDetailPage() {
                         <p className="text-[13px] text-[#aaa] font-sans">No items found from this seller.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {memberItems.map((item) => (
                           <ProductCard key={`member-${item.id}`} {...item} />
                         ))}
@@ -630,7 +630,7 @@ export default function ProductDetailPage() {
                         <p className="text-[13px] text-[#aaa] font-sans">No similar items found.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {similarItems.map((item) => (
                           <ProductCard key={`similar-${item.id}`} {...item} />
                         ))}

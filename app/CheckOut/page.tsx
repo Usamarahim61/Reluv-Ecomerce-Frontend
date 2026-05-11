@@ -337,7 +337,7 @@ const CheckOutContent: React.FC = () => {
                           onChange={(e) =>
                             setSameNumberForFutureOrders(e.target.checked)
                           }
-                          className="w-5 h-5 accent-[#007782] rounded border-gray-300 cursor-pointer"
+                          className="w-5 h-5 accent-[#cb6f4d] rounded border-gray-300 cursor-pointer"
                         />
                       </div>
                     </div>

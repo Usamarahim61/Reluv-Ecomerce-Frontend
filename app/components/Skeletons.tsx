@@ -30,7 +30,7 @@ export function ProductGridError({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="rounded-full bg-[#007782] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
+            className="rounded-full bg-[#cb6f4d] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
           >
             Try again
           </button>
@@ -286,7 +286,7 @@ export function ProductErrorScreen({
         <p className="mb-5 text-[14px] text-red-500">{message}</p>
         <button
           onClick={onRetry}
-          className="rounded-full bg-[#007782] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
+          className="rounded-full bg-[#cb6f4d] px-6 py-2 text-[14px] font-medium text-white transition hover:bg-[#005f6a]"
         >
           Try again
         </button>

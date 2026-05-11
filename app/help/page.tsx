@@ -22,7 +22,7 @@ export default function HelpComp(): JSX.Element {
 
             {/* Search Bar */}
             <div className="flex items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200">
-              <Search className="text-[#007782] w-5 h-5" />
+              <Search className="text-[#cb6f4d] w-5 h-5" />
               <input
                 type="text"
                 placeholder="Rechercher des articles"
@@ -38,7 +38,7 @@ export default function HelpComp(): JSX.Element {
                 onClick={() => setActiveTab("selling")}
                 className="flex-1 flex flex-col items-center justify-center px-4 py-8 cursor-pointer hover:bg-gray-50 transition-colors"
               >
-                <Tag className="w-8 h-8 text-[#007782] mb-2" />
+                <Tag className="w-8 h-8 text-[#cb6f4d] mb-2" />
                 <span className="text-sm font-medium">Vendre</span>
               </div>
 
@@ -46,7 +46,7 @@ export default function HelpComp(): JSX.Element {
                 onClick={() => setActiveTab("buying")}
                 className="flex-1 flex flex-col items-center justify-center px-4 py-8 cursor-pointer hover:bg-gray-50 transition-colors"
               >
-                <ShoppingBag className="w-8 h-8 text-[#007782] mb-2" />
+                <ShoppingBag className="w-8 h-8 text-[#cb6f4d] mb-2" />
                 <span className="text-sm font-medium">Acheter</span>
               </div>
 
@@ -54,7 +54,7 @@ export default function HelpComp(): JSX.Element {
                 onClick={() => setActiveTab("account")}
                 className="flex-1 flex flex-col items-center justify-center px-4 py-8 cursor-pointer hover:bg-gray-50 transition-colors"
               >
-                <User className="w-8 h-8 text-[#007782] mb-2" />
+                <User className="w-8 h-8 text-[#cb6f4d] mb-2" />
                 <span className="text-sm font-medium text-center leading-tight">Mon compte et paramètres</span>
               </div>
             </div>
@@ -86,25 +86,25 @@ export default function HelpComp(): JSX.Element {
             <ul className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-6 md:gap-4 text-gray-700 border-b md:border-none pb-4 md:pb-0 no-scrollbar">
               <li 
                 onClick={() => setActiveTab("home")}
-                className={`cursor-pointer whitespace-nowrap hover:text-[#007782] transition-colors ${activeTab === 'home' ? 'font-bold text-[#007782] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#007782]' : ''}`}
+                className={`cursor-pointer whitespace-nowrap hover:text-[#cb6f4d] transition-colors ${activeTab === 'home' ? 'font-bold text-[#cb6f4d] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#cb6f4d]' : ''}`}
               >
                 Page d’accueil
               </li>
               <li 
                 onClick={() => setActiveTab("selling")}
-                className={`cursor-pointer whitespace-nowrap hover:text-[#007782] transition-colors ${activeTab === 'selling' ? 'font-bold text-[#007782] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#007782]' : ''}`}
+                className={`cursor-pointer whitespace-nowrap hover:text-[#cb6f4d] transition-colors ${activeTab === 'selling' ? 'font-bold text-[#cb6f4d] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#cb6f4d]' : ''}`}
               >
                 Vendre
               </li>
               <li 
                 onClick={() => setActiveTab("buying")}
-                className={`cursor-pointer whitespace-nowrap hover:text-[#007782] transition-colors ${activeTab === 'buying' ? 'font-bold text-[#007782] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#007782]' : ''}`}
+                className={`cursor-pointer whitespace-nowrap hover:text-[#cb6f4d] transition-colors ${activeTab === 'buying' ? 'font-bold text-[#cb6f4d] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#cb6f4d]' : ''}`}
               >
                 Acheter
               </li>
               <li 
                 onClick={() => setActiveTab("account")}
-                className={`cursor-pointer whitespace-nowrap hover:text-[#007782] transition-colors ${activeTab === 'account' ? 'font-bold text-[#007782] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#007782]' : ''}`}
+                className={`cursor-pointer whitespace-nowrap hover:text-[#cb6f4d] transition-colors ${activeTab === 'account' ? 'font-bold text-[#cb6f4d] md:border-l-2 md:pl-3 md:-ml-3 md:border-[#cb6f4d]' : ''}`}
               >
                 Paramètres
               </li>

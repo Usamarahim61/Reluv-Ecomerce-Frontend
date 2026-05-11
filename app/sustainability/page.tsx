@@ -60,7 +60,7 @@ export default function SustainabilityPage() {
         </div>
       </section>
 
-      <section className="bg-[#007782] mt-[-120px] pt-[160px] pb-20 px-4 text-center text-white">
+      <section className="bg-[#cb6f4d] mt-[-120px] pt-[160px] pb-20 px-4 text-center text-white">
         <div className="max-w-2xl mx-auto">
           <p className="text-[17px] md:text-[18px] leading-relaxed mb-10 opacity-95">
             Pre-loved is a big part of our members’ wardrobes and shopping habits. To 
@@ -70,7 +70,7 @@ export default function SustainabilityPage() {
             instead of new, you join an international community changing things for the 
             better.
           </p>
-          <button className="bg-white text-[#007782] px-10 py-3.5 rounded-md font-bold text-sm transition-all hover:bg-slate-50 active:scale-95 shadow-lg">
+          <button className="bg-white text-[#cb6f4d] px-10 py-3.5 rounded-md font-bold text-sm transition-all hover:bg-slate-50 active:scale-95 shadow-lg">
             Read our Impact Report
           </button>
         </div>
@@ -219,7 +219,7 @@ export default function SustainabilityPage() {
         </div>
 
         <div className="flex justify-center mb-12">
-          <button className="bg-[#007782] text-white px-8 py-3 rounded-md font-bold text-sm hover:opacity-90">
+          <button className="bg-[#cb6f4d] text-white px-8 py-3 rounded-md font-bold text-sm hover:opacity-90">
             Read our Impact Report
           </button>
         </div>

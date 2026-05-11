@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Info, CheckCircle2, Send, Image as ImageIcon } from "lucide-react";
+import { Info, CheckCircle2, Send, Image as ImageIcon, Clock, MapPin, Heart, MessageCircle, Search, X, Phone, Globe } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
 import { ConversationItem, MessageItem } from "@/services/messages-service";
@@ -21,7 +21,33 @@ import {
 const formatTime = (value?: string | null) => {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const date = new Date(value);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+};
+
+const formatFullDateTime = (value?: string | null) => {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString([], { 
+      month: "short", 
+      day: "numeric",
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
   } catch {
     return "";
   }
@@ -46,6 +72,7 @@ export default function MessagesClient() {
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [viewMessage, setViewMessage] = useState(false);
+  const [searchConversation, setSearchConversation] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const activeConversation = useMemo(
@@ -114,6 +141,19 @@ export default function MessagesClient() {
     selectedId ? messagesStatusByConversation[String(selectedId)] === "loading" : false;
   const messagesError = selectedId ? messagesErrorByConversation[String(selectedId)] : null;
 
+  const filteredConversations = useMemo(
+    () => conversations.filter(c => {
+      const otherUser = c.buyer?.id === user?.id ? c.seller : c.seller?.id === user?.id ? c.buyer : c.buyer || c.seller;
+      const productTitle = c.product?.title || "";
+      const search = searchConversation.toLowerCase();
+      return (
+        otherUser?.username?.toLowerCase().includes(search) ||
+        productTitle.toLowerCase().includes(search)
+      );
+    }),
+    [conversations, searchConversation, user?.id]
+  );
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeMessages]);
@@ -149,62 +189,79 @@ export default function MessagesClient() {
 
   if (!user) {
     return (
-      <>
-        
-        <div className="max-w-3xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-xl font-semibold mb-2">Please log in to view messages</h2>
-          <p className="text-sm text-gray-500">You need an account to chat with buyers and sellers.</p>
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#f0ede8] to-[#faf9f7] px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="rounded-full bg-white p-4 shadow-lg">
+              <MessageCircle size={40} className="text-[#cb6f4d]" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-serif font-bold text-[#1a1a1a] mb-3">Connect with Buyers & Sellers</h2>
+          <p className="text-[#666] text-sm mb-8">Sign in to your account to chat with people about items you&apos;re interested in or selling.</p>
+          <div className="rounded-2xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.05)] border border-[#e0ddd8]">
+            <p className="text-sm text-[#888]">You need to be logged in to access your messages.</p>
+          </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      
-      <div
-        className={`md:mt-5 flex flex-col max-w-7xl mx-auto bg-white font-sans text-[#111111] md:border md:border-gray-300 overflow-hidden ${
-          isAndroid
-            ? "h-[calc(100dvh-190px)] pb-[1px]"
-            : "h-[calc(100vh-70px)] md:h-[85vh]"
-        }`}
-      >
-        <div className="flex border-b border-gray-200 text-sm font-medium">
-          <div className={`w-full md:w-80 p-4 border-r border-gray-200 ${viewMessage ? "hidden md:block" : "block"}`}>
-            Inbox
-          </div>
-          <div className={`flex-1 p-4 flex justify-between items-center bg-white ${!viewMessage ? "hidden md:flex" : "flex"}`}>
-            <button onClick={() => setViewMessage(false)} className="md:hidden text-[#007782] font-medium">
-            Back
-            </button>
-            <div className="flex items-center gap-1 mx-auto md:mx-0">
-              <span className="font-semibold text-lg">{peerUser?.username || "Conversation"}</span>
-              {peerUser?.id && (
-                <CheckCircle2 size={16} className="text-[#007782] fill-current text-white" />
-              )}
+    <div className={`flex flex-col h-screen md:h-[calc(100vh-70px)] bg-linear-to-br from-[#faf9f7] via-white to-[#f0ede8] ${
+      isAndroid ? "android-messages-shell" : ""
+    }`}>
+      {/* Main Container */}
+      <div className="flex flex-1 overflow-hidden md:max-w-7xl md:mx-auto md:mt-4 w-full md:rounded-2xl md:shadow-[0_8px_32px_rgba(0,0,0,0.08)] md:border md:border-[#e0ddd8]">
+        
+        {/* Left Sidebar - Conversations List */}
+        <aside className={`w-full md:w-96 bg-white flex flex-col border-r border-[#e0ddd8] overflow-hidden transition-all duration-300 ${
+          viewMessage ? "hidden md:flex" : "flex"
+        }`}>
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-[#f0ede8]">
+            <h1 className="text-2xl font-serif font-bold text-[#1a1a1a] mb-4">Messages</h1>
+            
+            {/* Search Box */}
+            <div className="relative">
+              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#aaa]" />
+              <input
+                type="text"
+                value={searchConversation}
+                onChange={(e) => setSearchConversation(e.target.value)}
+                placeholder="Search conversations..."
+                className="w-full bg-[#f9f8f7] border border-[#e0ddd8] rounded-full pl-11 pr-4 py-2.5 text-sm text-[#333] placeholder:text-[#bbb] focus:outline-none focus:border-[#1a1a1a] transition-colors"
+              />
             </div>
-            <Info size={20} className="text-gray-400 cursor-pointer" />
           </div>
-        </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          <aside className={`w-full md:w-80 border-r border-gray-200 flex flex-col bg-white ${viewMessage ? "hidden md:flex" : "flex"}`}>
-            <div className="flex-1 overflow-y-auto">
-              {loadingConversations ? (
-                <div className="p-4 text-sm text-gray-500">Loading conversations...</div>
-              ) : null}
-              {conversationsError ? (
-                <div className="p-4 text-sm text-red-500">{conversationsError}</div>
-              ) : null}
-              {!loadingConversations && conversations.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500">No conversations yet.</div>
-              ) : null}
-              {conversations.map((c) => {
-                const otherUser =
-                  c.buyer?.id === user.id ? c.seller : c.seller?.id === user.id ? c.buyer : c.buyer || c.seller;
+          {/* Conversations List */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingConversations && conversations.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="animate-pulse space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-20 bg-[#f0ede8] rounded-xl" />
+                  ))}
+                </div>
+              </div>
+            ) : conversationsError ? (
+              <div className="p-4 m-4 rounded-xl bg-red-50 border border-red-200">
+                <p className="text-sm text-red-700">{conversationsError}</p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-[#888]">
+                <MessageCircle size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium">{searchConversation ? "No conversations found" : "No conversations yet"}</p>
+                <p className="text-xs mt-1">{searchConversation ? "Try a different search" : "Start chatting with buyers and sellers"}</p>
+              </div>
+            ) : (
+              filteredConversations.map((c) => {
+                const otherUser = c.buyer?.id === user.id ? c.seller : c.seller?.id === user.id ? c.buyer : c.buyer || c.seller;
                 const productTitle = c.product?.title || "Product";
                 const lastText = c.lastMessagePreview || "Start the conversation";
                 const lastTime = c.lastMessageAt || c.updatedAt;
+                const isSelected = selectedId === c.id;
+
                 return (
                   <div
                     key={c.id}
@@ -212,116 +269,184 @@ export default function MessagesClient() {
                       dispatch(setSelectedConversationId(c.id));
                       setViewMessage(true);
                     }}
-                    className={`flex items-start gap-3 p-4 cursor-pointer border-b border-gray-50 transition-colors ${
-                      selectedId === c.id ? "bg-[#f2f2f2] border-l-4 border-[#007782]" : "hover:bg-gray-50 border-l-4 border-transparent"
+                    className={`px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${
+                      isSelected
+                        ? "bg-linear-to-r from-[#faf8f5] to-transparent border-l-[#cb6f4d]"
+                        : "border-l-transparent hover:bg-[#fafafa]"
                     }`}
                   >
-                    <div className="relative w-12 h-12 bg-[#007782] rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                      {otherUser?.username?.[0]?.toUpperCase() || "U"}
-                      {otherUser?.id && (
-                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                          <CheckCircle2 size={14} className="text-[#007782]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline">
-                        <span className={`text-[15px] ${selectedId === c.id ? "font-bold" : "font-medium"}`}>
-                          {otherUser?.username || "User"}
-                        </span>
-                        <span className="text-gray-500 text-xs">{formatTime(lastTime)}</span>
+                    <div className="flex items-start gap-3">
+                      {/* Avatar */}
+                      <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center font-bold text-white text-lg transition-all ${
+                        isSelected ? "bg-[#cb6f4d] shadow-md" : "bg-linear-to-br from-[#cb6f4d] to-[#a55840]"
+                      }`}>
+                        {otherUser?.username?.[0]?.toUpperCase() || "U"}
                       </div>
-                      <p className="text-gray-500 text-[12px] truncate">{productTitle}</p>
-                      <p className="text-gray-600 text-[14px] truncate">{lastText}</p>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`font-semibold text-sm truncate ${isSelected ? "text-[#1a1a1a]" : "text-[#333]"}`}>
+                            {otherUser?.username || "User"}
+                          </span>
+                          <span className={`text-xs whitespace-nowrap ml-2 ${isSelected ? "text-[#cb6f4d]" : "text-[#aaa]"}`}>
+                            {formatTime(lastTime)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#888] truncate mb-1">{productTitle}</p>
+                        <p className={`text-sm truncate ${isSelected ? "text-[#555] font-medium" : "text-[#999]"}`}>
+                          {lastText}
+                        </p>
+                      </div>
+
+                      {/* Verification Badge */}
+                      {otherUser?.id && (
+                        <CheckCircle2 size={16} className="text-[#cb6f4d] shrink-0 mt-0.5" />
+                      )}
                     </div>
                   </div>
                 );
-              })}
+              })
+            )}
+          </div>
+        </aside>
+
+        {/* Right Main Area - Chat */}
+        <main className={`flex-1 flex flex-col bg-white overflow-hidden transition-all duration-300 ${
+          !viewMessage ? "hidden md:flex" : "flex"
+        }`}>
+          {!activeConversation ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+              <MessageCircle size={56} className="text-[#e0ddd8] mb-4" />
+              <h2 className="text-2xl font-serif font-bold text-[#1a1a1a] mb-2">Select a Conversation</h2>
+              <p className="text-[#888] text-sm max-w-xs">Choose a conversation from the list to start chatting or view previous messages</p>
             </div>
-          </aside>
+          ) : (
+            <>
+              {/* Chat Header */}
+              <div className="border-b border-[#f0ede8] px-6 py-4 bg-linear-to-r from-[#faf9f7] to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Back Button */}
+                    <button
+                      onClick={() => setViewMessage(false)}
+                      className="md:hidden p-2 hover:bg-[#f0ede8] rounded-lg transition-colors text-[#888]"
+                    >
+                      ←
+                    </button>
 
-          <main className={`flex-1 flex-col bg-[#f5f5f5] md:bg-white overflow-hidden ${!viewMessage ? "hidden md:flex" : "flex"}`}>
-            {!activeConversation ? (
-              <div className="flex-1 flex items-center justify-center text-sm text-gray-500">
-                Select a conversation to start chatting.
-              </div>
-            ) : (
-              <>
-                <div className="border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
-                    {activeConversation.product?.images && getFirstImageUrl(activeConversation.product.images) ? (
-                      <img
-                        src={getFirstImageUrl(activeConversation.product.images) || ""}
-                        alt={activeConversation.product?.title || "Product"}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon className="text-gray-400" size={20} />
-                    )}
+                    {/* Product Image */}
+                    <div className="w-14 h-14 bg-[#f0ede8] rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8]">
+                      {activeConversation.product?.images && getFirstImageUrl(activeConversation.product.images) ? (
+                        <img
+                          src={getFirstImageUrl(activeConversation.product.images) || ""}
+                          alt={activeConversation.product?.title || "Product"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="text-[#ccc]" size={24} />
+                      )}
+                    </div>
+
+                    {/* Header Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[#1a1a1a] text-sm">{peerUser?.username || "User"}</span>
+                        <CheckCircle2 size={14} className="text-[#cb6f4d] shrink-0" />
+                      </div>
+                      <p className="text-xs text-[#888] truncate">{activeConversation.product?.title || "Product"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">{activeConversation.product?.title || "Product"}</p>
-                    <p className="text-xs text-gray-500">Conversation about this item</p>
-                  </div>
+
+                  {/* Right Actions */}
+                  <button className="p-2 hover:bg-[#f0ede8] rounded-lg transition-colors text-[#888]">
+                    <Info size={20} />
+                  </button>
                 </div>
+              </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-                  {loadingMessages ? (
-                    <div className="text-sm text-gray-500">Loading messages...</div>
-                  ) : null}
-                  {messagesError ? (
-                    <div className="text-sm text-red-500">{messagesError}</div>
-                  ) : null}
-                  {!loadingMessages && activeMessages.length === 0 ? (
-                    <div className="text-sm text-gray-500">No messages yet. Say hello!</div>
-                  ) : null}
-                  {activeMessages.map((msg) => {
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#fafaf8]">
+                {loadingMessages && activeMessages.length === 0 ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-pulse space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className={`h-12 w-48 bg-[#e0ddd8] rounded-2xl ${i % 2 === 0 ? "ml-auto" : ""}`} />
+                      ))}
+                    </div>
+                  </div>
+                ) : messagesError ? (
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+                    <p className="text-sm text-red-700">{messagesError}</p>
+                  </div>
+                ) : activeMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <Heart size={40} className="text-[#f0ede8] mb-3" />
+                    <p className="font-serif text-lg font-bold text-[#1a1a1a] mb-1">Start the conversation</p>
+                    <p className="text-sm text-[#888]">Say hello! Break the ice with a friendly message.</p>
+                  </div>
+                ) : (
+                  activeMessages.map((msg, idx) => {
                     const isMine = msg.sender?.id === user.id;
                     return (
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                          isMine ? "bg-[#007782] text-white" : "bg-white border border-gray-200 text-gray-800"
-                        }`}>
-                          <p>{msg.content}</p>
-                          <div className={`mt-1 text-[10px] ${isMine ? "text-white/70" : "text-gray-400"}`}>
-                            {formatTime(msg.createdAt)}
+                        <div className="flex flex-col max-w-xs">
+                          <div
+                            className={`px-4 py-2.5 rounded-2xl text-sm transition-all ${
+                              isMine
+                                ? "bg-[#cb6f4d] text-white rounded-br-none shadow-md"
+                                : "bg-white border border-[#e0ddd8] text-[#333] rounded-bl-none shadow-sm"
+                            }`}
+                          >
+                            <p className="wrap-break-word">{msg.content}</p>
                           </div>
+                          <span className={`text-xs mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}>
+                            {formatFullDateTime(msg.createdAt)}
+                          </span>
                         </div>
                       </div>
                     );
-                  })}
-                  <div ref={bottomRef} />
-                </div>
+                  })
+                )}
+                <div ref={bottomRef} />
+              </div>
 
-                <div className="border-t border-gray-100 px-4 py-3 bg-white">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      placeholder="Type a message"
-                      className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-[#007782]"
-                    />
-                    <button
-                      onClick={handleSend}
-                      className="w-10 h-10 rounded-full bg-[#007782] text-white flex items-center justify-center hover:bg-[#00656f]"
-                    >
-                      <Send size={18} />
-                    </button>
-                  </div>
-                  {error ? <p className="mt-2 text-xs text-red-500">{error}</p> : null}
+              {/* Input Area */}
+              <div className={`border-t border-[#f0ede8] px-6 py-4 bg-white shrink-0 ${
+                isAndroid ? "android-message-composer" : ""
+              }`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Write a message..."
+                    className="flex-1 border border-[#e0ddd8] rounded-full px-5 py-3 text-sm text-[#333] placeholder:text-[#bbb] focus:outline-none focus:border-[#cb6f4d] focus:ring-1 focus:ring-[#cb6f4d]/30 transition-all"
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputValue.trim()}
+                    className="w-11 h-11 rounded-full bg-[#cb6f4d] text-white flex items-center justify-center hover:bg-[#b85f3d] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                  >
+                    <Send size={20} />
+                  </button>
                 </div>
-              </>
-            )}
-          </main>
-        </div>
+                {error && (
+                  <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <p className="text-xs text-red-700">{error}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </main>
       </div>
-    </>
+    </div>
   );
 }

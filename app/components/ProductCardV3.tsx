@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, ShieldCheck, Flame, TrendingUp } from "lucide-react";
+import { Heart, ShieldCheck, Flame } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
@@ -53,7 +53,7 @@ const toImageUrl = (value: unknown): string | null => {
   return null;
 };
 
-export default function ProductCard({
+export default function ProductCardV3({
   id,
   documentId,
   brand,
@@ -79,8 +79,8 @@ export default function ProductCard({
   const brandText = toDisplayText(brand);
   const sizeText = toDisplayText(size);
   const conditionText = toDisplayText(condition);
-  const priceText = toDisplayText(price);
-  const totalPriceText = toDisplayText(totalPrice);
+  const priceValue = toDisplayText(price);
+  const totalPriceValue = toDisplayText(totalPrice);
   const showTrending = Number(likes || 0) >= 50;
   const isAndroid = variant === "android";
 
@@ -91,35 +91,18 @@ export default function ProductCard({
     setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
     
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/products/${productDocumentId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            data: {
-              likeCount: isLiked ? likesCount - 1 : likesCount + 1,
-            },
-          }),
-        },
-      );
-
-      if (!res.ok) {
-        console.error("Failed to like product");
-        setIsLiked(!isLiked);
-        setLikesCount(isLiked ? likesCount + 1 : likesCount - 1);
-        return;
-      }
-
+      await fetch(`${API_BASE_URL}/api/products/${productDocumentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: { likeCount: isLiked ? likesCount - 1 : likesCount + 1 },
+        }),
+      });
       await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fav_products: [Number(productDocumentId)],
+          fav_products: { id: Number(productId) },
         }),
       });
     } catch (error) {
@@ -138,7 +121,7 @@ export default function ProductCard({
           {safeImageUrl ? (
             <img
               src={`${API_BASE_URL}${safeImageUrl}`}
-              alt={brandText || nameText || "Product"}
+              alt={nameText}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
@@ -212,13 +195,13 @@ export default function ProductCard({
           <div className="space-y-2 pt-3 border-t border-[#f0ede8]">
             <div className="flex items-baseline justify-between">
               <span className="text-xs text-[#aaa]">Price</span>
-              <span className="text-lg font-bold text-[#cb6f4d]">{priceText}</span>
+              <span className="text-lg font-bold text-[#cb6f4d]">{priceValue}</span>
             </div>
             
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#aaa]">Incl. fees</span>
               <div className="flex items-center gap-1 text-[#1a1a1a] font-semibold">
-                <span>{totalPriceText}</span>
+                <span>{totalPriceValue}</span>
                 <ShieldCheck size={12} className="text-[#cb6f4d]" />
               </div>
             </div>

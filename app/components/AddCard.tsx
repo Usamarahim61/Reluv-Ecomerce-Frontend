@@ -160,13 +160,13 @@ export default function CardDetailsModal({ isOpen, onClose, onSave  }: CardDetai
              <button
             onClick={handleSaveCard}
             disabled={loading}
-            className="w-full bg-[#007782] text-white py-3"
+            className="w-full bg-[#cb6f4d] text-white py-3"
           >
             {loading ? "Saving..." : "Use this card"}
           </button>
             <button 
               onClick={onClose}
-              className="w-full text-[#007782] font-bold py-2 hover:underline text-center"
+              className="w-full text-[#cb6f4d] font-bold py-2 hover:underline text-center"
             >
               Cancel
             </button>

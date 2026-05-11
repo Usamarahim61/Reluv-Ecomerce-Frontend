@@ -262,7 +262,7 @@ export default function Navbar() {
 
               {/* Search bar (tablet + desktop) */}
               <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
-                <Search className="text-[#007782] w-5 h-5" />
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search for items"
@@ -277,7 +277,7 @@ export default function Navbar() {
                     }
                   }}
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
                 {showResults && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
                     {searchLoading ? (
@@ -493,13 +493,13 @@ export default function Navbar() {
               {!user && (
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
+                  className="hidden sm:inline-block cursor-pointer text-[#cb6f4d] border border-[#cb6f4d] px-3 py-1.5 rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
               )}
               <Link href={`/SellNow`}>
-                <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
+                <button className="hidden sm:inline-block bg-[#cb6f4d] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
                   Sell Now
                 </button>
               </Link>
@@ -610,13 +610,13 @@ export default function Navbar() {
 
               {/* Search */}
               <div className="flex-1 flex items-center bg-gray-100 px-3 py-2 border border-gray-200 rounded-md">
-                <Search className="text-[#007782] w-5 h-5" />
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search items"
                   className="bg-transparent outline-none flex-1 px-2"
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
               </div>
             </div>
             {/* Auth buttons */}
@@ -624,11 +624,11 @@ export default function Navbar() {
               <div className="flex flex-col gap-2 mb-3">
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="w-full px-4 py-2 border border-[#007782] text-[#007782] rounded text-sm"
+                  className="w-full px-4 py-2 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
-                <button className="w-full px-4 py-2 bg-[#007782] text-white rounded text-sm">
+                <button className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
                   Sell
                 </button>
               </div>
@@ -664,7 +664,7 @@ export default function Navbar() {
                 <Link
                   key={cat.label}
                   href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
-                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#007782] rounded"
+                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#cb6f4d] rounded"
                 >
                   <span>{cat.label}</span>
                 </Link>

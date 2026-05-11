@@ -62,11 +62,12 @@ export default function ProductCardV2({
   price,
   totalPrice,
   imageUrl,
+  images,
   likes,
   variant = "default",
-}: ProductProps) {
+}: any) {
   const { user } = useAuth();
-  const safeImageUrl = toImageUrl(imageUrl);
+  const safeImageUrl = toImageUrl(imageUrl ?? images?.[0]);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
   const nameText = toDisplayText(title);
   const productDocumentId = encodeURIComponent(

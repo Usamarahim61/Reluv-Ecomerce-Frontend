@@ -58,7 +58,7 @@ if (!productList || productList.length === 0) {
           <button
             onClick={onLoadMore}
             disabled={isLoadingMore}
-            className="mt-4 flex cursor-pointer items-center justify-center gap-1 rounded-sm border border-gray-300 bg-[#007782] px-3 py-2 text-white disabled:opacity-60"
+            className="mt-4 flex cursor-pointer items-center justify-center gap-1 rounded-sm border border-gray-300 bg-[#cb6f4d] px-3 py-2 text-white disabled:opacity-60"
           >
             {isLoadingMore ? 'Loading...' : 'See More'}
             <ChevronDown size={16} />

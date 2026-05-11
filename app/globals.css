@@ -57,6 +57,26 @@ html.android-native {
   max-width: 100%;
 }
 
+body.android-shell {
+  --android-bottom-nav-height: 76px;
+  --android-top-chrome-height: 112px;
+  background-color: #f7f7f8;
+  color: #1f2937;
+  padding-bottom: calc(var(--android-bottom-nav-height) + env(safe-area-inset-bottom));
+}
+
+html.android-native .android-messages-shell {
+  height: calc(100dvh - var(--android-top-chrome-height) - var(--android-bottom-nav-height) - env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+html.android-native .android-message-composer {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  background: white;
+  position: relative;
+  z-index: 10;
+}
+
 /* Rest preserved */
  /* :root {
   --background: #ffffff;

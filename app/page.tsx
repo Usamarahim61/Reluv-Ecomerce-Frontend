@@ -86,19 +86,19 @@ export default function Home() {
           //       Ready to declutter your wardrobe?
           //     </h2>
           //     <Link href={`/SellNow`}>
-          //       <button className="w-full bg-[#007782] hover:bg-[#005f68] transition-colors text-white py-3 rounded-md font-semibold mb-4">
+          //       <button className="w-full bg-[#cb6f4d] hover:bg-[#005f68] transition-colors text-white py-3 rounded-md font-semibold mb-4">
           //         Sell now
           //       </button>
           //     </Link>
           //     <a
           //       href="#"
-          //       className="text-[#007782] underline block text-center text-sm"
+          //       className="text-[#cb6f4d] underline block text-center text-sm"
           //     >
           //       Learn how it works
           //     </a>
           //   </div>
           // </section>
-          <section className="relative h-[500px] w-full overflow-hidden bg-gray-200 md:h-[600px] lg:h-[700px]">
+          <section className="relative h-[500px] w-full overflow-hidden bg-gray-200 md:h-[600px] lg:h-[600px]">
             {/* Background Image */}
             <Image
               // src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
@@ -121,7 +121,7 @@ export default function Home() {
             {/* Main Content Card */}
             <div
               className="absolute bottom-10 left-1/2 w-[92%] -translate-x-1/2 rounded-2xl bg-white p-8 shadow-2xl 
-                   md:bottom-auto md:left-12 md:top-1/2 md:w-full md:max-w-[420px] md:-translate-x-0 md:-translate-y-1/2 lg:left-24"
+                   md:bottom-auto md:left-10 md:top-1/2 md:w-full md:max-w-[420px] md:-translate-x-0 md:-translate-y-1/2 lg:left-24"
             >
               <h2 className="mb-3 font-serif text-3xl font-bold leading-[1.1] text-gray-900 md:text-4xl">
                 Ready to declutter your wardrobe?

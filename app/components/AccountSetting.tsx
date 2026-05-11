@@ -109,7 +109,7 @@ export default function AccountSetting() {
           </div>
           <button
             type="button"
-            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium hover:bg-gray-50"
+            className="px-4 py-1 border border-[#cb6f4d] text-[#cb6f4d] rounded-md text-sm font-medium hover:bg-gray-50"
           >
             Change
           </button>
@@ -206,7 +206,7 @@ export default function AccountSetting() {
           </span>
           <button
             type="button"
-            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+            className="px-4 py-1 border border-[#cb6f4d] text-[#cb6f4d] rounded-md text-sm font-medium"
           >
             {formData.facebookLinked
               ? "Linked"
@@ -220,7 +220,7 @@ export default function AccountSetting() {
           </span>
           <button
             type="button"
-            className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+            className="px-4 py-1 border border-[#cb6f4d] text-[#cb6f4d] rounded-md text-sm font-medium"
           >
             {formData.googleLinked
               ? "Linked"
@@ -236,7 +236,7 @@ export default function AccountSetting() {
         </span>
         <button
           type="button"
-          className="px-4 py-1 border border-[#007782] text-[#007782] rounded-md text-sm font-medium"
+          className="px-4 py-1 border border-[#cb6f4d] text-[#cb6f4d] rounded-md text-sm font-medium"
         >
           Change
         </button>
@@ -247,7 +247,7 @@ export default function AccountSetting() {
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#007782] text-white px-8 py-2 rounded font-medium hover:bg-[#005f68] transition-colors"
+          className="bg-[#cb6f4d] text-white px-8 py-2 rounded font-medium hover:bg-[#005f68] transition-colors"
         >
           {loading ? "Saving..." : "Save"}
         </button>

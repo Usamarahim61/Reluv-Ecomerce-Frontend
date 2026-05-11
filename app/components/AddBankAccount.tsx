@@ -51,7 +51,7 @@ export default function AddBankAccount({
                   placeholder="e.g. Alex Peterson"
                   value={accountHolder}
                   onChange={(e) => setAccountHolder(e.target.value)}
-                  className="w-full border-b border-gray-200 py-1 focus:outline-none focus:border-[#007782]"
+                  className="w-full border-b border-gray-200 py-1 focus:outline-none focus:border-[#cb6f4d]"
                 />
               </div>
             </div>
@@ -68,7 +68,7 @@ export default function AddBankAccount({
                   placeholder="FRXXXXXXXXXXXXXXXXXXXXXXXXX"
                   value={iban}
                   onChange={(e) => setIban(e.target.value)}
-                  className="w-full border-b border-gray-200 py-1 pr-8 focus:outline-none focus:border-[#007782] uppercase"
+                  className="w-full border-b border-gray-200 py-1 pr-8 focus:outline-none focus:border-[#cb6f4d] uppercase"
                 />
 
                 <Info className="absolute right-0 bottom-2 w-4 h-4 text-gray-400" />
@@ -103,7 +103,7 @@ export default function AddBankAccount({
             payment provider for your withdrawals, or unless legally required.
           </p>
 
-          <button className="bg-[#007782] text-white px-10 py-2.5 rounded font-bold hover:bg-[#005f68]">
+          <button className="bg-[#cb6f4d] text-white px-10 py-2.5 rounded font-bold hover:bg-[#005f68]">
             Save
           </button>
 
