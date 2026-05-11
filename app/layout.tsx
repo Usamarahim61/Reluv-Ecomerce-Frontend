@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import Providers from "./providers";
 import Script from "next/script";
 import Navbar from "./components/navbar";
@@ -35,7 +36,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-
     <html lang="en" suppressHydrationWarning={true}>
       <head>
         <Script id="android-native-flag" strategy="beforeInteractive">
@@ -53,7 +53,6 @@ export default function RootLayout({
                   html.classList.add('android-native');
                 }
                 
-                // Remove loading after minimal delay to allow CSS to apply
                 requestAnimationFrame(() => {
                   html.classList.remove('loading');
                 });
@@ -69,13 +68,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
       >
         <Providers>
-         <AuthProvider>
-          <NavbarV2 />
-          <AuthSessionPrompt />
-
-        {children}
-         </AuthProvider>
-         </Providers>
+          <AuthProvider>
+            <NotificationProvider>
+              <NavbarV2 />
+              <AuthSessionPrompt />
+              {children}
+            </NotificationProvider>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

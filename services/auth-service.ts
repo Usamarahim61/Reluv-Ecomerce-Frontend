@@ -15,6 +15,41 @@ export function register(username: string, email: string, password: string) {
     body: JSON.stringify({ username, email, password }),
   });
 }
+
+export function sendOtp(email: string, username: string, password: string) {
+  return apiRequest("/email-otp/send", {
+    method: "POST",
+    body: JSON.stringify({ email, username, password }),
+  });
+}
+
+export function verifyOtp(email: string, otp: string) {
+  return apiRequest("/email-otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function forgotPasswordSendOtp(email: string) {
+  return apiRequest("/password-reset/send-otp", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function forgotPasswordVerifyOtp(email: string, otp: string) {
+  return apiRequest("/password-reset/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function forgotPasswordReset(email: string, otp: string, password: string) {
+  return apiRequest("/password-reset/reset", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, password }),
+  });
+}
 export function getUser(id: number) {
   return apiRequest(
     `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*`,

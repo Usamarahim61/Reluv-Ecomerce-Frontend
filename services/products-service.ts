@@ -416,3 +416,8 @@ export async function fetchProductsByUserId(userId: number | string): Promise<Pr
   const data = Array.isArray(payload?.products) ? payload.products : [];
   return data.map(mapProductToCard);
 }
+
+export function deleteMyProduct(id: number | string) {
+  return apiRequest(`/products/${id}/mine`, { method: "DELETE" });
+}
+

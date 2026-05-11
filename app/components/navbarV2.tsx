@@ -23,6 +23,7 @@ import type { RootState } from "@/lib/store";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationContext";
 import AndroidChrome from "./AndroidChrome";
 import { useAndroidNative } from "./useAndroidNative";
 import {
@@ -74,6 +75,7 @@ export default function NavbarV2() {
     }
   }, [router, searchQuery]);
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [loggedInUser, setLoggedInUser] = useState<{ avatar?: { url?: string } } | null>(null);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -398,32 +400,66 @@ export default function NavbarV2() {
                 <div ref={notificationRef} className="relative">
                   <button
                     onClick={() => setNotificationOpen(!notificationOpen)}
-                    className="w-9 h-9 flex items-center justify-center rounded-full  cursor-pointer overflow-hidden hover:bg-gray-100"
+                    className="relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer hover:bg-gray-100"
                   >
-                    {/* Avatar / fallback icon */}
                     <Bell className="w-6 h-6 text-gray-600" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] bg-[#cb6f4d] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                   </button>
 
                   {notificationOpen && (
-                    <div className="absolute left-[-100] mt-2 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                      {/* Profile */}
-                      <div className="cursor-pointer flex items-center gap-2">
-                        <div className="flex flex-col items-center justify-center min-h-[80px] p-8 text-center">
-                          {/* Icon Container */}
-                          <div className="relative mb-4">
-                            <div className="absolute inset-0 bg-indigo-100 rounded-full blur-2xl opacity-50" />
-                            <BellOff
-                              size={40}
-                              strokeWidth={1}
-                              className="relative text-indigo-500 animate-pulse"
-                            />
-                          </div>
+                    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <span className="font-semibold text-sm text-gray-900">Notifications</span>
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => markAllRead()}
+                            className="text-xs text-[#cb6f4d] hover:underline"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                      </div>
 
-                          {/* Text Content */}
-                          <p className="text-xl font-semibold text-gray-900">
-                            No notifications yet
-                          </p>
-                        </div>
+                      {/* List */}
+                      <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+                        {notifications.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+                            <BellOff size={36} strokeWidth={1} className="text-gray-300 mb-3" />
+                            <p className="text-sm font-medium text-gray-500">No notifications yet</p>
+                          </div>
+                        ) : (
+                          notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => {
+                                if (!n.read) markRead(n.id);
+                                if (n.link) router.push(n.link);
+                                setNotificationOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex gap-3 items-start ${
+                                !n.read ? "bg-orange-50" : ""
+                              }`}
+                            >
+                              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                                !n.read ? "bg-[#cb6f4d]" : "bg-transparent"
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 leading-snug">{n.title}</p>
+                                {n.body && <p className="text-xs text-gray-500 mt-0.5 truncate">{n.body}</p>}
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                  {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
