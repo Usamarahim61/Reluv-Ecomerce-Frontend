@@ -40,6 +40,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
 import { ProductDetailSkeleton, ProductErrorScreen } from "@/app/components/Skeletons";
+import { getUserFav_Products } from "@/services/auth-service";
 
 type BreadcrumbItem = { label: string; slug: string };
 
@@ -105,12 +106,45 @@ export default function ProductDetailPage() {
   const [categoryTrail, setCategoryTrail] = useState<BreadcrumbItem[]>([]);
   const [showCarousel, setShowCarousel] = useState(false);
   const [carouselStartIndex, setCarouselStartIndex] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
 
   const [isProductLoading, setIsProductLoading] = useState(true);
   const [productError, setProductError] = useState<string | null>(null);
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
+
+  // ── fav state ──────────────────────────────────────────────────────────────
+  const [favIds, setFavIds] = useState<number[]>([]);
+
+  // ── derived wishlist state for main product ────────────────────────────────
+  const isWishlisted = product?.id ? favIds.includes(Number(product.id)) : false;
+
+  // ── fetch fav products once on mount ──────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    let isMounted = true;
+
+    getUserFav_Products(Number(user.id))
+      .then((data) => {
+        if (!isMounted) return;
+        const ids: number[] =
+          data?.fav_products?.map((p: any) =>
+            typeof p === "object" ? Number(p.id) : Number(p)
+          ) ?? [];
+        setFavIds(ids);
+      })
+      .catch((err) => console.error("Failed to fetch fav products", err));
+
+    return () => { isMounted = false; };
+  }, [user?.id]);
+
+  // ── sync fav state after like/unlike from any card ─────────────────────────
+  const handleFavChange = (productId: number, liked: boolean) => {
+    setFavIds((prev) =>
+      liked
+        ? [...new Set([...prev, productId])]
+        : prev.filter((id) => id !== productId)
+    );
+  };
 
   /* ── 1. load product ── */
   useEffect(() => {
@@ -269,6 +303,7 @@ export default function ProductDetailPage() {
 
   const productInfo = {
     productId: product?.id,
+    documentId: product?.documentId,
     title: name,
     brand,
     size,
@@ -299,6 +334,28 @@ export default function ProductDetailPage() {
     }
   };
 
+  // ── wishlist handler for main product heart button ─────────────────────────
+  const handleWishlist = async () => {
+    if (!product?.id || !user?.id) return;
+    const nowLiked = !isWishlisted;
+    handleFavChange(Number(product.id), nowLiked); // optimistic
+
+    try {
+      await fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fav_products: nowLiked
+            ? { connect: [Number(product.id)] }
+            : { disconnect: [Number(product.id)] },
+        }),
+      });
+    } catch (err) {
+      console.error(err);
+      handleFavChange(Number(product.id), !nowLiked); // rollback
+    }
+  };
+
   /* ─── LOADING / ERROR SCREENS ── */
   if (isProductLoading) return <ProductDetailSkeleton />;
   if (productError) return (
@@ -308,7 +365,6 @@ export default function ProductDetailPage() {
   /* ─── MAIN RENDER ── */
   return (
     <>
-      {/* Global style overrides scoped to this page */}
       <style>{`
         .pdp-root {
           background: #f7f4f0;
@@ -510,12 +566,7 @@ export default function ProductDetailPage() {
             </nav>
 
             <div className="flex items-center gap-2">
-              {/* <button className="pdp-share-btn">
-                <Flag size={14} className="text-[#888]" />
-              </button>
-              <button className="pdp-share-btn">
-                <Share2 size={14} className="text-[#888]" />
-              </button> */}
+              {/* reserved for share/flag buttons */}
             </div>
           </div>
 
@@ -539,8 +590,8 @@ export default function ProductDetailPage() {
                       style={{ minHeight: index === 0 && imageCount >= 2 ? 480 : 200 }}
                     >
                       {index === lastVisibleIndex && productImages.length > visibleImages.length ? (
-                        <div 
-                          className="relative h-full w-full cursor-pointer" 
+                        <div
+                          className="relative h-full w-full cursor-pointer"
                           onClick={() => {
                             setCarouselStartIndex(index);
                             setShowCarousel(true);
@@ -555,8 +606,8 @@ export default function ProductDetailPage() {
                           </div>
                         </div>
                       ) : (
-                        <div 
-                          className="relative h-full w-full cursor-pointer" 
+                        <div
+                          className="relative h-full w-full cursor-pointer"
                           onClick={() => {
                             const actualIndex = productImages.indexOf(img);
                             setCarouselStartIndex(actualIndex);
@@ -574,7 +625,8 @@ export default function ProductDetailPage() {
               {/* ── Member items (below image on desktop) ── */}
               {!isOwnProduct && (
                 <div className="mt-10 space-y-10">
-                  {/* Member items */}
+
+                  {/* More from this seller */}
                   <section>
                     <p className="pdp-section-title">More from this seller</p>
                     {isFeedLoading ? (
@@ -600,13 +652,18 @@ export default function ProductDetailPage() {
                     ) : (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {memberItems.map((item) => (
-                          <ProductCard key={`member-${item.id}`} {...item} />
+                          <ProductCard
+                            key={`member-${item.id}`}
+                            {...item}
+                            isLiked={favIds.includes(Number(item.id))}
+                            onFavChange={handleFavChange}
+                          />
                         ))}
                       </div>
                     )}
                   </section>
 
-                  {/* Similar items */}
+                  {/* You might also like */}
                   <section>
                     <p className="pdp-section-title">You might also like</p>
                     {isFeedLoading ? (
@@ -632,11 +689,17 @@ export default function ProductDetailPage() {
                     ) : (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {similarItems.map((item) => (
-                          <ProductCard key={`similar-${item.id}`} {...item} />
+                          <ProductCard
+                            key={`similar-${item.id}`}
+                            {...item}
+                            isLiked={favIds.includes(Number(item.id))}
+                            onFavChange={handleFavChange}
+                          />
                         ))}
                       </div>
                     )}
                   </section>
+
                 </div>
               )}
             </section>
@@ -655,9 +718,11 @@ export default function ProductDetailPage() {
                       {name}
                     </h1>
                   </div>
+
+                  {/* ── Main product wishlist button ── */}
                   <button
                     className="pdp-wishlist-btn mt-1"
-                    onClick={() => setIsWishlisted(!isWishlisted)}
+                    onClick={handleWishlist}
                     aria-label="Add to wishlist"
                   >
                     <Heart

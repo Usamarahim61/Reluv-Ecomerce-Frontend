@@ -61,6 +61,7 @@ export type ProductFilterOptions = {
 };
 
 export type ProductDetailItem = {
+  documentId?: string | number ;
   id: number | string;
   title: string;
   description: string;

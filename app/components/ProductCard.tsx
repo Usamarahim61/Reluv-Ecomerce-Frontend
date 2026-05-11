@@ -1,22 +1,8 @@
 import Link from "next/link";
-import { Heart, ShieldCheck, Flame, TrendingUp } from "lucide-react";
+import { Heart, ShieldCheck, Flame } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
-
-interface ProductProps {
-  id: string | number;
-  documentId?: string | number;
-  brand: unknown;
-  title: unknown;
-  size: unknown;
-  condition: unknown;
-  price: unknown;
-  totalPrice: unknown;
-  imageUrl?: unknown;
-  likes: number;
-  variant?: "default" | "android";
-}
+import { useState, useEffect } from "react";
 
 const toDisplayText = (value: unknown): string => {
   if (value == null) return "";
@@ -65,74 +51,83 @@ export default function ProductCard({
   imageUrl,
   likes,
   variant = "default",
-}: ProductProps) {
+  isLiked: isLikedProp = false,   // ✅ from parent
+  onFavChange,                     // ✅ from parent
+}: any) {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(isLikedProp);
   const [likesCount, setLikesCount] = useState(Number(likes || 0));
-  
+
   const safeImageUrl = toImageUrl(imageUrl);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
-  const nameText = toDisplayText(title);
   const productDocumentId = encodeURIComponent(
-    String(documentId ?? "").trim() || "0",
+    String(documentId ?? "").trim() || "0"
   );
+  const nameText = toDisplayText(title);
   const brandText = toDisplayText(brand);
   const sizeText = toDisplayText(size);
   const conditionText = toDisplayText(condition);
   const priceText = toDisplayText(price);
   const totalPriceText = toDisplayText(totalPrice);
   const showTrending = Number(likes || 0) >= 50;
-  const isAndroid = variant === "android";
+
+  // Sync when parent prop updates (after initial fav fetch completes)
+  useEffect(() => {
+    setIsLiked(isLikedProp);
+  }, [isLikedProp]);
 
   const AddLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
-    
+
+    const nowLiked = !isLiked;
+    const newCount = nowLiked ? likesCount + 1 : likesCount - 1;
+
+    // Optimistic update
+    setIsLiked(nowLiked);
+    setLikesCount(newCount);
+    onFavChange?.(Number(id), nowLiked); // notify parent immediately
+
     try {
+      // 1. Update product likeCount
       const res = await fetch(
         `${API_BASE_URL}/api/products/${productDocumentId}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            data: {
-              likeCount: isLiked ? likesCount - 1 : likesCount + 1,
-            },
+            data: { likeCount: newCount },
           }),
-        },
+        }
       );
 
-      if (!res.ok) {
-        console.error("Failed to like product");
-        setIsLiked(!isLiked);
-        setLikesCount(isLiked ? likesCount + 1 : likesCount - 1);
-        return;
-      }
+      if (!res.ok) throw new Error("Failed to update product likes");
 
-      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
+      // 2. Update user fav_products using connect/disconnect (Strapi v4/v5)
+      const userRes = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fav_products: [Number(productDocumentId)],
+          fav_products: nowLiked
+            ? { connect: [Number(id)] }
+            : { disconnect: [Number(id)] },
         }),
       });
+
+      if (!userRes.ok) throw new Error("Failed to update user fav products");
     } catch (error) {
       console.error(error);
-      setIsLiked(!isLiked);
-      setLikesCount(isLiked ? likesCount + 1 : likesCount - 1);
+      // Rollback
+      setIsLiked(!nowLiked);
+      setLikesCount(likesCount);
+      onFavChange?.(Number(id), !nowLiked); // rollback parent too
     }
   };
 
   return (
     <Link href={`/products/${productId}`}>
       <div className="group flex cursor-pointer flex-col h-full rounded-2xl overflow-hidden bg-white border border-[#f0ede8] hover:border-[#e0ddd8] transition-all duration-300 hover:shadow-lg hover:shadow-[rgba(203,111,77,0.12)]">
-        
+
         {/* Image Container */}
         <div className="relative aspect-3/4 w-full overflow-hidden bg-linear-to-br from-[#faf9f7] to-[#f0ede8]">
           {safeImageUrl ? (
@@ -183,7 +178,7 @@ export default function ProductCard({
 
         {/* Content Section */}
         <div className="flex flex-col flex-1 p-4">
-          
+
           {/* Brand */}
           <p className="text-xs font-bold uppercase tracking-widest text-[#cb6f4d] mb-2">
             {brandText || "Brand"}
@@ -214,7 +209,7 @@ export default function ProductCard({
               <span className="text-xs text-[#aaa]">Price</span>
               <span className="text-lg font-bold text-[#cb6f4d]">{priceText}</span>
             </div>
-            
+
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#aaa]">Incl. fees</span>
               <div className="flex items-center gap-1 text-[#1a1a1a] font-semibold">

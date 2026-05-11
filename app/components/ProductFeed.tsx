@@ -1,9 +1,11 @@
 'use client';
-import ProductCard from '@/app/components/ProductCard';
 import { ChevronDown } from 'lucide-react';
 import type { ProductCardItem } from '@/services/products-service';
 import { ProductGridError, ProductGridSkeleton, ProductGridEmpty } from "../components/Skeletons";
 import ProductCardV2 from './ProductCardV2';
+import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
+import { getUserFav_Products } from '@/services/auth-service';
 
 export default function ProductFeed({
   productList,
@@ -28,28 +30,64 @@ export default function ProductFeed({
   error?: string | null;
   onRetry?: () => void;
 }) {
+  const { user } = useAuth();
+  const [favIds, setFavIds] = useState<number[]>([]);
+
+  // ── Single fetch for all fav products ─────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchFavs = async () => {
+      try {
+        const data = await getUserFav_Products(Number(user.id));
+        const ids: number[] =
+          data?.fav_products?.map((p: any) =>
+            typeof p === "object" ? Number(p.id) : Number(p)
+          ) ?? [];
+        setFavIds(ids);
+      } catch (err) {
+        console.error("Failed to fetch fav products", err);
+      }
+    };
+
+    fetchFavs();
+  }, [user?.id]);
+
+  // callback so cards can update the shared favIds state after like/unlike
+  const handleFavChange = (productId: number, liked: boolean) => {
+    setFavIds((prev) =>
+      liked
+        ? [...new Set([...prev, productId])]
+        : prev.filter((id) => id !== productId)
+    );
+  };
+
   const wrapper = className || 'max-w-7xl mx-auto px-4 py-6';
   const grid = gridClassName || 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-10';
 
+  if (error && !isLoading) {
+    return <ProductGridError wrapper={wrapper} error={error} onRetry={onRetry} />;
+  }
 
-if (error && !isLoading) {
-  return <ProductGridError wrapper={wrapper} error={error} onRetry={onRetry} />;
-}
+  if (isLoading) {
+    return <ProductGridSkeleton wrapper={wrapper} grid={grid} />;
+  }
 
-if (isLoading) {
-  return <ProductGridSkeleton wrapper={wrapper} grid={grid} />;
-}
+  if (!productList || productList.length === 0) {
+    return <ProductGridEmpty wrapper={wrapper} />;
+  }
 
-if (!productList || productList.length === 0) {
-  return <ProductGridEmpty wrapper={wrapper} />;
-}
-
-  // ── Products ───────────────────────────────────────────────────────────────
   return (
     <section className={wrapper}>
       <div className={grid}>
         {productList.map((item, index) => (
-          <ProductCardV2 key={index} {...item} variant={cardVariant} />
+          <ProductCardV2
+            key={index}
+            {...item}
+            variant={cardVariant}
+            isLiked={favIds.includes(Number(item.id))}   // ✅ passed from parent
+            onFavChange={handleFavChange}                  // ✅ sync back to parent
+          />
         ))}
       </div>
 

@@ -1,21 +1,8 @@
 import Link from "next/link";
-import { Heart, ShieldCheck } from "lucide-react";
+import { Heart } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
-
-interface ProductProps {
-  id: string | number;
-  documentId?: string | number;
-  brand: unknown;
-  title: unknown;
-  size: unknown;
-  condition: unknown;
-  price: unknown;
-  totalPrice: unknown;
-  imageUrl?: unknown;
-  likes: number;
-  variant?: "default" | "android";
-}
+import { useState, useEffect } from "react";
 
 const toDisplayText = (value: unknown): string => {
   if (value == null) return "";
@@ -65,43 +52,75 @@ export default function ProductCardV2({
   images,
   likes,
   variant = "default",
+  isLiked: isLikedProp = false,
+  onFavChange,
 }: any) {
   const { user } = useAuth();
+  const [isLiked, setIsLiked] = useState(isLikedProp);
+  const [likesCount, setLikesCount] = useState(Number(likes || 0));
+
   const safeImageUrl = toImageUrl(imageUrl ?? images?.[0]);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
-  const nameText = toDisplayText(title);
   const productDocumentId = encodeURIComponent(
-    String(documentId ?? "").trim() || "0",
+    String(documentId ?? "").trim() || "0"
   );
 
+  const nameText = toDisplayText(title);
   const brandText = toDisplayText(brand);
   const sizeText = toDisplayText(size);
   const conditionText = toDisplayText(condition);
   const priceValue = toDisplayText(price);
-  const totalPriceValue = toDisplayText(totalPrice);
 
-  const isAndroid = variant === "android";
+  // Sync when parent prop changes (initial fav load)
+  useEffect(() => {
+    setIsLiked(isLikedProp);
+  }, [isLikedProp]);
 
   const AddLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const nowLiked = !isLiked;
+    const newCount = nowLiked ? likesCount + 1 : likesCount - 1;
+
+    // Optimistic UI update
+    setIsLiked(nowLiked);
+    setLikesCount(newCount);
+    onFavChange?.(Number(id), nowLiked); // notify parent immediately
+
     try {
-      await fetch(`${API_BASE_URL}/api/products/${productDocumentId}`, {
+      // 1. Update product likeCount
+      const res = await fetch(
+        `${API_BASE_URL}/api/products/${productDocumentId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data: { likeCount: newCount },
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to update product likes");
+
+      // 2. Update user fav_products using connect/disconnect (Strapi v4/v5)
+      const userRes = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: { likeCount: Number(likes || 0) + 1 },
+          fav_products: nowLiked
+            ? { connect: [Number(id)] }
+            : { disconnect: [Number(id)] },
         }),
       });
-      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fav_products: {id: Number(productId)},
-        }),
-      });
+
+      if (!userRes.ok) throw new Error("Failed to update user fav products");
     } catch (error) {
       console.error(error);
+      // Rollback optimistic update
+      setIsLiked(!nowLiked);
+      setLikesCount(likesCount);
+      onFavChange?.(Number(id), !nowLiked); // rollback parent too
     }
   };
 
@@ -128,9 +147,13 @@ export default function ProductCardV2({
           {/* Like Button */}
           <button
             onClick={AddLike}
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-600 transition-colors hover:bg-white"
+            className={`absolute top-3 right-3 h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${
+              isLiked
+                ? "bg-[#cb6f4d] text-white shadow-lg"
+                : "bg-white/90 backdrop-blur-sm text-[#888] hover:bg-white hover:text-[#cb6f4d]"
+            }`}
           >
-            <Heart size={16} />
+            <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
           </button>
         </div>
 
