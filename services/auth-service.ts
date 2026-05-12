@@ -57,6 +57,13 @@ export function getUser(id: number) {
     }
   );
 }
+export function getUserAddress(id: number) {
+  return apiRequest(
+    `/users/${id}?populate[address][populate]=*`,
+     { method: "GET"
+    }
+  );
+}
 export function getUserAvatr(id: number) {
   return apiRequest(
     `/users/${id}?populate[avatar][populate]=*`,

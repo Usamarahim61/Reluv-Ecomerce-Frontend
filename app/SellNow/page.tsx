@@ -37,7 +37,20 @@ type UploadImage = {
   previewUrl: string;
 };
 
-const getLeafCategoryEntries = (nodes: CategoryNode[], parentPath: CategoryNode[] = []): LeafCategoryEntry[] => {
+/* ---------------- UTILITIES ---------------- */
+
+const renameFile = (file: File): File => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const ext = file.name.split(".").pop();
+  const newName = `item_${timestamp}_${random}.${ext}`;
+  return new File([file], newName, { type: file.type });
+};
+
+const getLeafCategoryEntries = (
+  nodes: CategoryNode[],
+  parentPath: CategoryNode[] = []
+): LeafCategoryEntry[] => {
   return nodes.flatMap((node) => {
     const currentPath = [...parentPath, node];
     if (!node.categories || node.categories.length === 0) {
@@ -54,6 +67,9 @@ export default function UploadItem(): JSX.Element {
   const categoryStatus = useAppSelector((state) => state.categories.status);
   const categoryError = useAppSelector((state) => state.categories.error);
   const categoryLoading = categoryStatus === "idle" || categoryStatus === "loading";
+
+  const hasFetchedCategories = useRef(false); // ← guard
+
   const [images, setImages] = useState<UploadImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [price, setPrice] = useState<string>("");
@@ -74,11 +90,17 @@ export default function UploadItem(): JSX.Element {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<UploadImage[]>([]);
 
+  /* ---------------- FETCH CATEGORY TREE (fires once) ---------------- */
+
   useEffect(() => {
+    if (hasFetchedCategories.current) return;
     if (categoryStatus === "idle") {
+      hasFetchedCategories.current = true;
       dispatch(fetchCatalogTree());
     }
   }, [categoryStatus, dispatch]);
+
+  /* ---------------- FETCH DYNAMIC FIELDS (fires per selected category) ---------------- */
 
   useEffect(() => {
     let isMounted = true;
@@ -125,7 +147,11 @@ export default function UploadItem(): JSX.Element {
               label: opt.title || String(opt.id),
               value: String(opt.value || opt.id),
             }));
-          } else if (config.options && Array.isArray(config.options) && config.options.length > 0) {
+          } else if (
+            config.options &&
+            Array.isArray(config.options) &&
+            config.options.length > 0
+          ) {
             const group = config.options[0];
             if (group && group.options && Array.isArray(group.options)) {
               fieldOptions = group.options.map((opt: any) => ({
@@ -143,7 +169,10 @@ export default function UploadItem(): JSX.Element {
             fieldOptions.length > 0
           ) {
             fieldType = "select";
-          } else if (attr.rawType === "number" || config.display_type === "number") {
+          } else if (
+            attr.rawType === "number" ||
+            config.display_type === "number"
+          ) {
             fieldType = "number";
           }
 
@@ -169,8 +198,11 @@ export default function UploadItem(): JSX.Element {
               loadedFields
                 .filter((field) => {
                   const code = field.key.toLowerCase();
-                  const needsDropdownByType = field.type === "select" && (field.options?.length ?? 0) === 0;
-                  const needsDropdownByCode = (code === "brand" || code === "size") && (field.options?.length ?? 0) === 0;
+                  const needsDropdownByType =
+                    field.type === "select" && (field.options?.length ?? 0) === 0;
+                  const needsDropdownByCode =
+                    (code === "brand" || code === "size") &&
+                    (field.options?.length ?? 0) === 0;
                   return needsDropdownByType || needsDropdownByCode;
                 })
                 .map((field) => field.key.toLowerCase())
@@ -192,7 +224,9 @@ export default function UploadItem(): JSX.Element {
                           label: String(option.title || option.value || "").trim(),
                           value: String(option.value ?? option.id ?? ""),
                         }))
-                        .filter((option: DynamicFieldOption) => option.label && option.value)
+                        .filter(
+                          (option: DynamicFieldOption) => option.label && option.value
+                        )
                     : [];
                   return [code, options] as const;
                 } catch {
@@ -209,11 +243,7 @@ export default function UploadItem(): JSX.Element {
                 const code = field.key.toLowerCase();
                 const fetchedOptions = optionsByCode.get(code) || [];
                 if (fetchedOptions.length === 0) return field;
-                return {
-                  ...field,
-                  type: "select",
-                  options: fetchedOptions,
-                };
+                return { ...field, type: "select", options: fetchedOptions };
               })
             );
           }
@@ -225,7 +255,9 @@ export default function UploadItem(): JSX.Element {
       } catch (error) {
         if (!isMounted) return;
         setDynamicFields([]);
-        setDynamicFieldsError(error instanceof Error ? error.message : "Failed to load fields");
+        setDynamicFieldsError(
+          error instanceof Error ? error.message : "Failed to load fields"
+        );
         setDynamicFieldsLoading(false);
       }
     };
@@ -237,20 +269,25 @@ export default function UploadItem(): JSX.Element {
     };
   }, [selectedCategory]);
 
+  /* ---------------- CLOSE CATEGORY MENU ON OUTSIDE CLICK ---------------- */
+
   useEffect(() => {
     const onDocumentClick = (event: MouseEvent) => {
       if (!categoryMenuRef.current?.contains(event.target as Node)) {
         setCategoryMenuOpen(false);
       }
     };
-
     document.addEventListener("mousedown", onDocumentClick);
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
 
+  /* ---------------- SYNC IMAGES REF ---------------- */
+
   useEffect(() => {
     imagesRef.current = images;
   }, [images]);
+
+  /* ---------------- REVOKE BLOB URLS ON UNMOUNT ---------------- */
 
   useEffect(() => {
     return () => {
@@ -260,14 +297,17 @@ export default function UploadItem(): JSX.Element {
     };
   }, []);
 
+  /* ---------------- MEMOS ---------------- */
+
   const currentLevelNodes = useMemo(() => {
-    if (activeCategoryPath.length === 0) {
-      return categoryTree;
-    }
+    if (activeCategoryPath.length === 0) return categoryTree;
     return activeCategoryPath[activeCategoryPath.length - 1].categories || [];
   }, [activeCategoryPath, categoryTree]);
 
-  const leafCategoryEntries = useMemo(() => getLeafCategoryEntries(categoryTree), [categoryTree]);
+  const leafCategoryEntries = useMemo(
+    () => getLeafCategoryEntries(categoryTree),
+    [categoryTree]
+  );
 
   const filteredLeafEntries = useMemo(() => {
     const search = categorySearch.trim().toLowerCase();
@@ -276,6 +316,8 @@ export default function UploadItem(): JSX.Element {
       path.some((node) => node.name.toLowerCase().includes(search))
     );
   }, [categorySearch, leafCategoryEntries]);
+
+  /* ---------------- HANDLERS ---------------- */
 
   const handleUploadClick = () => {
     if (images.length >= MAX_IMAGES) {
@@ -299,7 +341,9 @@ export default function UploadItem(): JSX.Element {
     const validFiles: File[] = [];
     for (const file of Array.from(files)) {
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        toast.warn(`"${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit and was skipped.`);
+        toast.warn(
+          `"${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit and was skipped.`
+        );
         continue;
       }
       validFiles.push(file);
@@ -308,7 +352,9 @@ export default function UploadItem(): JSX.Element {
     const filesToAdd = validFiles.slice(0, remaining);
 
     if (validFiles.length > remaining) {
-      toast.warn(`Only ${remaining} more photo(s) can be added. Extra files were skipped.`);
+      toast.warn(
+        `Only ${remaining} more photo(s) can be added. Extra files were skipped.`
+      );
     }
 
     if (filesToAdd.length > 0) {
@@ -354,6 +400,8 @@ export default function UploadItem(): JSX.Element {
       ? activeCategoryPath[activeCategoryPath.length - 1].name
       : "Select a category";
 
+  /* ---------------- SUBMIT ---------------- */
+
   const handleCreateProduct = async () => {
     setSubmitError(null);
     setSubmitSuccess(null);
@@ -373,10 +421,11 @@ export default function UploadItem(): JSX.Element {
 
     try {
       let imageIds: number[] = [];
+
       if (images.length > 0) {
         const uploadForm = new FormData();
         for (const image of images) {
-          uploadForm.append("files", image.file);
+          uploadForm.append("files", renameFile(image.file)); // ← renamed files
         }
 
         const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
@@ -387,7 +436,8 @@ export default function UploadItem(): JSX.Element {
         const uploadPayload = await uploadResponse.json();
         if (!uploadResponse.ok) {
           throw new Error(
-            uploadPayload?.error?.message || `Failed to upload images: ${uploadResponse.status}`
+            uploadPayload?.error?.message ||
+              `Failed to upload images: ${uploadResponse.status}`
           );
         }
 
@@ -399,14 +449,14 @@ export default function UploadItem(): JSX.Element {
       }
 
       const cleanedDynamicValues = Object.fromEntries(
-        Object.entries(dynamicFieldValues).filter(([_, v]) => v !== "" && v !== undefined && v !== null)
+        Object.entries(dynamicFieldValues).filter(
+          ([_, v]) => v !== "" && v !== undefined && v !== null
+        )
       );
 
       const response = await fetch(`${API_BASE_URL}/api/products/sell-now`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           description,
@@ -421,7 +471,9 @@ export default function UploadItem(): JSX.Element {
       const payload = await response.json();
       if (!response.ok || !payload?.ok) {
         throw new Error(
-          payload?.error?.message || payload?.message || `Failed to create product: ${response.status}`
+          payload?.error?.message ||
+            payload?.message ||
+            `Failed to create product: ${response.status}`
         );
       }
 
@@ -434,6 +486,7 @@ export default function UploadItem(): JSX.Element {
         draggable: true,
       });
 
+      // Reset form
       setTitle("");
       setDescription("");
       setPrice("");
@@ -450,11 +503,18 @@ export default function UploadItem(): JSX.Element {
       setSubmitSuccess(null);
       setSubmitError(null);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to create product");
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to create product"
+      );
     } finally {
       setSubmitLoading(false);
     }
   };
+
+  /* ---------------- UI ---------------- */
+
+  // Publish button is disabled while submitting OR while category fields are loading
+  const isPublishDisabled = submitLoading || dynamicFieldsLoading;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 bg-[#fdfcfb] min-h-screen pb-20">
@@ -486,7 +546,11 @@ export default function UploadItem(): JSX.Element {
                 key={index}
                 className="relative w-32 h-32 border border-gray-200 rounded-2xl overflow-hidden group"
               >
-                <img src={image.previewUrl} alt={`Upload ${index}`} className="object-cover w-full h-full" />
+                <img
+                  src={image.previewUrl}
+                  alt={`Upload ${index}`}
+                  className="object-cover w-full h-full"
+                />
                 <button
                   onClick={() => removeImage(index)}
                   className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -574,7 +638,6 @@ export default function UploadItem(): JSX.Element {
               <input type="hidden" name="categorySlug" value={selectedCategory.slug} />
             )}
 
-            {/* ── Full original category dropdown logic, new styling ── */}
             {categoryMenuOpen && (
               <div className="absolute top-full left-0 right-0 z-20 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl">
                 <div className="p-3 border-b border-gray-100 space-y-3">
@@ -588,7 +651,9 @@ export default function UploadItem(): JSX.Element {
 
                   <div className="flex items-center justify-between">
                     {categorySearch ? (
-                      <span className="text-sm font-medium text-gray-800">Search results</span>
+                      <span className="text-sm font-medium text-gray-800">
+                        Search results
+                      </span>
                     ) : (
                       <>
                         {activeCategoryPath.length > 0 ? (
@@ -603,7 +668,9 @@ export default function UploadItem(): JSX.Element {
                         ) : (
                           <span />
                         )}
-                        <span className="text-sm font-medium text-gray-800">{currentLevelTitle}</span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {currentLevelTitle}
+                        </span>
                         {activeCategoryPath.length > 0 ? (
                           <button
                             type="button"
@@ -629,15 +696,23 @@ export default function UploadItem(): JSX.Element {
                     <p className="p-3 text-sm text-red-500">{categoryError}</p>
                   )}
 
-                  {!categoryLoading && !categoryError && categorySearch && filteredLeafEntries.length === 0 && (
-                    <p className="p-3 text-sm text-gray-500">No categories found.</p>
-                  )}
+                  {!categoryLoading &&
+                    !categoryError &&
+                    categorySearch &&
+                    filteredLeafEntries.length === 0 && (
+                      <p className="p-3 text-sm text-gray-500">No categories found.</p>
+                    )}
 
-                  {!categoryLoading && !categoryError && !categorySearch && currentLevelNodes.length === 0 && (
-                    <p className="p-3 text-sm text-gray-500">No categories available.</p>
-                  )}
+                  {!categoryLoading &&
+                    !categoryError &&
+                    !categorySearch &&
+                    currentLevelNodes.length === 0 && (
+                      <p className="p-3 text-sm text-gray-500">No categories available.</p>
+                    )}
 
-                  {!categoryLoading && !categoryError && categorySearch &&
+                  {!categoryLoading &&
+                    !categoryError &&
+                    categorySearch &&
                     filteredLeafEntries.map(({ node, path }) => (
                       <button
                         type="button"
@@ -656,7 +731,9 @@ export default function UploadItem(): JSX.Element {
                       </button>
                     ))}
 
-                  {!categoryLoading && !categoryError && !categorySearch &&
+                  {!categoryLoading &&
+                    !categoryError &&
+                    !categorySearch &&
                     currentLevelNodes.map((node) => {
                       const hasChildren = node.categories && node.categories.length > 0;
                       return (
@@ -672,7 +749,9 @@ export default function UploadItem(): JSX.Element {
                           ) : (
                             <span
                               className={`h-7 w-7 rounded-full border-2 flex items-center justify-center ${
-                                selectedCategory?.id === node.id ? "border-[#cb6f4d]" : "border-gray-400"
+                                selectedCategory?.id === node.id
+                                  ? "border-[#cb6f4d]"
+                                  : "border-gray-400"
                               }`}
                             >
                               {selectedCategory?.id === node.id && (
@@ -689,7 +768,7 @@ export default function UploadItem(): JSX.Element {
           </div>
         </section>
 
-        {/* --- DYNAMIC FIELDS (brand, size, etc.) --- */}
+        {/* --- DYNAMIC FIELDS --- */}
         {selectedCategory && (
           <section>
             {dynamicFieldsLoading && (
@@ -700,58 +779,76 @@ export default function UploadItem(): JSX.Element {
               <p className="text-sm text-red-500">{dynamicFieldsError}</p>
             )}
 
-            {!dynamicFieldsLoading && !dynamicFieldsError && dynamicFields.length === 0 && (
-              <p className="text-sm text-gray-500">No additional details for this category.</p>
-            )}
+            {!dynamicFieldsLoading &&
+              !dynamicFieldsError &&
+              dynamicFields.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  No additional details for this category.
+                </p>
+              )}
 
-            {!dynamicFieldsLoading && !dynamicFieldsError && dynamicFields.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {dynamicFields.map((field) => (
-                  <div key={field.key}>
-                    <label className="block font-semibold text-[#1a1816] mb-2">
-                      {field.label}
-                      {field.required ? " *" : ""}
-                    </label>
-                    {field.type === "select" ? (
-                      <div className="relative">
-                        <select
-                          name={field.key}
-                          value={dynamicFieldValues[field.key] || ""}
-                          onChange={(e) =>
-                            setDynamicFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                          className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl appearance-none focus:outline-none text-gray-800"
-                        >
-                          <option value="">
-                            {field.placeholder || `Select ${field.label.toLowerCase()}`}
-                          </option>
-                          {(field.options || []).map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
+            {!dynamicFieldsLoading &&
+              !dynamicFieldsError &&
+              dynamicFields.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {dynamicFields.map((field) => (
+                    <div key={field.key}>
+                      <label className="block font-semibold text-[#1a1816] mb-2">
+                        {field.label}
+                        {field.required ? " *" : ""}
+                      </label>
+                      {field.type === "select" ? (
+                        <div className="relative">
+                          <select
+                            name={field.key}
+                            value={dynamicFieldValues[field.key] || ""}
+                            onChange={(e) =>
+                              setDynamicFieldValues((prev) => ({
+                                ...prev,
+                                [field.key]: e.target.value,
+                              }))
+                            }
+                            className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl appearance-none focus:outline-none text-gray-800"
+                          >
+                            <option value="">
+                              {field.placeholder ||
+                                `Select ${field.label.toLowerCase()}`}
                             </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
-                        <input
-                          type={field.type === "number" ? "number" : "text"}
-                          name={field.key}
-                          value={dynamicFieldValues[field.key] || ""}
-                          onChange={(e) =>
-                            setDynamicFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                          className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
-                        />
-                        {field.unit && <span className="text-gray-500 text-sm">{field.unit}</span>}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                            {(field.options || []).map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                          <input
+                            type={field.type === "number" ? "number" : "text"}
+                            name={field.key}
+                            value={dynamicFieldValues[field.key] || ""}
+                            onChange={(e) =>
+                              setDynamicFieldValues((prev) => ({
+                                ...prev,
+                                [field.key]: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              field.placeholder ||
+                              `Enter ${field.label.toLowerCase()}`
+                            }
+                            className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
+                          />
+                          {field.unit && (
+                            <span className="text-gray-500 text-sm">{field.unit}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
           </section>
         )}
 
@@ -766,11 +863,15 @@ export default function UploadItem(): JSX.Element {
           <button
             type="button"
             onClick={handleCreateProduct}
-            disabled={submitLoading}
+            disabled={isPublishDisabled}
             className="w-full py-4 bg-[#cb6f4d] cursor-pointer text-white rounded-full font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <Plus className="w-5 h-5" />
-            {submitLoading ? "Publishing..." : "Publish Listing"}
+            {submitLoading
+              ? "Publishing..."
+              : dynamicFieldsLoading
+              ? "Loading fields..."
+              : "Publish Listing"}
           </button>
         </div>
       </div>

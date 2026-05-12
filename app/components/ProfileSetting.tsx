@@ -1,20 +1,32 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { getUser, getUserAvatr, updateUserProfile } from "@/services/auth-service";
+import {
+  getUser,
+  getUserAvatr,
+  updateUserProfile,
+} from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
 
 const MAX_AVATAR_SIZE_MB = 10;
 
+/* ---------------- UTILITY ---------------- */
+
+const renameFile = (file: File): File => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const ext = file.name.split(".").pop();
+  const newName = `avatar_${timestamp}_${random}.${ext}`;
+  return new File([file], newName, { type: file.type });
+};
+
 export default function ProfileSetting() {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Track the current preview URL in a ref so we can revoke it on unmount
-  // or when it's replaced — even if state updates haven't flushed yet.
   const avatarPreviewRef = useRef<string | null>(null);
+  const hasFetched = useRef(false);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -32,28 +44,33 @@ export default function ProfileSetting() {
   const [error, setError] = useState<string | null>(null);
 
   const countries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
-  
+
   const cityByCountry: { [key: string]: string[] } = {
-    "Thailand": ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani"],
-    "Cambodia": ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Kompong Cham"],
-    "Laos": ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
-    "Vietnam": ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
-    "Myanmar": ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
+    Thailand: [
+      "Bangkok", "Chiang Mai", "Phuket", "Pattaya",
+      "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani",
+    ],
+    Cambodia: ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Kompong Cham"],
+    Laos: ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
+    Vietnam: ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
+    Myanmar: ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
   };
-  
+
   const cities = formData.country ? cityByCountry[formData.country] : [];
   const languages = ["en", "th"];
 
-  /* ---------------- FETCH USER DATA ---------------- */
+  /* ---------------- FETCH USER DATA (fires once) ---------------- */
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.id) return;
+      if (!user?.id || hasFetched.current) return;
+      hasFetched.current = true;
 
       try {
         setLoading(true);
         const data = await getUser(Number(user.id));
         const userAvatar = await getUserAvatr(Number(user.id));
+
         setFormData({
           username: data.username || "",
           about: data.about || "",
@@ -64,11 +81,11 @@ export default function ProfileSetting() {
         });
 
         if (userAvatar.avatar?.url) {
-          // Server URL — not a blob, no need to track for revocation
           setAvatarPreview(userAvatar.avatar.url);
           avatarPreviewRef.current = userAvatar.avatar.url;
         }
       } catch {
+        hasFetched.current = false;
         setError("Failed to load profile data.");
       } finally {
         setLoading(false);
@@ -81,21 +98,14 @@ export default function ProfileSetting() {
   /* ---------------- INPUT HANDLER ---------------- */
 
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value, type } = e.target;
-
-    const val =
-      type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    const val = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
 
     setFormData((prev) => {
       const updated = { ...prev, [name]: val };
-      // Reset city when country changes
-      if (name === "country") {
-        updated.city = "";
-      }
+      if (name === "country") updated.city = "";
       return updated;
     });
   };
@@ -106,32 +116,25 @@ export default function ProfileSetting() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (matches UploadItem's MAX_FILE_SIZE_MB pattern)
     if (file.size > MAX_AVATAR_SIZE_MB * 1024 * 1024) {
-      toast.warn(
-        `"${file.name}" exceeds the ${MAX_AVATAR_SIZE_MB}MB size limit.`,
-      );
-      // Reset input so the same file can be re-selected after user picks another
+      toast.warn(`"${file.name}" exceeds the ${MAX_AVATAR_SIZE_MB}MB size limit.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    // Revoke the previous blob URL before creating a new one to avoid memory leaks
     if (avatarPreviewRef.current?.startsWith("blob:")) {
       URL.revokeObjectURL(avatarPreviewRef.current);
     }
 
     const previewUrl = URL.createObjectURL(file);
     avatarPreviewRef.current = previewUrl;
-
     setSelectedFile(file);
     setAvatarPreview(previewUrl);
 
-    // Reset input value so selecting the same file again triggers onChange
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* Revoke blob URL on unmount to avoid memory leaks */
+  /* Revoke blob URL on unmount */
   useEffect(() => {
     return () => {
       if (avatarPreviewRef.current?.startsWith("blob:")) {
@@ -151,38 +154,29 @@ export default function ProfileSetting() {
 
       if (selectedFile) {
         const uploadForm = new FormData();
-        uploadForm.append("files", selectedFile);
-        try {
-          const uploadResponse = await fetch(
-            `${API_BASE_URL}/api/upload`,
-            {
-              method: "POST",
-              body: uploadForm,
-            },
+        uploadForm.append("files", renameFile(selectedFile)); // ← renamed file
+        
+        const storedJwt = localStorage.getItem("jwt");
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${storedJwt}`,
+          },
+          body: uploadForm,
+        });
+        const uploadPayload = await uploadResponse.json();
+
+        if (!uploadResponse.ok) {
+          throw new Error(
+            uploadPayload?.error?.message ||
+              `Image upload failed: ${uploadResponse.status}`,
           );
-          const uploadPayload = await uploadResponse.json();
-            console.log("uplaod ---",uploadResponse)
-          if (!uploadResponse.ok) {
-            throw new Error(
-              uploadPayload?.error?.message ||
-                `Image upload failed: ${uploadResponse.status}`,
-            );
-          }
-
-          // ✅ safer extraction
-          const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
-          avatarId = file?.id ? Number(file.id) : null;
-
-          if (!avatarId) {
-            throw new Error("Upload succeeded but no file ID returned.");
-          }
-
-          // ✅ if you want to SET state
-          // setAvatarId(avatarId);
-        } catch (error: any) {
-          console.error("Upload error:", error.message);
-          throw error;
         }
+
+        const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
+        avatarId = file?.id ? Number(file.id) : null;
+
+        if (!avatarId) throw new Error("Upload succeeded but no file ID returned.");
       }
 
       const payload = new FormData();
@@ -192,10 +186,7 @@ export default function ProfileSetting() {
       payload.append("about", formData.about || "");
       payload.append("isShowCity", String(formData.showCity));
       payload.append("language", formData.language || "");
-
-      if (avatarId) {
-        payload.append("avatar", String(avatarId)); // send the Strapi file ID
-      }
+      if (avatarId) payload.append("avatar", String(avatarId));
 
       await updateUserProfile(Number(user.id), payload);
 
@@ -208,7 +199,6 @@ export default function ProfileSetting() {
         draggable: true,
       });
 
-      // Clear selected file — server is now the source of truth
       setSelectedFile(null);
     } catch (err: any) {
       setError(err.message || "Update failed");
@@ -222,7 +212,7 @@ export default function ProfileSetting() {
   if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#cb6f4d]" />
       </div>
     );
   }
@@ -241,22 +231,16 @@ export default function ProfileSetting() {
         {/* PHOTO */}
         <div className="flex items-center justify-between border-b pb-6">
           <span className="font-medium">Your Photo</span>
-
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden border">
               {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
+                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   👤
                 </div>
               )}
             </div>
-
             <input
               ref={fileInputRef}
               type="file"
@@ -264,10 +248,9 @@ export default function ProfileSetting() {
               accept="image/*"
               onChange={handlePhotoChange}
             />
-
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm hover:bg-teal-50 transition-all"
+              className="px-3 py-1.5 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm hover:bg-[#fef5f1] transition-all"
             >
               Change Photo
             </button>
@@ -277,7 +260,6 @@ export default function ProfileSetting() {
         {/* USERNAME */}
         <div className="flex items-center justify-between gap-4 border-b pb-6">
           <span className="font-medium">Username</span>
-
           <input
             name="username"
             value={formData.username}
@@ -289,7 +271,6 @@ export default function ProfileSetting() {
         {/* ABOUT */}
         <div className="space-y-2">
           <span className="font-medium">About You</span>
-
           <textarea
             name="about"
             value={formData.about}
@@ -303,13 +284,10 @@ export default function ProfileSetting() {
 
       {/* LOCATION */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4 mt-6">
-        <h3 className="text-gray-400 text-xs font-bold uppercase">
-          My location
-        </h3>
+        <h3 className="text-gray-400 text-xs font-bold uppercase">My location</h3>
 
         <div className="flex justify-between items-center border-b pb-2">
           <span className="font-medium">Country</span>
-
           <select
             name="country"
             value={formData.country}
@@ -325,7 +303,6 @@ export default function ProfileSetting() {
 
         <div className="flex justify-between items-center border-b pb-2">
           <span className="font-medium">Town/City</span>
-
           <select
             name="city"
             value={formData.city}
@@ -341,7 +318,6 @@ export default function ProfileSetting() {
 
         <div className="flex justify-between items-center pt-2">
           <span className="font-medium">Show city in profile</span>
-
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -356,7 +332,6 @@ export default function ProfileSetting() {
 
         <div className="flex justify-between items-center border-b pb-2">
           <span className="font-medium">Language</span>
-
           <select
             name="language"
             value={formData.language}
@@ -376,7 +351,7 @@ export default function ProfileSetting() {
         <button
           onClick={handleUpdate}
           disabled={isUpdating}
-          className="bg-[#cb6f4d] text-white px-10 py-2.5 rounded shadow hover:bg-[#00656f] disabled:opacity-50 transition-all font-medium"
+          className="bg-[#cb6f4d] text-white px-10 py-2.5 rounded shadow hover:bg-[#d08f77] disabled:opacity-50 transition-all font-medium"
         >
           {isUpdating ? "Saving..." : "Update profile"}
         </button>

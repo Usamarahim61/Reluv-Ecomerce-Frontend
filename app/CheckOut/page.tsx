@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, Suspense } from "react";
+import React, { useState, Suspense, useEffect, useRef } from "react";
 import { CreditCard, MapPin, Home, ChevronRight, Edit2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import CardDetailsModal from "../components/AddCard";
@@ -9,6 +9,7 @@ import { API_BASE_URL } from "../constants/api";
 import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
+import { getUser } from "@/services/auth-service";
 
 interface ProductData {
   title: string;
@@ -23,8 +24,8 @@ interface ProductData {
 
 const CheckOutContent: React.FC = () => {
   const { user } = useAuth();
-  const userAddress = `${user?.city ?? ""} ${user?.country ?? ""}`.trim();
-
+  const hasFetched = useRef(false);
+  const [userAddress, setUserAddress] = useState("");
   const [openCardModal, setOpenCardModal] = useState(false);
   const [openPickupModal, setOpenPickupModal] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">(
@@ -61,6 +62,29 @@ const CheckOutContent: React.FC = () => {
     draggable: true,
   };
 
+useEffect(() => {
+  if (!user?.id || hasFetched.current) return;
+
+  hasFetched.current = true;
+
+  const fetchData = async () => {
+    try {
+      const userData = await getUserAddress(Number(user.id));
+
+      const address =
+        `${userData.city ?? ""} ${userData.country ?? ""}`.trim();
+
+      setUserAddress(address);
+    } catch (error) {
+      console.error("Failed to load profile data.", error);
+
+      // if API fails and you want retry on next render
+      hasFetched.current = false;
+    }
+  };
+
+  fetchData();
+}, [user?.id]);
   const handlePlaceOrder = async () => {
     try {
       if (isPlacingOrder) return; // prevent double click
@@ -188,7 +212,7 @@ const CheckOutContent: React.FC = () => {
             {/* Address Section */}
             <section>
               <h2 className="text-lg font-semibold mb-2">Address</h2>
-              <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-teal-600">
+              <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-[#cb6f4d]">
                 <div>
                   <p className="font-bold text-gray-800">{user?.username}</p>
                   <p className="text-gray-600 text-sm">
@@ -210,7 +234,7 @@ const CheckOutContent: React.FC = () => {
                 <label
                   className={`flex items-center justify-between p-4 bg-white border-2 rounded-sm cursor-pointer transition-all ${
                     deliveryMethod === "pickup"
-                      ? "border-teal-600"
+                      ? "border-[#cb6f4d]"
                       : "border-transparent shadow-sm"
                   }`}
                   onClick={() => setDeliveryMethod("pickup")}
@@ -229,7 +253,7 @@ const CheckOutContent: React.FC = () => {
                     name="delivery"
                     checked={deliveryMethod === "pickup"}
                     onChange={() => setDeliveryMethod("pickup")}
-                    className="w-5 h-5 accent-teal-600"
+                    className="w-5 h-5 accent-[#cb6f4d]"
                   />
                 </label>
 
@@ -237,7 +261,7 @@ const CheckOutContent: React.FC = () => {
                 <label
                   className={`flex items-center justify-between p-4 bg-white border-2 rounded-sm cursor-pointer transition-all ${
                     deliveryMethod === "home"
-                      ? "border-teal-600"
+                      ? "border-[#cb6f4d]"
                       : "border-transparent shadow-sm"
                   }`}
                   onClick={() => setDeliveryMethod("home")}
@@ -254,7 +278,7 @@ const CheckOutContent: React.FC = () => {
                     name="delivery"
                     checked={deliveryMethod === "home"}
                     onChange={() => setDeliveryMethod("home")}
-                    className="w-5 h-5 accent-teal-600"
+                    className="w-5 h-5 accent-[#cb6f4d]"
                   />
                 </label>
               </div>
@@ -269,11 +293,11 @@ const CheckOutContent: React.FC = () => {
                   </h2>
                   <div
                     onClick={() => setOpenPickupModal(true)}
-                    className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between border border-gray-200 cursor-pointer hover:border-teal-500 transition-colors"
+                    className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between border border-gray-200 cursor-pointer hover:border-[#cb6f4d] transition-colors"
                   >
                     {pickupAddress ? (
                       <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-teal-600 shrink-0" />
+                        <MapPin size={16} className="text-[#cb6f4d] shrink-0" />
                         <span className="text-gray-900 text-sm md:text-base">
                           {pickupAddress}
                         </span>
@@ -381,7 +405,7 @@ const CheckOutContent: React.FC = () => {
                       Use a credit or debit card
                     </p>
                     {cardDetails ? (
-                      <p className="text-xs text-teal-600 mt-1 font-medium">
+                      <p className="text-xs text-[#cb6f4d] mt-1 font-medium">
                         •••• •••• ••••{" "}
                         {String(cardDetails.cardNumber).slice(-4)}
                       </p>
@@ -441,7 +465,7 @@ const CheckOutContent: React.FC = () => {
               <button
                 onClick={handlePlaceOrder}
                 disabled={!cardDetails || isPlacingOrder}
-                className="w-full bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4 flex items-center justify-center gap-2"
+                className="w-full bg-[#cb6f4d] hover:bg-[#a85a3c] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4 flex items-center justify-center gap-2"
               >
                 {isPlacingOrder ? (
                   <>
