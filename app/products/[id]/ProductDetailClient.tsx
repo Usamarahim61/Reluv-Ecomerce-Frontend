@@ -9,6 +9,7 @@ import ImageZoom from "@/app/components/ImageZoom";
 import MobileImageCarousel from "@/app/components/MobileImageCarousel";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
+import MakeOfferModal from "@/app/components/MakeOfferModal";
 import { API_BASE_URL } from "@/app/constants/api";
 import { CATEGORY_TREE_ENDPOINT, CategoryNode } from "@/lib/categoryUtils";
 import {
@@ -35,6 +36,7 @@ import {
   Star,
   Truck,
   RotateCcw,
+  Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -111,6 +113,7 @@ export default function ProductDetailPage() {
   const [productError, setProductError] = useState<string | null>(null);
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
 
   // ── fav state ──────────────────────────────────────────────────────────────
   const [favIds, setFavIds] = useState<number[]>([]);
@@ -830,6 +833,15 @@ export default function ProductDetailPage() {
                   <MessageCircle size={14} />
                   {isOwnProduct ? "Your product" : "Ask seller"}
                 </button>
+                {!isOwnProduct && product?.user?.id && (
+                  <button
+                    onClick={() => setShowOfferModal(true)}
+                    className="pdp-btn-secondary"
+                  >
+                    <Tag size={14} />
+                    Make an Offer
+                  </button>
+                )}
               </div>
 
               {/* Trust badges */}
@@ -942,6 +954,21 @@ export default function ProductDetailPage() {
           <Footer />
         </div>
       </main>
+
+      {/* Make Offer Modal */}
+      {product && user && (
+        <MakeOfferModal
+          isOpen={showOfferModal}
+          onClose={() => setShowOfferModal(false)}
+          productId={Number(product.id)}
+          productDocumentId={String(product.documentId)}
+          productTitle={name}
+          originalPrice={parseFloat(getPriceValue(price) || "0")}
+          currency={getCurrencyCode(price) || "TBH"}
+          sellerId={Number(product.user?.id)}
+          buyerId={Number(user.id)}
+        />
+      )}
     </>
   );
 }
