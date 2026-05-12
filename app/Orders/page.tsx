@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { FileText, ChevronRight, Package, ShoppingBag, Tag, DollarSign, Check, X } from "lucide-react";
+import { FileText, ChevronRight, Package, ShoppingBag, Tag, DollarSign, Check, X, Clock, ShoppingCart } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "../constants/api";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Category = "Sold" | "Bought" | "Offers";
 type Status = "All" | "In Progress" | "Completed" | "Cancelled";
@@ -25,6 +26,7 @@ const CATEGORY_ICONS: Record<Category, React.ElementType> = {
 
 export default function Orders() {
   const { user } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [ordersData,     setOrdersData]     = useState<any[]>([]);
   const [offersData,     setOffersData]     = useState<any[]>([]);
@@ -32,6 +34,7 @@ export default function Orders() {
   const [activeStatus,   setActiveStatus]   = useState<Status>("All");
   const [offerStatus,    setOfferStatus]    = useState<OfferStatus>("All");
   const [respondingTo,   setRespondingTo]   = useState<number | null>(null);
+  const [timeLeft,       setTimeLeft]       = useState<Record<number, string>>({});
 
   const categories: Category[] = ["Sold", "Bought", "Offers"];
   const statuses:   Status[]   = ["All", "In Progress", "Completed", "Cancelled"];
@@ -41,6 +44,38 @@ export default function Orders() {
     const tab = searchParams?.get("tab");
     if (tab === "offers") setActiveCategory("Offers");
   }, [searchParams]);
+
+  // Countdown timer for accepted offers
+  useEffect(() => {
+    const acceptedOffers = offersData.filter(
+      (o) => o.status === "accepted" && o.expiresAt
+    );
+
+    if (acceptedOffers.length === 0) return;
+
+    const interval = setInterval(() => {
+      const newTimeLeft: Record<number, string> = {};
+
+      acceptedOffers.forEach((offer) => {
+        const expiresAt = new Date(offer.expiresAt).getTime();
+        const now = Date.now();
+        const diff = expiresAt - now;
+
+        if (diff <= 0) {
+          newTimeLeft[offer.id] = "Expired";
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          newTimeLeft[offer.id] = `${hours}h ${minutes}m ${seconds}s`;
+        }
+      });
+
+      setTimeLeft(newTimeLeft);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [offersData]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,6 +131,26 @@ export default function Orders() {
     } catch { /* silent */ } finally {
       setRespondingTo(null);
     }
+  };
+
+  const handleBuyWithOffer = (offer: any) => {
+    const product = offer.product;
+    const queryParams = new URLSearchParams({
+      productId: String(product?.id || offer.product),
+      documentId: String(product?.documentId || ""),
+      title: offer.productTitle,
+      brand: product?.brand || "",
+      size: product?.size || "",
+      price: String(offer.offerPrice),
+      currency: "TBH",
+      imageUrl: offer.productImage || "",
+      buyerProtectionFee: "100",
+      shippingFee: "100",
+      sellerId: String(offer.seller?.id || ""),
+      offerId: String(offer.id),
+    });
+
+    router.push(`/CheckOut?${queryParams.toString()}`);
   };
 
   const filteredOrders = useMemo(() => {
@@ -423,6 +478,41 @@ export default function Orders() {
                                   <X size={14} />
                                   Decline
                                 </button>
+                              </div>
+                            )}
+
+                            {/* Buyer actions for accepted offers */}
+                            {!isSeller && offer.status === "accepted" && (
+                              <div className="space-y-2">
+                                {/* Countdown timer */}
+                                <div className="flex items-center justify-between bg-[#fff8f5] border border-[#f0ddd3] rounded-xl px-3 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <Clock size={14} className="text-[#c0613a]" />
+                                    <span className="text-xs text-[#a04828] font-semibold">
+                                      {timeLeft[offer.id] === "Expired" ? "Offer Expired" : "Time remaining:"}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm font-bold text-[#c0613a]">
+                                    {timeLeft[offer.id] || "Calculating..."}
+                                  </span>
+                                </div>
+
+                                {/* Buy Now button */}
+                                {timeLeft[offer.id] !== "Expired" && (
+                                  <button
+                                    onClick={() => handleBuyWithOffer(offer)}
+                                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#c0613a] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#a8502e]"
+                                  >
+                                    <ShoppingCart size={14} />
+                                    Buy Now with Offer Price
+                                  </button>
+                                )}
+
+                                {timeLeft[offer.id] === "Expired" && (
+                                  <div className="text-center py-2 text-xs text-[#888]">
+                                    This offer has expired. The product is now available again.
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

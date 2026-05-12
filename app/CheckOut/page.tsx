@@ -132,7 +132,25 @@ const CheckOutContent: React.FC = () => {
         return;
       }
 
+      // If this order is from an accepted offer, mark it as completed
+      const offerId = searchParams.get("offerId");
+      if (offerId && result?.data?.id) {
+        await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: result.data.id,
+            buyerId: user?.id,
+          }),
+        });
+      }
+
       toast.success("Order placed successfully!", toastConfig);
+      
+      // Redirect to orders page after 2 seconds
+      setTimeout(() => {
+        window.location.href = "/Orders";
+      }, 2000);
     } catch (error) {
       console.error("Order Error:", error);
       toast.error("Something went wrong. Please try again.", toastConfig);
