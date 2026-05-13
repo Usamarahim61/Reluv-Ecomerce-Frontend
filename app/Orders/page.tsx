@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { FileText, ChevronRight, Package, ShoppingBag, Tag, DollarSign, Check, X, Clock, ShoppingCart } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +25,14 @@ const CATEGORY_ICONS: Record<Category, React.ElementType> = {
 };
 
 export default function Orders() {
+  return (
+    <Suspense fallback={null}>
+      <OrdersInner />
+    </Suspense>
+  );
+}
+
+function OrdersInner() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();

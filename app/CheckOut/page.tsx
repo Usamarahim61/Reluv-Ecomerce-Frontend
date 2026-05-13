@@ -9,7 +9,7 @@ import { API_BASE_URL } from "../constants/api";
 import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
-import { getUser } from "@/services/auth-service";
+import { getUser, getUserAddress } from "@/services/auth-service";
 
 interface ProductData {
   title: string;
