@@ -19,12 +19,12 @@ export default function Postage() {
       {/* Warning/Info Box */}
       <div className="flex gap-3 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
         <div className="mt-0.5">
-          <Info className="w-5 h-5 text-[#007782]" />
+          <Info className="w-5 h-5 text-[#cb6f4d]" />
         </div>
         <p className="text-sm text-gray-700 leading-relaxed">
           Disabling shipping options may reduce sales. If a member can only buy from you with a 
           disabled option, we may still offer it.{" "}
-          <a href="#" className="text-[#007782] underline hover:text-[#005f68]">
+          <a href="#" className="text-[#cb6f4d] underline hover:text-[#005f68]">
             Learn more about disabled options.
           </a>
         </p>
@@ -73,7 +73,7 @@ export default function Postage() {
         <p className="text-xs text-gray-500">
           Some shipping options are enabled for all sellers on our platform and can't be turned off.
         </p>
-        <a href="#" className="inline-block text-xs text-[#007782] underline hover:text-[#005f68]">
+        <a href="#" className="inline-block text-xs text-[#cb6f4d] underline hover:text-[#005f68]">
           See compensation information
         </a>
         <span className="text-xs text-gray-500"> for sellers using integrated shipping.</span>

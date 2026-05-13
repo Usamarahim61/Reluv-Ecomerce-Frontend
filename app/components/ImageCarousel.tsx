@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 
@@ -58,7 +59,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute -top-12 sm:-top-14 right-0 z-50 rounded-full bg-black/50 backdrop-blur-md p-2 sm:p-3 text-white transition-all hover:bg-black/70 hover:scale-110 border cursor-pointer border-white/20 outline-none"
+          className="absolute  right-0 z-50 rounded-full bg-black/50 backdrop-blur-md p-2 sm:p-3 text-white transition-all hover:bg-black/70 hover:scale-110 border cursor-pointer border-white/20 outline-none"
           aria-label="Close"
         >
           <X size={20} className="sm:w-6 sm:h-6" />
@@ -130,7 +131,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 }}
                 className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border-2 rounded transition-all ${
                   index === currentImageIndex
-                    ? 'border-[#007782] scale-105'
+                    ? 'border-[#cb6f4d] scale-105'
                     : 'border-gray-400 hover:border-gray-300'
                 }`}
               >

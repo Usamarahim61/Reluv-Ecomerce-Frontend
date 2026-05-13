@@ -1,11 +1,10 @@
 import Image from "next/image";
 import Footer from "../components/Footer";
-import Navbar from "../components/navbar";
+
 
 export default function AccessibilityPage() {
   return (
     <>
-    <Navbar/>
     <main className="bg-[#F5F7F6]">
       {/* ================= HERO SECTION ================= */}
       <section className="text-center max-w-6xl mx-auto rounded-4xl pt-24 pb-40">

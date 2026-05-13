@@ -31,12 +31,15 @@ export const sortCategoryTree = (nodes: CategoryNode[]): CategoryNode[] => {
 export const mapTreeToSubCategories = (tree: CategoryNode[]): SubCategoryItem[] => {
   return tree.map((root) => ({
     label: root.name,
+    slug: root.slug,
     children: [
-      { label: "ALL", icon: "::", items: [] },
+      { label: "ALL", icon: "::", items: [], slug: root.slug },
       ...(root.categories || []).map((child) => ({
         label: child.name,
         icon: "::",
         items: (child.categories || []).map((leaf) => leaf.name),
+        slug: child.slug,
+        itemSlugs: (child.categories || []).map((leaf) => leaf.slug),
       })),
     ],
   }));

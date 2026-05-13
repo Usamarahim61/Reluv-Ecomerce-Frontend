@@ -1,55 +1,404 @@
-'use client';
+"use client";
 
-import { X, EyeOff, Eye } from "lucide-react";
+import {
+  X,
+  EyeOff,
+  Eye,
+  Loader2,
+  AlertCircle,
+  WifiOff,
+  XCircle,
+} from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
-import { login, register } from "../../services/auth-service";
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  login,
+  sendOtp,
+  verifyOtp,
+  forgotPasswordSendOtp,
+  forgotPasswordVerifyOtp,
+  forgotPasswordReset,
+  loginWithGoogle,
+  loginWithFacebook,
+} from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
-import { API_BASE_URL } from "../constants/api";
 
-export default function SignUpLogin({ onClose }: { onClose: () => void }) {
+const GOOGLE_CLIENT_ID =
+  "139090663543-35knp1pnf47rc7qrnbgf6jf4nkbts4ij.apps.googleusercontent.com";
+const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID!;
+
+type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
+interface AuthError {
+  kind: AuthErrorKind;
+  message: string;
+}
+
+function classifyError(err: any): AuthError {
+  const msg: string = err?.message || "";
+  if (
+    !navigator.onLine ||
+    msg.toLowerCase().includes("network") ||
+    msg.toLowerCase().includes("fetch")
+  )
+    return {
+      kind: "network",
+      message:
+        "No internet connection. Please check your network and try again.",
+    };
+  if (
+    msg.toLowerCase().includes("cancel") ||
+    msg.toLowerCase().includes("closed")
+  )
+    return {
+      kind: "cancelled",
+      message: "Sign-in was cancelled. Try again when you're ready.",
+    };
+  if (
+    msg.toLowerCase().includes("invalid") ||
+    msg.toLowerCase().includes("credentials") ||
+    msg.toLowerCase().includes("password") ||
+    msg.toLowerCase().includes("user not found") ||
+    msg.toLowerCase().includes("email")
+  )
+    return {
+      kind: "auth",
+      message: msg || "Incorrect email or password. Please try again.",
+    };
+  if (
+    msg.toLowerCase().includes("already") ||
+    msg.toLowerCase().includes("exists")
+  )
+    return {
+      kind: "auth",
+      message:
+        "An account with this email already exists. Try logging in instead.",
+    };
+  return {
+    kind: "unknown",
+    message: msg || "Something went wrong. Please try again.",
+  };
+}
+
+function openPopup(url: string, title: string) {
+  const w = 500,
+    h = 600;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top = window.screenY + (window.outerHeight - h) / 2;
+  return window.open(
+    url,
+    title,
+    `width=${w},height=${h},left=${left},top=${top}`,
+  );
+}
+
+function ErrorBanner({
+  error,
+  onDismiss,
+}: {
+  error: AuthError;
+  onDismiss: () => void;
+}) {
+  const icons: Record<AuthErrorKind, React.ReactNode> = {
+    network: <WifiOff size={15} className="shrink-0 mt-0.5" />,
+    auth: <XCircle size={15} className="shrink-0 mt-0.5" />,
+    cancelled: <AlertCircle size={15} className="shrink-0 mt-0.5" />,
+    unknown: <AlertCircle size={15} className="shrink-0 mt-0.5" />,
+  };
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-md px-3 py-2.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200 animate-in fade-in slide-in-from-top-1 duration-200"
+    >
+      {icons[error.kind]}
+      <span className="flex-1 leading-snug">{error.message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-red-400 hover:text-red-600 transition-colors ml-1 mt-0.5"
+        aria-label="Dismiss error"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
+type View =
+  | "initial"
+  | "login"
+  | "register"
+  | "otp"
+  | "forgot-password"
+  | "reset-otp"
+  | "new-password";
+
+export default function SignUpLogin({
+  onClose,
+  initialView = "initial",
+}: {
+  onClose: () => void;
+  initialView?: "initial" | "login" | "register";
+}) {
   const { login: setAuthLogin } = useAuth();
-  const [view, setView] = useState<"initial" | "login" | "register">("initial");
-  
-  // New State for Password Visibility
+  const [view, setView] = useState<View>(initialView);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Form States
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [otp, setOtp] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const [loadingProvider, setLoadingProvider] = useState<
+    "email" | "google" | "facebook" | null
+  >(null);
+  const isBusy = loadingProvider !== null;
 
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = useCallback((err: AuthError) => {
+    setAuthError(err);
+    if (err.kind !== "network") {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setAuthError(null), 6000);
+    }
+  }, []);
+
+  const dismissError = useCallback(() => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setAuthError(null);
+  }, []);
+
+  useEffect(() => {
+    dismissError();
+  }, [view]);
+  useEffect(() => {
+    if (authError) dismissError();
+  }, [email, password, username]);
+  useEffect(
+    () => () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    },
+    [],
+  );
+
+  // ── Google Sign-In ────────────────────────────────────────────────────────
+  const handleGoogleLogin = useCallback(() => {
+    setLoadingProvider("google");
+    dismissError();
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: `${window.location.origin}/auth/callback/google`,
+      response_type: "token",
+      scope: "openid email profile",
+      prompt: "select_account",
+    });
+    const popup = openPopup(
+      `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
+      "Google Sign-In",
+    );
+    if (!popup) {
+      showError({
+        kind: "unknown",
+        message:
+          "Popup was blocked. Please allow popups for this site and try again.",
+      });
+      setLoadingProvider(null);
+      return;
+    }
+    const handler = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "GOOGLE_AUTH_SUCCESS") return;
+      window.removeEventListener("message", handler);
+      clearInterval(poll);
+      try {
+        const data = await loginWithGoogle(event.data.token);
+        setAuthLogin(data.jwt, data.user);
+        popup.close();
+        onClose();
+      } catch (err: any) {
+        showError(classifyError(err));
+      } finally {
+        setLoadingProvider(null);
+      }
+    };
+    window.addEventListener("message", handler);
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll);
+        window.removeEventListener("message", handler);
+        setLoadingProvider((prev) => {
+          if (prev === "google") {
+          }
+          return null;
+        });
+      }
+    }, 500);
+  }, [setAuthLogin, onClose, showError, dismissError]);
+
+  // ── Facebook Login ────────────────────────────────────────────────────────
+  const handleFacebookLogin = useCallback(() => {
+    setLoadingProvider("facebook");
+    dismissError();
+    const initFB = () => {
+      (window as any).FB.login(
+        (response: any) => {
+          if (response.authResponse) {
+            loginWithFacebook(response.authResponse.accessToken)
+              .then((data) => {
+                setAuthLogin(data.jwt, data.user);
+                onClose();
+              })
+              .catch((err: any) => showError(classifyError(err)))
+              .finally(() => setLoadingProvider(null));
+          } else {
+            setLoadingProvider(null);
+          }
+        },
+        { scope: "email,public_profile" },
+      );
+    };
+    if ((window as any).FB) {
+      initFB();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.onload = () => {
+        (window as any).FB.init({
+          appId: FACEBOOK_APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: "v19.0",
+        });
+        initFB();
+      };
+      script.onerror = () => {
+        showError({
+          kind: "network",
+          message:
+            "Failed to load Facebook. Check your connection and try again.",
+        });
+        setLoadingProvider(null);
+      };
+      document.body.appendChild(script);
+    }
+  }, [setAuthLogin, onClose, showError, dismissError]);
+
+  // ── Email Login ───────────────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoadingProvider("email");
+    dismissError();
     try {
       const data = await login(email, password);
       setAuthLogin(data.jwt, data.user);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      showError(classifyError(err));
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   }
 
+  // ── Register (send OTP) ───────────────────────────────────────────────────
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoadingProvider("email");
+    dismissError();
     try {
-      const data = await register(username, email, password);
+      await sendOtp(email, username, password);
+      setView("otp");
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      const data = await verifyOtp(email, otp);
       setAuthLogin(data.jwt, data.user);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      showError(classifyError(err));
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleResendOtp() {
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      await sendOtp(email, username, password);
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  // ── Forgot Password ───────────────────────────────────────────────────────
+  async function handleForgotSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      await forgotPasswordSendOtp(email);
+      setView("reset-otp");
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleForgotVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      await forgotPasswordVerifyOtp(email, resetOtp);
+      setView("new-password");
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      await forgotPasswordReset(email, resetOtp, newPassword);
+      setNewPassword("");
+      setResetOtp("");
+      setView("login");
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
+    }
+  }
+
+  async function handleResendResetOtp() {
+    setLoadingProvider("email");
+    dismissError();
+    try {
+      await forgotPasswordSendOtp(email);
+    } catch (err: any) {
+      showError(classifyError(err));
+    } finally {
+      setLoadingProvider(null);
     }
   }
 
@@ -58,129 +407,417 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center p-0 sm:p-4"
       onClick={onClose}
     >
-      {/* Modal Container */}
       <div
         className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-xl shadow-2xl overflow-y-auto max-h-[92vh] transition-all duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile "Pull-down" Handle Indicator */}
         <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-1 sm:hidden" />
-
-        <button 
-          onClick={onClose} 
-          className="absolute right-4 top-4 sm:right-6 sm:top-6 text-gray-400 hover:text-black p-1"
+        <button
+          onClick={onClose}
+          disabled={isBusy}
+          className="absolute right-4 top-4 sm:right-6 sm:top-6 text-gray-400 hover:text-black p-1 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <X size={24} />
         </button>
 
         <div className="px-6 py-8 sm:px-10 sm:py-10">
+          {/* ── Initial view ── */}
           {view === "initial" && (
             <>
               <h2 className="text-xl sm:text-2xl font-bold text-center leading-tight mb-8">
                 Join and sell pre-loved clothes with no fees
               </h2>
               <div className="space-y-3">
-                <SocialButton icon="https://www.svgrepo.com/show/475656/google-color.svg" text="Continue with Google" />
-                <SocialButton icon="https://www.svgrepo.com/show/475647/facebook-color.svg" text="Continue with Facebook" />
-                <SocialButton icon="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg" text="Continue with Apple" />
+                <SocialButton
+                  icon="https://www.svgrepo.com/show/475656/google-color.svg"
+                  text="Continue with Google"
+                  isLoading={loadingProvider === "google"}
+                  isDisabled={isBusy && loadingProvider !== "google"}
+                  onClick={handleGoogleLogin}
+                />
+                <SocialButton
+                  icon="https://www.svgrepo.com/show/475647/facebook-color.svg"
+                  text="Continue with Facebook"
+                  isLoading={loadingProvider === "facebook"}
+                  isDisabled={isBusy && loadingProvider !== "facebook"}
+                  onClick={handleFacebookLogin}
+                />
+                <SocialButton
+                  icon="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg"
+                  text="Continue with Apple"
+                  isDisabled={isBusy}
+                  onClick={() => {}}
+                />
               </div>
-              
               <div className="flex items-center my-6">
                 <div className="flex-1 h-px bg-gray-200" />
-                <span className="px-3 text-xs text-gray-400 font-bold uppercase">OR</span>
+                <span className="px-3 text-xs text-gray-400 font-bold uppercase">
+                  OR
+                </span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
-
               <button
                 onClick={() => setView("register")}
-                className="w-full bg-[#007782] text-white rounded-md py-3 font-semibold hover:bg-[#00656f]"
+                disabled={isBusy}
+                className="w-full bg-[#cb6f4d] text-white rounded-md py-3 font-semibold cursor-pointer hover:bg-[#cb6f4d] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Register with email
               </button>
               <p className="mt-6 text-center text-sm text-gray-600">
                 Already have an account?{" "}
-                <span onClick={() => setView("login")} className="text-[#007782] cursor-pointer hover:underline font-bold">Log in</span>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => setView("login")}
+                  className="text-[#cb6f4d] cursor-pointer hover:underline font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Log in
+                </button>
               </p>
+              {authError && (
+                <div className="mt-4">
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                </div>
+              )}
             </>
           )}
 
+          {/* ── Login / Register view ── */}
           {(view === "login" || view === "register") && (
             <div className="flex flex-col">
               <h2 className="text-2xl font-semibold text-center mb-8">
                 {view === "login" ? "Log in" : "Sign up with email"}
               </h2>
-              
-              <form onSubmit={view === "login" ? handleLogin : handleRegister} className="space-y-5">
+              <form
+                onSubmit={view === "login" ? handleLogin : handleRegister}
+                className="space-y-5"
+              >
                 {view === "register" && (
                   <div>
-                    <input 
-                      type="text" 
-                      placeholder="Username" 
-                      value={username} 
-                      onChange={(e) => setUsername(e.target.value)} 
-                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]" 
+                    <input
+                      type="text"
+                      placeholder="Username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      disabled={isBusy}
+                      className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
                     />
-                    <p className="text-[10px] text-gray-500 mt-1">Visible to other users.</p>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Visible to other users.
+                    </p>
                   </div>
                 )}
-
-                <input 
-                  type="email" 
-                  placeholder="Email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#007782]" 
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isBusy}
+                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
                 />
-
-                <div className="relative border-b border-gray-300 focus-within:border-[#007782]">
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="Password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full py-3 outline-none pr-10" 
+                <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isBusy}
+                    className="w-full py-3 outline-none pr-10 disabled:opacity-50"
                   />
-                  <button 
+                  <button
                     type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isBusy}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-40"
                   >
                     {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
 
+                {view === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView("forgot-password");
+                      setEmail("");
+                    }}
+                    disabled={isBusy}
+                    className="text-xs text-gray-400 hover:text-[#cb6f4d] self-end block text-right w-full -mt-2 disabled:opacity-50"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+
                 {view === "register" && (
                   <div className="space-y-4 pt-2">
                     <label className="flex items-start gap-3 cursor-pointer group">
-                      <input type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
-                      <span className="text-xs text-gray-600">I want to receive personalized offers and updates.</span>
+                      <input
+                        type="checkbox"
+                        disabled={isBusy}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#cb6f4d] shrink-0"
+                      />
+                      <span className="text-xs text-gray-600">
+                        I want to receive personalized offers and updates.
+                      </span>
                     </label>
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input required type="checkbox" className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#007782] shrink-0" />
+                      <input
+                        required
+                        type="checkbox"
+                        disabled={isBusy}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 accent-[#cb6f4d] shrink-0"
+                      />
                       <span className="text-xs text-gray-600">
-                        I accept the <span className="text-[#007782] font-medium">Terms & Conditions</span> and <span className="text-[#007782] font-medium">Privacy Policy</span>.
+                        I accept the{" "}
+                        <span className="text-[#cb6f4d] font-medium">
+                          Terms & Conditions
+                        </span>{" "}
+                        and{" "}
+                        <span className="text-[#cb6f4d] font-medium">
+                          Privacy Policy
+                        </span>
+                        .
                       </span>
                     </label>
                   </div>
                 )}
 
-                {error && <p className="text-red-500 text-xs font-medium">{error}</p>}
+                {authError && (
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                )}
 
-                <button 
-                  type="submit" 
-                  disabled={loading} 
-                  className="w-full bg-[#007782] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#005f68]"
+                <button
+                  type="submit"
+                  disabled={isBusy}
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm active:bg-[#cb6f4d] flex items-center justify-center gap-2 disabled:cursor-not-allowed"
                 >
-                  {loading ? "Please wait..." : "Continue"}
+                  {loadingProvider === "email" && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingProvider === "email" ? "Please wait…" : "Continue"}
                 </button>
               </form>
-              
-              <button 
-                onClick={() => setView("initial")} 
-                className="mt-6 text-[#007782] text-sm font-medium hover:underline self-center"
+              <button
+                type="button"
+                onClick={() => setView("initial")}
+                disabled={isBusy}
+                className="mt-6 text-[#cb6f4d] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                 {view === "register" && (<span> Already have an account? Log In</span>)}{view === "login" && (<span> Don'ts have an account? Register</span>)}
+                {view === "register"
+                  ? "Already have an account? Log in"
+                  : "Don't have an account? Register"}
               </button>
+            </div>
+          )}
+
+          {/* ── Register OTP view ── */}
+          {view === "otp" && (
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-semibold text-center mb-2">
+                Verify your email
+              </h2>
+              <p className="text-sm text-gray-500 text-center mb-8">
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-gray-700">{email}</span>
+              </p>
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter 6-digit code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  disabled={isBusy}
+                  className="w-full py-3 text-center text-2xl tracking-[0.5em] border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
+                />
+                {authError && (
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                )}
+                <button
+                  type="submit"
+                  disabled={isBusy || otp.length !== 6}
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                >
+                  {loadingProvider === "email" && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingProvider === "email"
+                    ? "Verifying…"
+                    : "Verify & Create Account"}
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={isBusy}
+                className="mt-4 text-sm text-gray-500 hover:text-[#cb6f4d] self-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Didn't receive it? Resend code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setView("register");
+                  setOtp("");
+                }}
+                disabled={isBusy}
+                className="mt-2 text-[#cb6f4d] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Back
+              </button>
+            </div>
+          )}
+
+          {/* ── Forgot Password view ── */}
+          {view === "forgot-password" && (
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-semibold text-center mb-2">
+                Forgot password?
+              </h2>
+              <p className="text-sm text-gray-500 text-center mb-8">
+                Enter your email and we'll send you a reset code.
+              </p>
+              <form onSubmit={handleForgotSendOtp} className="space-y-5">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isBusy}
+                  required
+                  className="w-full py-3 border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
+                />
+                {authError && (
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                )}
+                <button
+                  type="submit"
+                  disabled={isBusy}
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                >
+                  {loadingProvider === "email" && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingProvider === "email" ? "Sending…" : "Send reset code"}
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => setView("login")}
+                disabled={isBusy}
+                className="mt-6 text-[#cb6f4d] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Back to login
+              </button>
+            </div>
+          )}
+
+          {/* ── Reset OTP view ── */}
+          {view === "reset-otp" && (
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-semibold text-center mb-2">
+                Enter reset code
+              </h2>
+              <p className="text-sm text-gray-500 text-center mb-8">
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-gray-700">{email}</span>
+              </p>
+              <form onSubmit={handleForgotVerifyOtp} className="space-y-5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter 6-digit code"
+                  value={resetOtp}
+                  onChange={(e) =>
+                    setResetOtp(e.target.value.replace(/\D/g, ""))
+                  }
+                  disabled={isBusy}
+                  className="w-full py-3 text-center text-2xl tracking-[0.5em] border-b border-gray-300 outline-none focus:border-[#cb6f4d] disabled:opacity-50"
+                />
+                {authError && (
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                )}
+                <button
+                  type="submit"
+                  disabled={isBusy || resetOtp.length !== 6}
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                >
+                  {loadingProvider === "email" && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingProvider === "email" ? "Verifying…" : "Verify code"}
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={handleResendResetOtp}
+                disabled={isBusy}
+                className="mt-4 text-sm text-gray-500 hover:text-[#cb6f4d] self-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Didn't receive it? Resend code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setView("forgot-password");
+                  setResetOtp("");
+                }}
+                disabled={isBusy}
+                className="mt-2 text-[#cb6f4d] text-sm font-medium hover:underline self-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Back
+              </button>
+            </div>
+          )}
+
+          {/* ── New Password view ── */}
+          {view === "new-password" && (
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-semibold text-center mb-2">
+                Set new password
+              </h2>
+              <p className="text-sm text-gray-500 text-center mb-8">
+                Choose a strong password for your account.
+              </p>
+              <form onSubmit={handleResetPassword} className="space-y-5">
+                <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="New password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={isBusy}
+                    required
+                    minLength={6}
+                    className="w-full py-3 outline-none pr-10 disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    disabled={isBusy}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-40"
+                  >
+                    {showNewPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+                {authError && (
+                  <ErrorBanner error={authError} onDismiss={dismissError} />
+                )}
+                <button
+                  type="submit"
+                  disabled={isBusy || newPassword.length < 6}
+                  className="w-full bg-[#cb6f4d] text-white rounded-md py-3.5 font-bold disabled:opacity-50 mt-4 shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                >
+                  {loadingProvider === "email" && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingProvider === "email"
+                    ? "Saving…"
+                    : "Save new password"}
+                </button>
+              </form>
             </div>
           )}
         </div>
@@ -189,11 +826,31 @@ export default function SignUpLogin({ onClose }: { onClose: () => void }) {
   );
 }
 
-// Helper component for Social Buttons
-function SocialButton({ icon, text }: { icon: string, text: string }) {
+function SocialButton({
+  icon,
+  text,
+  onClick,
+  isLoading = false,
+  isDisabled = false,
+}: {
+  icon: string;
+  text: string;
+  onClick: () => void;
+  isLoading?: boolean;
+  isDisabled?: boolean;
+}) {
   return (
-    <button className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2.5 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors">
-      <Image src={icon} alt="" width={20} height={20} />
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isLoading || isDisabled}
+      className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2.5 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isLoading ? (
+        <Loader2 size={20} className="animate-spin text-gray-400" />
+      ) : (
+        <Image src={icon} alt="" width={20} height={20} />
+      )}
       <span className="text-sm">{text}</span>
     </button>
   );

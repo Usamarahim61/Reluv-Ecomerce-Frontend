@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { SubCategoryItem } from "../constants/subCatagories";
+import Link from "next/link";
 
 interface SubMenusProps {
   subCategories?: SubCategoryItem[];
@@ -50,11 +51,15 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
         {!loading && safeSubCategories.map((cat) => (
           <div
             key={cat.label}
-            className="flex items-center cursor-pointer py-2 px-1 hover:text-[#007782]"
+            className="flex items-center cursor-pointer py-2 px-1 hover:text-[#cb6f4d]"
             onMouseEnter={() => handleCategoryHover(cat)}
           >
-            {/* <span className="text-lg">{cat.icon}</span> */}
-            <span className="ml-2">{cat.label}</span>
+            <Link
+              href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
+              className="ml-2"
+            >
+              {cat.label}
+            </Link>
           </div>
         ))}
       </div>
@@ -70,13 +75,17 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
                 key={child.label}
                 className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-100 ${
                   selectedChild === child.label
-                    ? "bg-gray-100 font-semibold text-[#007782]"
+                    ? "bg-gray-100 font-semibold text-[#cb6f4d]"
                     : "text-gray-600"
                 }`}
                 onMouseEnter={() => setSelectedChild(child.label)}
               >
                 <span>{child.icon}</span>
-                <span>{child.label}</span>
+                <Link
+                  href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(child.slug || child.label)}`}
+                >
+                  {child.label}
+                </Link>
               </div>
             ))}
           </div>
@@ -88,14 +97,15 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
           <div className="flex flex-col flex-wrap gap-5">
             {activeCategory.children
               .filter((child) => child.label === selectedChild)
-              .flatMap((child) => child.items)
-              .map((item) => (
-                <div
+              .flatMap((child) => child.items.map((item, idx) => ({ item, slug: child.itemSlugs?.[idx] })))
+              .map(({ item, slug }) => (
+                <Link
+                  href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(selectedChild || "")}&item=${encodeURIComponent(slug || item)}`}
                   key={item}
-                  className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#007782] hover:font-semibold whitespace-nowrap"
+                  className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#cb6f4d] hover:font-semibold whitespace-nowrap"
                 >
                   {item}
-                </div>
+                </Link>
               ))}
           </div>
         </div>

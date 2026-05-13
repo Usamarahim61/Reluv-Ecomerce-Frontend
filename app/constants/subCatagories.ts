@@ -3,11 +3,14 @@ export interface ChildItem {
   label: string;
   icon: string;
   items: string[];
+  slug?: string;
+  itemSlugs?: string[];
 }
 
 export interface SubCategoryItem {
   label: string;
   children: ChildItem[];
+  slug?: string;
 }
 
 // export const subCategories: SubCategoryItem[] = [

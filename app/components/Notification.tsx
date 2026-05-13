@@ -22,7 +22,7 @@ interface NotificationRowProps {
   isLast?: boolean; // Optional flag for bottom borders
 }
 
-export default function Notification(): JSX.Element {
+export default function Notification(): React.ReactElement {
   // 3. Initialize state with the defined interface
   const [settings, setSettings] = useState<NotificationSettings>({
     updates: true,
@@ -136,7 +136,7 @@ function NotificationRow({
   active, 
   onToggle, 
   isLast 
-}: NotificationRowProps): JSX.Element {
+}: NotificationRowProps): React.ReactElement {
   return (
     <div className={`flex items-center justify-between p-4 bg-white ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="pr-4">
@@ -150,7 +150,7 @@ function NotificationRow({
           checked={active} 
           onChange={onToggle} 
         />
-        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#007782] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#cb6f4d] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
       </label>
     </div>
   );

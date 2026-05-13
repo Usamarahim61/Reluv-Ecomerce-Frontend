@@ -1,30 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import {
+  User,
+  Lock,
+  Truck,
+  CreditCard,
+  Gift,
+  Bell,
+  Eye,
+  Shield,
+  ChevronRight,
+} from "lucide-react";
 import ProfileSetting from "../components/ProfileSetting";
 import AccountSetting from "../components/AccountSetting";
 import Postage from "../components/Postage";
-import Notification from "../components/Notification"
-import PrivacySetting from "../components/PrivacySetting"
-import SecuritySetting from "../components/Security"
-import Payments from "../components/Payments"
-import BundleDiscount from "../components/BundleDiscount"
-import Navbar from "../components/navbar";
+import Notification from "../components/Notification";
+import PrivacySetting from "../components/PrivacySetting";
+import SecuritySetting from "../components/Security";
+import Payments from "../components/Payments";
+import BundleDiscount from "../components/BundleDiscount";
 import Footer from "../components/Footer";
 
 export default function SettingsComp() {
   const options = [
-    "Profile Setting",
-    "Account Setting",
-    "Postage",
-    "Payments",
-    "Bundle Discount",
-    "Notification",
-    "Privacy Setting",
-    "Security",
+    { label: "Profile Setting", icon: User },
+    { label: "Account Setting", icon: Lock },
+    { label: "Postage", icon: Truck },
+    { label: "Payments", icon: CreditCard },
+    { label: "Bundle Discount", icon: Gift },
+    { label: "Notification", icon: Bell },
+    { label: "Privacy Setting", icon: Eye },
+    { label: "Security", icon: Shield },
   ];
 
-  const [selectedOption, setSelectedOption] = useState(options[0]);
+  const [selectedOption, setSelectedOption] = useState(options[0].label);
 
   const renderRightComponent = () => {
     switch (selectedOption) {
@@ -41,69 +51,113 @@ export default function SettingsComp() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen bg-linear-to-br from-[#faf9f7] via-white to-[#f0ede8]">
+      
+      {/* Header */}
+      <div className="border-b border-[#e0ddd8] bg-white/50 backdrop-blur-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#1a1a1a]">Settings</h1>
+          <p className="text-[#888] text-sm mt-1">Manage your account and preferences</p>
+        </div>
+      </div>
 
-      <main className="flex-grow w-full max-w-6xl mx-auto px-4 py-6 md:py-10">
-        <h1 className="text-2xl font-bold mb-6 md:hidden">Settings</h1>
-        
-        <div className="flex flex-col md:flex-row gap-6 lg:gap-10">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="flex flex-col lg:flex-row gap-8">
           
-          {/* Left column / Top Navigation */}
-          <aside className="w-full md:w-1/4 lg:w-1/3">
-            {/* Mobile: Horizontal scrollable tabs */}
-            <div className="md:hidden flex overflow-x-auto pb-2 gap-2 no-scrollbar border-b border-gray-200">
-              {options.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setSelectedOption(option)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-colors ${
-                    selectedOption === option 
-                    ? "bg-[#007782] text-white font-medium" 
-                    : "bg-white text-gray-600 border border-gray-200"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
+          {/* Sidebar Navigation */}
+          <aside className="w-full lg:w-80 shrink-0">
+            {/* Mobile Tabs */}
+            <div className="lg:hidden mb-6">
+              <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 no-scrollbar">
+                {options.map((option) => {
+                  const IconComponent = option.icon;
+                  const isSelected = selectedOption === option.label;
+                  return (
+                    <button
+                      key={option.label}
+                      onClick={() => setSelectedOption(option.label)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        isSelected
+                          ? "bg-[#cb6f4d] text-white shadow-lg"
+                          : "bg-white text-[#555] border border-[#e0ddd8] hover:border-[#cb6f4d]"
+                      }`}
+                    >
+                      <IconComponent size={16} />
+                      <span className="hidden xs:inline">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Desktop: Vertical sidebar */}
-            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
-                <h2 className="font-bold text-gray-800 text-lg">Settings</h2>
+            {/* Desktop Sidebar */}
+            <div className="hidden lg:block bg-white rounded-2xl border border-[#e0ddd8] shadow-sm overflow-hidden sticky top-24">
+              <div className="p-6 border-b border-[#f0ede8] bg-linear-to-r from-[#faf9f7] to-white">
+                <h2 className="font-serif text-lg font-bold text-[#1a1a1a]">Settings Menu</h2>
               </div>
-              <div className="flex flex-col">
-                {options.map((option) => (
-                  <button
-                    key={option}
-                    className={`px-6 py-4 text-left text-sm transition-all hover:bg-gray-50 border-l-4 ${
-                      selectedOption === option 
-                      ? "bg-gray-50 border-[#007782] font-bold text-[#007782]" 
-                      : "border-transparent text-gray-600"
-                    }`}
-                    onClick={() => setSelectedOption(option)}
-                  >
-                    {option}
-                  </button>
-                ))}
+
+              <div className="divide-y divide-[#f0ede8]">
+                {options.map((option) => {
+                  const IconComponent = option.icon;
+                  const isSelected = selectedOption === option.label;
+                  return (
+                    <button
+                      key={option.label}
+                      onClick={() => setSelectedOption(option.label)}
+                      className={`w-full px-6 py-4 flex items-center justify-between text-left transition-all ${
+                        isSelected
+                          ? "bg-[#fff0e8] border-l-4 border-l-[#cb6f4d]"
+                          : "hover:bg-[#faf9f7] border-l-4 border-l-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          isSelected ? "bg-[#cb6f4d]" : "bg-[#f0ede8]"
+                        }`}>
+                          <IconComponent 
+                            size={18} 
+                            className={isSelected ? "text-white" : "text-[#cb6f4d]"}
+                          />
+                        </div>
+                        <span className={`text-sm font-medium ${
+                          isSelected ? "text-[#cb6f4d] font-semibold" : "text-[#555]"
+                        }`}>
+                          {option.label}
+                        </span>
+                      </div>
+                      {isSelected && <ChevronRight size={18} className="text-[#cb6f4d]" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </aside>
 
-          {/* Right column - content */}
-          <div className="w-full md:w-3/4 lg:w-2/3">
-            <div className="bg-white p-4 md:p-8 rounded-lg shadow-sm border border-gray-100 min-h-[500px]">
-              <h2 className="text-xl font-bold mb-6 hidden md:block text-gray-800">
-                {selectedOption}
-              </h2>
-              {renderRightComponent()}
+          {/* Content Area */}
+          <div className="flex-1 min-w-0">
+            <div className="bg-white rounded-2xl border border-[#e0ddd8] shadow-sm overflow-hidden">
+              {/* Content Header */}
+              <div className="hidden md:block px-6 md:px-8 py-6 border-b border-[#f0ede8] bg-linear-to-r from-[#faf9f7] to-white">
+                <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">
+                  {selectedOption}
+                </h2>
+                <p className="text-sm text-[#888] mt-1">
+                  Manage your {selectedOption.toLowerCase()}
+                </p>
+              </div>
+
+              {/* Content Body */}
+              <div className="p-6 md:p-8">
+                {renderRightComponent()}
+              </div>
             </div>
           </div>
         </div>
       </main>
 
-       <div className="hidden md:block">
+      {/* Footer */}
+      <div className="hidden md:block mt-16">
         <Footer />
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function BundleDiscount(): JSX.Element {
             checked={isEnabled}
             onChange={() => setIsEnabled(!isEnabled)}
           />
-          <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#007782] after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#cb6f4d] after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
       </div>
 
@@ -28,7 +28,7 @@ export default function BundleDiscount(): JSX.Element {
         rates based on the number of items per order. Learn more at the{" "}
         <a
           href="#"
-          className="text-[#007782] underline hover:text-[#005f68] transition-colors"
+          className="text-[#cb6f4d] underline hover:text-[#005f68] transition-colors"
         >
           Help Centre
         </a>

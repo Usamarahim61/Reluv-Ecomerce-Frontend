@@ -11,7 +11,8 @@ import {
   User,
   BellOff,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
 import Link from "next/link";
@@ -19,9 +20,58 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
+import AndroidChrome from "./AndroidChrome";
+import { useAndroidNative } from "./useAndroidNative";
+import {
+  ProductCardItem,
+  searchProducts,
+  searchMemebers,
+  MemebersCardItem,
+} from "@/services/products-service";
+import { getUser, getUserAvatr } from "@/services/auth-service";
+import { API_BASE_URL } from "@/app/constants/api";
 
 export default function Navbar() {
+  const { isAndroid, isReady } = useAndroidNative();
+  const router = useRouter();
+
+  // Helper function to format absolute image URL
+  const toAbsoluteImageUrl = (url: string | undefined | null): string => {
+    if (!url) return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${API_BASE_URL}${url}`;
+  };
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
+  const [searchResultsForMemebers, setSearchResultsForMemebers] = useState<
+    MemebersCardItem[]
+  >([]);
+  const [showResults, setShowResults] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSearchResultClick = useCallback((id: string | number) => {
+    setSearchQuery("");
+    setShowResults(false);
+    router.push(`/products/${id}`);
+  }, []);
+  const handleMemberClick = useCallback((id: string | number) => {
+    setSearchQuery("");
+    setShowResults(false);
+    router.push(`/member/${id}`);
+  }, []);
+
+  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowResults(false);
+      router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }, []);
   const { user, logout } = useAuth();
+  let LoggedInUser = user;
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -40,11 +90,70 @@ export default function Navbar() {
   const menuCategories =
     categoryTree.length > 0 ? mapTreeToSubCategories(categoryTree) : [];
 
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setSearchResultsForMemebers([]);
+      setShowResults(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        if (selectedCata == "Catalogue") {
+          const response = await searchProducts(searchQuery, 5);
+          setSearchResults(response.items);
+          setSearchResultsForMemebers([]);
+          setShowResults(true);
+        }
+        if (selectedCata == "Members") {
+          const response = await searchMemebers(searchQuery, 5);
+          console.log(response);
+          const result = response?.items;
+          setSearchResultsForMemebers(result);
+          setSearchResults([]);
+          setShowResults(true);
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+        setSearchResults([]);
+        setSearchResultsForMemebers([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      try {
+        const fetchedUser = await getUserAvatr(Number(user.id));
+        setLoggedInUser(fetchedUser);
+      } catch {
+        console.log("Failed to load profile data.");
+      }
+    };
+    fetchData();
+  }, [user?.id]);
+
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notificationRef = useRef<HTMLDivElement | null>(null);
   const LangRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (isAndroid) return;
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
 
@@ -67,19 +176,25 @@ export default function Navbar() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [isAndroid]);
 
   useEffect(() => {
+    if (isAndroid) return;
     if (categoriesStatus === "idle") {
       dispatch(fetchCatalogTree());
     }
-  }, [categoriesStatus, dispatch]);
+  }, [categoriesStatus, dispatch, isAndroid]);
+
+  if (!isReady) return null;
+  if (isAndroid) {
+    return <AndroidChrome />;
+  }
 
   const languages = [
-    { code: "ES", label: "Español (Spanish)" },
-    { code: "FR", label: "Français (French)" },
+    // { code: "ES", label: "Español (Spanish)" },
+    // { code: "FR", label: "Français (French)" },
     { code: "EN", label: "English (English)" },
-    { code: "NL", label: "Nederlands (Dutch)" },
+    { code: "TH", label: "Thai (ThaiLand)" },
   ];
 
   const Catagory = [
@@ -94,7 +209,7 @@ export default function Navbar() {
           <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-2 ">
             {/* Logo */}
             <Link href="/">
-              <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#007782]">
+              <h1 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#cb6f4d] font-serif">
                 Reluv
               </h1>
             </Link>
@@ -146,14 +261,106 @@ export default function Navbar() {
               </div>
 
               {/* Search bar (tablet + desktop) */}
-              <div className="hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
-                <Search className="text-[#007782] w-5 h-5" />
+              <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search for items"
                   className="bg-transparent outline-none flex-1 px-2"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery && setShowResults(true)}
+                  onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearchSubmit(e as any);
+                    }
+                  }}
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
+                {showResults && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
+                    {searchLoading ? (
+                      <div className="p-4 text-center text-gray-500">
+                        Searching...
+                      </div>
+                    ) : searchResults.length === 0 &&
+                      searchResultsForMemebers.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        No results
+                      </div>
+                    ) : (
+                      <>
+                        {/* 🔹 PRODUCTS */}
+                        {searchResults.length > 0 && (
+                          <div>
+                            {searchResults.map((item) => (
+                              <button
+                                type="button"
+                                key={`product-${item.id}`}
+                                onClick={() => handleSearchResultClick(item.id)}
+                                className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
+                              >
+                                <img
+                                  src={item.imageUrl || "/placeholder.jpg"}
+                                  alt={item.item || item.brand}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">
+                                    {item.brand || item.item}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {item.item}
+                                  </p>
+                                </div>
+
+                                <div className="text-right">
+                                  <p className="font-semibold text-sm">
+                                    {item.price}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 🔹 MEMBERS */}
+                        {searchResultsForMemebers.length > 0 && (
+                          <div>
+                            {searchResultsForMemebers.map((member) => (
+                              <button
+                                type="button"
+                                key={`member-${member.id}`}
+                                className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
+                              >
+                                <img
+                                  src={
+                                    member.avatar
+                                      ? `${API_BASE_URL}${member.avatar}`
+                                      : "/avatar-placeholder.png"
+                                  }
+                                  alt={member?.fullName || member?.username || "avatar"}
+                                  className="w-10 h-10 min-w-[40px] object-cover rounded-full"
+                                />
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">
+                                    {member?.fullName || member?.username}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {member?.city}, {member?.country}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -208,13 +415,13 @@ export default function Navbar() {
               )}
 
               {/* Likes */}
-              {user && (
+              {/* {user && (
                 <Link href={`/products/2`}>
                   <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                     <Heart className="w-6 h-6 text-gray-600" />
                   </button>
                 </Link>
-              )}
+              )} */}
               {/* Profile Dropdown */}
               {user && (
                 <div ref={profileRef} className="relative">
@@ -222,19 +429,21 @@ export default function Navbar() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
                   >
-                    {/* Avatar / fallback icon */}
+                    {/* Avatar from backend */}
                     <img
-                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
+                      src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
                       alt="Profile"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+                      }}
                     />
-                    {/* <User className="w-5 h-5 text-gray-600" /> */}
                   </button>
 
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                       {/* Profile */}
-                      <Link href={`/member/1`}>
+                      <Link href={`/member/${user?.id}`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
                           <span>Profile</span>
                         </div>
@@ -245,11 +454,6 @@ export default function Navbar() {
                           <span>Invite friends</span>
                         </div>
                       </Link>
-
-                      {/* Settings */}
-                      {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                    <span>Settings</span>
-                  </div> */}
                       {/* Settings */}
                       <Link href={`/setting`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
@@ -261,14 +465,14 @@ export default function Navbar() {
                       <span>Personalization</span>
                     </div> */}
                       {/* Balance */}
-                      <Link href={`/Balance`}>
+                      {/* <Link href={`/Balance`}>
                         <div className="px-4 py-2 flex items-center justify-between">
                           <span className="flex items-center gap-2">
                             Balance
                           </span>
                           <span className="font-semibold text-sm">$0.00</span>
                         </div>
-                      </Link>
+                      </Link> */}
                       {/* My orders */}
                       <Link href={`/Orders`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
@@ -289,13 +493,13 @@ export default function Navbar() {
               {!user && (
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="hidden sm:inline-block cursor-pointer text-[#007782] border border-[#007782] px-3 py-1.5 rounded text-sm"
+                  className="hidden sm:inline-block cursor-pointer text-[#cb6f4d] border border-[#cb6f4d] px-3 py-1.5 rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
               )}
               <Link href={`/SellNow`}>
-                <button className="hidden sm:inline-block bg-[#007782] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
+                <button className="hidden sm:inline-block bg-[#cb6f4d] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
                   Sell Now
                 </button>
               </Link>
@@ -406,13 +610,13 @@ export default function Navbar() {
 
               {/* Search */}
               <div className="flex-1 flex items-center bg-gray-100 px-3 py-2 border border-gray-200 rounded-md">
-                <Search className="text-[#007782] w-5 h-5" />
+                <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search items"
                   className="bg-transparent outline-none flex-1 px-2"
                 />
-                <Camera className="text-[#007782] w-5 h-5 cursor-pointer" />
+                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
               </div>
             </div>
             {/* Auth buttons */}
@@ -420,11 +624,11 @@ export default function Navbar() {
               <div className="flex flex-col gap-2 mb-3">
                 <button
                   onClick={() => setOpenSign(true)}
-                  className="w-full px-4 py-2 border border-[#007782] text-[#007782] rounded text-sm"
+                  className="w-full px-4 py-2 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm"
                 >
                   Sign up | Log in
                 </button>
-                <button className="w-full px-4 py-2 bg-[#007782] text-white rounded text-sm">
+                <button className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
                   Sell
                 </button>
               </div>
@@ -457,12 +661,13 @@ export default function Navbar() {
             {/* Sub Categories with icons */}
             <div className="flex flex-col gap-2 mb-3">
               {menuCategories.map((cat) => (
-                <div
+                <Link
                   key={cat.label}
-                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#007782] rounded"
+                  href={`/Shop?category=${encodeURIComponent(cat.slug || cat.label)}`}
+                  className="cursor-pointer py-2 px-2 flex items-center gap-2 hover:text-[#cb6f4d] rounded"
                 >
                   <span>{cat.label}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -472,3 +677,4 @@ export default function Navbar() {
     </>
   );
 }
+
