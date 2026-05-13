@@ -24,7 +24,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 const GOOGLE_CLIENT_ID =
-  "139090663543-35knp1pnf47rc7qrnbgf6jf4nkbts4ij.apps.googleusercontent.com";
+  "793055192577-592s2th4cdsjoclel6il7a5lbqs954dc.apps.googleusercontent.com";
 const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID!;
 
 type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
