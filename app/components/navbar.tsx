@@ -11,7 +11,13 @@ import {
   User,
   BellOff,
 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
@@ -69,7 +75,7 @@ export default function Navbar() {
       router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   }, []);
-  const { user, logout } = useAuth();
+  const { user, logout, requireLogin } = useAuth();
   let LoggedInUser = user;
   const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const [openSign, setOpenSign] = useState(false);
@@ -201,6 +207,16 @@ export default function Navbar() {
     { code: "Catalogue", label: "Catalogue" },
     { code: "Members", label: "Members" },
   ];
+
+  const handleSellNowClick = (
+    event: ReactMouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+  ) => {
+    if (user) return;
+    event.preventDefault();
+    setMobileMenuOpen(false);
+    requireLogin("Please log in first to start selling.");
+  };
+
   return (
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
@@ -498,7 +514,7 @@ export default function Navbar() {
                   Sign up | Log in
                 </button>
               )}
-              <Link href={`/SellNow`}>
+              <Link href={`/SellNow`} onClick={handleSellNowClick}>
                 <button className="hidden sm:inline-block bg-[#cb6f4d] cursor-pointer text-white px-3 py-1.5 rounded text-sm">
                   Sell Now
                 </button>
@@ -628,7 +644,11 @@ export default function Navbar() {
                 >
                   Sign up | Log in
                 </button>
-                <button className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
+                <button
+                  type="button"
+                  onClick={handleSellNowClick}
+                  className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm"
+                >
                   Sell
                 </button>
               </div>

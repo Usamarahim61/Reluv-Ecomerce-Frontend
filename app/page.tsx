@@ -3,8 +3,9 @@ import Image from "next/image";
 import { useAndroidNative } from "./components/useAndroidNative";
 import ProductFeed from "./components/ProductFeed";
 import Footer from "./components/Footer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchProducts } from "@/lib/features/productsSlice";
 import type { ProductCardItem } from "@/services/products-service";
@@ -19,6 +20,7 @@ import FooterV2 from "./components/FooterV2";
 
 export default function Home() {
   const { isAndroid, isReady } = useAndroidNative();
+  const { user, requireLogin } = useAuth();
   const dispatch = useAppDispatch();
   const pageSize = 20;
   const [showBanner, setShowBanner] = useState(true);
@@ -40,6 +42,11 @@ export default function Home() {
     if (isLoadingMore || !hasMore) return;
     const nextPage = page + 1;
     dispatch(fetchProducts({ page: nextPage, pageSize }));
+  };
+  const handleSellNowClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (user) return;
+    event.preventDefault();
+    requireLogin("Please log in first to start selling.");
   };
   if (!isReady)
     return (
@@ -132,7 +139,7 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col gap-3">
-                <Link href="/SellNow">
+                <Link href="/SellNow" onClick={handleSellNowClick}>
                   <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#cb6f4d] py-3.5 text-[16px] font-semibold text-white transition-opacity hover:opacity-90">
                     Sell now <span>→</span>
                   </button>
@@ -242,7 +249,7 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link href="/SellNow">
+              <Link href="/SellNow" onClick={handleSellNowClick}>
                 <button className="px-8 py-3 bg-[#cb6f4d] text-white rounded-full font-semibold hover:opacity-90 transition-opacity">
                   Start selling
                 </button>
@@ -269,7 +276,7 @@ export default function Home() {
                 <p className="text-gray-400 text-lg mb-8">
                   Listing is free and takes less than 5 minutes. Join thousands of sellers earning from their wardrobe.
                 </p>
-                <Link href="/SellNow">
+                <Link href="/SellNow" onClick={handleSellNowClick}>
                   <button className="px-8 py-3 bg-[#e2e8e4] text-[#1a1816] rounded-full font-bold hover:bg-white transition-colors">
                     Start Selling
                   </button>

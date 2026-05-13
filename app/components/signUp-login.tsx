@@ -135,9 +135,11 @@ type View =
 export default function SignUpLogin({
   onClose,
   initialView = "initial",
+  message,
 }: {
   onClose: () => void;
   initialView?: "initial" | "login" | "register";
+  message?: string;
 }) {
   const { login: setAuthLogin } = useAuth();
   const [view, setView] = useState<View>(initialView);
@@ -488,6 +490,11 @@ export default function SignUpLogin({
               <h2 className="text-2xl font-semibold text-center mb-8">
                 {view === "login" ? "Log in" : "Sign up with email"}
               </h2>
+              {message && view === "login" && (
+                <p className="-mt-5 mb-6 rounded-md border border-[#cb6f4d]/20 bg-[#cb6f4d]/10 px-3 py-2 text-center text-sm font-medium text-[#9f5437]">
+                  {message}
+                </p>
+              )}
               <form
                 onSubmit={view === "login" ? handleLogin : handleRegister}
                 className="space-y-5"

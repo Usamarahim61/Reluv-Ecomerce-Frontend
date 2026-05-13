@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type User = {
   id: number;
@@ -16,9 +16,12 @@ type User = {
 type AuthContextType = {
   user: User | null;
   jwt: string | null;
+  authReady: boolean;
   loginRequired: boolean;
+  loginRequiredMessage: string | null;
   login: (jwt: string, user: User) => void;
   logout: () => void;
+  requireLogin: (message?: string) => void;
   closeLoginRequired: () => void;
 };
 
@@ -27,7 +30,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [jwt, setJwt] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [loginRequired, setLoginRequired] = useState(false);
+  const [loginRequiredMessage, setLoginRequiredMessage] = useState<string | null>(null);
 
   // Load from localStorage on app start
   useEffect(() => {
@@ -44,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("user");
       }
     }
+    setAuthReady(true);
   }, []);
 
   useEffect(() => {
@@ -52,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("user");
       setJwt(null);
       setUser(null);
+      setLoginRequiredMessage("Please log in first to continue.");
       setLoginRequired(true);
     };
 
@@ -68,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setJwt(jwt);
     setUser(user);
     setLoginRequired(false);
+    setLoginRequiredMessage(null);
   };
 
   const handleLogout = () => {
@@ -76,18 +84,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setJwt(null);
     setUser(null);
     setLoginRequired(false);
+    setLoginRequiredMessage(null);
     window.location.replace("/");
   };
+
+  const requireLogin = useCallback((message = "Please log in first to continue.") => {
+    setLoginRequiredMessage(message);
+    setLoginRequired(true);
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         jwt,
+        authReady,
         loginRequired,
+        loginRequiredMessage,
         login: handleLogin,
         logout: handleLogout,
-        closeLoginRequired: () => setLoginRequired(false),
+        requireLogin,
+        closeLoginRequired: () => {
+          setLoginRequired(false);
+          setLoginRequiredMessage(null);
+        },
       }}
     >
       {children}

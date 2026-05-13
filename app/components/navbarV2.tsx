@@ -13,7 +13,14 @@ import {
   ShoppingBag,
   LogOut,
 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
@@ -74,7 +81,7 @@ export default function NavbarV2() {
       router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   }, [router, searchQuery]);
-  const { user, logout } = useAuth();
+  const { user, logout, requireLogin } = useAuth();
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [loggedInUser, setLoggedInUser] = useState<{ avatar?: { url?: string } } | null>(null);
   const [openSign, setOpenSign] = useState(false);
@@ -206,6 +213,16 @@ export default function NavbarV2() {
     { code: "Catalogue", label: "Catalogue" },
     { code: "Members", label: "Members" },
   ];
+
+  const handleSellNowClick = (
+    event: ReactMouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+  ) => {
+    if (user) return;
+    event.preventDefault();
+    setMobileMenuOpen(false);
+    requireLogin("Please log in first to start selling.");
+  };
+
   return (
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
@@ -556,7 +573,7 @@ export default function NavbarV2() {
                   Sign up | Log in
                 </button>
               )}
-              <Link href={`/SellNow`}>
+              <Link href={`/SellNow`} onClick={handleSellNowClick}>
                 <button className="hidden sm:inline-block bg-[#cb6f4d] cursor-pointer text-white px-3 py-1.5 rounded-2xl text-sm">
                   + Sell Now
                 </button>
@@ -686,7 +703,11 @@ export default function NavbarV2() {
                 >
                   Sign up | Log in
                 </button>
-                <button className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
+                <button
+                  type="button"
+                  onClick={handleSellNowClick}
+                  className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm"
+                >
                   Sell
                 </button>
               </div>

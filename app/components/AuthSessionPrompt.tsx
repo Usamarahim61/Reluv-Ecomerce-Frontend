@@ -4,11 +4,15 @@ import SignUpLogin from "./signUp-login";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AuthSessionPrompt() {
-  const { loginRequired, closeLoginRequired } = useAuth();
+  const { loginRequired, loginRequiredMessage, closeLoginRequired } = useAuth();
 
   if (!loginRequired) return null;
 
   return (
-    <SignUpLogin initialView="login" onClose={closeLoginRequired} />
+    <SignUpLogin
+      initialView="login"
+      message={loginRequiredMessage || undefined}
+      onClose={closeLoginRequired}
+    />
   );
 }

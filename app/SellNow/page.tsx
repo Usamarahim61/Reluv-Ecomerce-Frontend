@@ -61,7 +61,7 @@ const getLeafCategoryEntries = (
 };
 
 export default function UploadItem(): JSX.Element {
-  const { user } = useAuth();
+  const { user, authReady, requireLogin } = useAuth();
   const dispatch = useAppDispatch();
   const categoryTree = useAppSelector((state) => state.categories.tree);
   const categoryStatus = useAppSelector((state) => state.categories.status);
@@ -89,6 +89,11 @@ export default function UploadItem(): JSX.Element {
   const [dynamicFieldValues, setDynamicFieldValues] = useState<Record<string, string>>({});
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<UploadImage[]>([]);
+
+  useEffect(() => {
+    if (!authReady || user) return;
+    requireLogin("Please log in first to start selling.");
+  }, [authReady, user, requireLogin]);
 
   /* ---------------- FETCH CATEGORY TREE (fires once) ---------------- */
 
@@ -515,6 +520,8 @@ export default function UploadItem(): JSX.Element {
 
   // Publish button is disabled while submitting OR while category fields are loading
   const isPublishDisabled = submitLoading || dynamicFieldsLoading;
+
+  if (authReady && !user) return <></>;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 bg-[#fdfcfb] min-h-screen pb-20">
