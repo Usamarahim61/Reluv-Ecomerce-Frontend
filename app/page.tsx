@@ -15,7 +15,16 @@ import {
   ProductGridEmpty,
   ProductGridSkeleton,
 } from "./components/Skeletons";
-import { ArrowRight, Camera, Leaf, RefreshCw, Search, Shield, ShieldCheck, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  Leaf,
+  RefreshCw,
+  Search,
+  Shield,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
 import FooterV2 from "./components/FooterV2";
 
 export default function Home() {
@@ -73,43 +82,11 @@ export default function Home() {
     !isAndroid && (
       <div className="min-h-screen flex flex-col">
         {
-          // <section className="relative h-[400px] md:h-[500px] lg:h-[600px] w-full bg-gray-200 overflow-hidden">
-          //   <Image
-          //     src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
-          //     alt="Decluttering"
-          //     className="w-full h-full object-cover"
-          //     priority
-          //     width={1920}
-          //     height={600}
-          //   />
-
-          //   <div
-          //     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-          //               md:left-20 md:translate-x-0
-          //               bg-white p-6 md:p-10 rounded-lg shadow-xl
-          //               w-[90%] max-w-[350px] md:max-w-sm"
-          //   >
-          //     <h2 className="text-2xl md:text-3xl font-medium mb-4 md:mb-6 leading-tight">
-          //       Ready to declutter your wardrobe?
-          //     </h2>
-          //     <Link href={`/SellNow`}>
-          //       <button className="w-full bg-[#cb6f4d] hover:bg-[#005f68] transition-colors text-white py-3 rounded-md font-semibold mb-4">
-          //         Sell now
-          //       </button>
-          //     </Link>
-          //     <a
-          //       href="#"
-          //       className="text-[#cb6f4d] underline block text-center text-sm"
-          //     >
-          //       Learn how it works
-          //     </a>
-          //   </div>
-          // </section>
           <section className="relative h-[500px] w-full overflow-hidden bg-gray-200 md:h-[600px] lg:h-[600px]">
             {/* Background Image */}
             <Image
               // src="https://static.vinted.com/assets/seller-promotion/default/banner-wide-1ca50d3217a3d2402dda712a8e79af381c4bd7cd5cceb0a0b7be17ac2c7522d8.jpg"
-               src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600&q=85"
+              src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600&q=85"
               alt="Hero Fashion"
               className="h-full w-full object-cover"
               priority
@@ -146,7 +123,10 @@ export default function Home() {
                 </Link>
 
                 <Link href="/Shop">
-                  <button onClick={() => setShowBrowse(true)} className="w-full rounded-xl border border-gray-200 bg-[#fbfbfb] py-3.5 text-[16px] font-semibold text-gray-800 transition-colors hover:bg-gray-50">
+                  <button
+                    onClick={() => setShowBrowse(true)}
+                    className="w-full rounded-xl border border-gray-200 bg-[#fbfbfb] py-3.5 text-[16px] font-semibold text-gray-800 transition-colors hover:bg-gray-50"
+                  >
                     Start Shopping
                   </button>
                 </Link>
@@ -212,36 +192,38 @@ export default function Home() {
         {/* How Reluv Works Section */}
         <section className="bg-[#fbfbfb] py-20 px-4">
           <div className="max-w-7xl mx-auto text-center">
-            <h2 className="font-serif text-4xl font-bold text-gray-900 mb-4">How Reluv works</h2>
+            <h2 className="font-serif text-4xl font-bold text-gray-900 mb-4">
+              How Reluv works
+            </h2>
             <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
-              Buying and selling pre-loved fashion has never been easier — or more rewarding.
+              Buying and selling pre-loved fashion has never been easier — or
+              more rewarding.
             </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              <WorkStep 
-                number="01" 
-                title="Snap & list" 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-md sm:max-w-none mx-auto">
+              <WorkStep
+                number="01"
+                title="Snap & list"
                 desc="Take a few photos of what you want to sell, add a description and price — it takes under 2 minutes."
                 icon={<Camera className="text-orange-600" size={20} />}
                 iconBg="bg-orange-50"
               />
-              <WorkStep 
-                number="02" 
-                title="Browse & buy" 
+              <WorkStep
+                number="02"
+                title="Browse & buy"
                 desc="Discover thousands of pre-loved items from real people. Filter by size, brand, condition and more."
                 icon={<Search className="text-green-600" size={20} />}
                 iconBg="bg-green-50"
               />
-              <WorkStep 
-                number="03" 
-                title="Pay safely" 
+              <WorkStep
+                number="03"
+                title="Pay safely"
                 desc="Checkout is secure and your money is only released to the seller once you confirm you're happy."
                 icon={<ShieldCheck className="text-blue-600" size={20} />}
                 iconBg="bg-blue-50"
               />
-              <WorkStep 
-                number="04" 
-                title="Repeat the cycle" 
+              <WorkStep
+                number="04"
+                title="Repeat the cycle"
                 desc="Give clothes a second life. Every purchase reduces waste — fashion that's good for your wallet and the planet."
                 icon={<RefreshCw className="text-purple-600" size={20} />}
                 iconBg="bg-purple-50"
@@ -265,16 +247,24 @@ export default function Home() {
 
         {/* Dark CTA Section */}
         <section className="max-w-8xl mx-auto px-4 py-16">
-          <div className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white" style={{ backgroundImage: 'radial-gradient(circle, #fff .25px, transparent 1px)', backgroundSize: '20px 20px' }}>
+          <div
+            className="relative overflow-hidden bg-[#1a1816] rounded-[2rem] p-8 md:p-16 text-white"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, #fff .25px, transparent 1px)",
+              backgroundSize: "20px 20px",
+            }}
+          >
             {/* Dot pattern background deco */}
-            
+
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
-              <div className="max-w-xl">
+              <div className="max-w-xl text-center md:text-left mx-auto md:mx-0">
                 <h2 className="font-serif text-4xl md:text-5xl font-bold mb-6">
                   Turn your closet into cash
                 </h2>
                 <p className="text-gray-400 text-lg mb-8">
-                  Listing is free and takes less than 5 minutes. Join thousands of sellers earning from their wardrobe.
+                  Listing is free and takes less than 5 minutes. Join thousands
+                  of sellers earning from their wardrobe.
                 </p>
                 <Link href="/SellNow" onClick={handleSellNowClick}>
                   <button className="px-8 py-3 bg-[#e2e8e4] text-[#1a1816] rounded-full font-bold hover:bg-white transition-colors">
@@ -282,11 +272,22 @@ export default function Home() {
                   </button>
                 </Link>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <FeatureItem icon={<Leaf size={24}/>} title="Sustainable" desc="Reduce fashion waste" />
-                <FeatureItem icon={<TrendingUp size={24}/>} title="Profitable" desc="Earn from your closet" />
-                <FeatureItem icon={<Shield size={24}/>} title="Protected" desc="Secure transactions" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-xs sm:max-w-none mx-auto">
+                <FeatureItem
+                  icon={<Leaf size={24} className="text-white" />}
+                  title="Sustainable"
+                  desc="Reduce fashion waste"
+                />
+                <FeatureItem
+                  icon={<TrendingUp size={24} className="text-white" />}
+                  title="Profitable"
+                  desc="Earn from your closet"
+                />
+                <FeatureItem
+                  icon={<Shield size={24} className="text-white" />}
+                  title="Protected"
+                  desc="Secure transactions"
+                />
               </div>
             </div>
           </div>
@@ -297,25 +298,49 @@ export default function Home() {
     )
   );
 }
-function WorkStep({ number, title, desc, icon, iconBg }: { number: string, title: string, desc: string, icon: React.ReactNode, iconBg: string }) {
+function WorkStep({
+  number,
+  title,
+  desc,
+  icon,
+  iconBg,
+}: {
+  number: string;
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
+  iconBg: string;
+}) {
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-50 text-left flex flex-col h-full">
-      <div className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center mb-6`}>
+    /* Changed text-left to text-center and added items-center */
+    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-50 text-center flex flex-col items-center h-full">
+      <div
+        className={`w-12 h-12 ${iconBg} rounded-lg flex items-center justify-center mb-6`}
+      >
         {icon}
       </div>
-      <div className="text-gray-200 font-serif text-2xl font-bold mb-2">{number}</div>
+      <div className="text-gray-200 font-serif text-2xl font-bold mb-2">
+        {number}
+      </div>
       <h3 className="text-gray-900 font-bold text-xl mb-3">{title}</h3>
       <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }
 
-function FeatureItem({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
+function FeatureItem({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
   return (
-    <div className="flex flex-col items-start gap-3">
-      <div className="p-3 bg-white/10 rounded-xl">
-        {icon}
-      </div>
+    /* Changed items-start to items-center and added text-center */
+    <div className="flex flex-col items-center text-center gap-3">
+      <div className="p-3 bg-white/10 rounded-xl">{icon}</div>
       <div>
         <h4 className="font-bold text-white mb-1">{title}</h4>
         <p className="text-gray-400 text-xs">{desc}</p>
