@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
         protocol: 'http',
         hostname: '127.0.0.1',
       },
+            {
+        protocol: 'https',
+        hostname: 'https://reluv-ecomerce-backend-1.onrender.com',
+      },
     ],
   },
   async rewrites() {
