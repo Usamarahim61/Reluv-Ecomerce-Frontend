@@ -41,7 +41,7 @@ export default function Notification(): React.ReactElement {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-8 bg-white text-[#111111]">
+    <div className="max-w-2xl mx-auto space-y-8 bg-white text-[#111111]">
       {/* News Section */}
       <section className="space-y-2">
         <h3 className="text-xs text-gray-500 uppercase font-medium ml-1">News</h3>

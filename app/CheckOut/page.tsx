@@ -129,7 +129,7 @@ useEffect(() => {
         SameNumberForFutureOrders,
         buyerProtectionFee: data.buyerProtectionFee,
         shippingFee: data.shippingFee,
-        OrderStatus: "In Progress",
+        OrderStatus: "placed",
         currencyCode: data.currency,
         total: totalToPay,
         cardDetails: {

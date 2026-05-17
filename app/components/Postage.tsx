@@ -3,7 +3,7 @@ import { Plus, Info, Home, MapPin, ChevronDown } from "lucide-react";
 
 export default function Postage() {
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-8 bg-white">
+    <div className="max-w-2xl mx-auto  space-y-8 bg-white">
       {/* Your Address Section */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900">Your address</h2>

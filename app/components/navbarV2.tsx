@@ -74,16 +74,22 @@ export default function NavbarV2() {
     router.push(`/member/${id}`);
   }, []);
 
-  const handleSearchSubmit = useCallback((e: FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setShowResults(false);
-      router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  }, [router, searchQuery]);
+  const handleSearchSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+        setShowResults(false);
+        router.push(`/Shop?search=${encodeURIComponent(searchQuery.trim())}`);
+      }
+    },
+    [router, searchQuery],
+  );
   const { user, logout, requireLogin } = useAuth();
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
-  const [loggedInUser, setLoggedInUser] = useState<{ avatar?: { url?: string } } | null>(null);
+  const { notifications, unreadCount, markRead, markAllRead } =
+    useNotifications();
+  const [loggedInUser, setLoggedInUser] = useState<{
+    avatar?: { url?: string };
+  } | null>(null);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -93,7 +99,9 @@ export default function NavbarV2() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const dispatch = useAppDispatch();
-  const categoryTree = useAppSelector((state: RootState) => state.categories.tree);
+  const categoryTree = useAppSelector(
+    (state: RootState) => state.categories.tree,
+  );
   const categoriesStatus = useAppSelector(
     (state: RootState) => state.categories.status,
   );
@@ -164,8 +172,9 @@ export default function NavbarV2() {
   const notificationRef = useRef<HTMLDivElement | null>(null);
   const LangRef = useRef<HTMLDivElement | null>(null);
 
+  // FIX 2: Removed the `if (isAndroid) return` guard so click-outside always
+  // works for profile, notification, and lang dropdowns on all platforms.
   useEffect(() => {
-    if (isAndroid) return;
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
 
@@ -188,7 +197,7 @@ export default function NavbarV2() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isAndroid]);
+  }, []);
 
   useEffect(() => {
     if (isAndroid) return;
@@ -400,7 +409,7 @@ export default function NavbarV2() {
             </div>
 
             {/* Right actions */}
-            <div className="ml-auto flex items-center gap-2 sm:gap-3 md:gap-4">
+            <div className="ml-auto flex items-center gap-0 sm:gap-3 md:gap-4 lg:gap-2">
               {/* Email */}
               {user && (
                 <Link href={`/Messages`}>
@@ -410,33 +419,32 @@ export default function NavbarV2() {
                 </Link>
               )}
               {/* Notifications */}
-              {/* <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
-              <Bell className="w-6 h-6 text-gray-600" />
-             </button> */}
               {user && (
                 <div ref={notificationRef} className="relative">
                   <button
                     onClick={() => setNotificationOpen(!notificationOpen)}
-                    className="relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer hover:bg-gray-100"
+                    className="relative w-9 h-9 flex items-center justify-center rounded-full cursor-pointer hover:bg-gray-100 transition-colors"
                   >
                     <Bell className="w-6 h-6 text-gray-600" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] bg-[#cb6f4d] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                      <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] bg-[#cb6f4d] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 border-2 border-white">
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
                   </button>
 
                   {notificationOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden">
+                    <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 mt-2 sm:w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fadeIn sm:max-w-none">
                       {/* Header */}
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <span className="font-semibold text-sm text-gray-900">Notifications</span>
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white">
+                        <span className="font-bold text-sm text-gray-900">
+                          Notifications
+                        </span>
                         {unreadCount > 0 && (
                           <button
                             type="button"
                             onClick={() => markAllRead()}
-                            className="text-xs text-[#cb6f4d] hover:underline"
+                            className="text-xs text-[#cb6f4d] font-bold hover:underline"
                           >
                             Mark all as read
                           </button>
@@ -444,11 +452,17 @@ export default function NavbarV2() {
                       </div>
 
                       {/* List */}
-                      <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+                      <div className="max-h-[70vh] sm:max-h-96 overflow-y-auto divide-y divide-gray-50">
                         {notifications.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                            <BellOff size={36} strokeWidth={1} className="text-gray-300 mb-3" />
-                            <p className="text-sm font-medium text-gray-500">No notifications yet</p>
+                          <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                            <BellOff
+                              size={40}
+                              strokeWidth={1.5}
+                              className="text-gray-200 mb-3"
+                            />
+                            <p className="text-sm font-medium text-gray-400">
+                              All caught up! No new notifications.
+                            </p>
                           </div>
                         ) : (
                           notifications.map((n) => (
@@ -460,29 +474,58 @@ export default function NavbarV2() {
                                 if (n.link) router.push(n.link);
                                 setNotificationOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex gap-3 items-start ${
-                                !n.read ? "bg-orange-50" : ""
+                              className={`w-full text-left px-4 py-4 hover:bg-gray-50 transition-colors flex gap-3 items-start ${
+                                !n.read ? "bg-orange-50/50" : "bg-white"
                               }`}
                             >
-                              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
-                                !n.read ? "bg-[#cb6f4d]" : "bg-transparent"
-                              }`} />
+                              {/* Status Dot */}
+                              <div
+                                className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                                  !n.read ? "bg-[#cb6f4d]" : "bg-transparent"
+                                }`}
+                              />
+
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 leading-snug">{n.title}</p>
-                                {n.body && <p className="text-xs text-gray-500 mt-0.5 truncate">{n.body}</p>}
-                                <p className="text-[10px] text-gray-400 mt-1">
-                                  {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                <p
+                                  className={`text-sm leading-snug truncate ${!n.read ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}
+                                >
+                                  {n.title}
+                                </p>
+                                {n.body && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    {n.body}
+                                  </p>
+                                )}
+                                <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                                  {new Date(n.createdAt).toLocaleDateString(
+                                    undefined,
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
                                 </p>
                               </div>
                             </button>
                           ))
                         )}
                       </div>
+
+                      {/* Mobile Footer to close */}
+                      <div className="sm:hidden border-t border-gray-100 p-2 bg-gray-50">
+                        <button
+                          onClick={() => setNotificationOpen(false)}
+                          className="w-full py-2 text-xs font-bold text-gray-500 uppercase tracking-widest"
+                        >
+                          Close
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-
               {/* Likes */}
               {user && (
                 <Link href={`/FavItems`}>
@@ -498,7 +541,6 @@ export default function NavbarV2() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
                   >
-                    {/* Avatar from backend */}
                     <img
                       src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
                       alt="Profile"
@@ -513,39 +555,51 @@ export default function NavbarV2() {
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
                       {/* Profile */}
+                      {/* FIX 1: Close profileOpen AND mobileMenuOpen on every profile menu item click */}
                       <Link href={`/member/${user?.id}`}>
-                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <span>Profile</span>
                         </div>
                       </Link>
                       {/* Invite friends */}
                       <Link href={`/Referrals`}>
-                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <span>Invite friends</span>
                         </div>
                       </Link>
                       {/* Settings */}
                       <Link href={`/setting`}>
-                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <span>Settings</span>
                         </div>
                       </Link>
-                      {/* Personalization */}
-                      {/* <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
-                      <span>Personalization</span>
-                    </div> */}
-                      {/* Balance */}
-                      {/* <Link href={`/Balance`}>
-                        <div className="px-4 py-2 flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            Balance
-                          </span>
-                          <span className="font-semibold text-sm">$0.00</span>
-                        </div>
-                      </Link> */}
                       {/* My orders */}
                       <Link href={`/Orders`}>
-                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2">
+                        <div
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <span>My orders / Offers</span>
                         </div>
                       </Link>
@@ -554,7 +608,11 @@ export default function NavbarV2() {
                       {/* Logout */}
                       <button
                         type="button"
-                        onClick={logout}
+                        onClick={() => {
+                          logout();
+                          setProfileOpen(false);
+                          setMobileMenuOpen(false);
+                        }}
                         className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-red-600 hover:bg-gray-100"
                       >
                         <LogOut size={16} />
@@ -578,12 +636,6 @@ export default function NavbarV2() {
                   + Sell Now
                 </button>
               </Link>
-              {/* Desktop + Tablet Help */}
-              {/* <Link href={`/help`}>
-                <button className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100">
-                  <HelpCircle className="w-7 h-7 text-gray-600" />
-                </button>
-              </Link> */}
               {/* Desktop + Tablet Language */}
               <div ref={LangRef} className="relative hidden sm:block">
                 <button
@@ -639,23 +691,23 @@ export default function NavbarV2() {
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="sm:hidden w-full bg-white border-t border-gray-200 shadow-lg py-4 px-4">
-            {/* Catalog + Search Row */}
-            <div className="flex gap-2 mb-3">
-              {/* Catalog */}
-              <div className="relative flex-shrink-0 w-32">
+            {/* Catalog + Search Row Container */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4 px-1">
+              {/* 1. Catalog Dropdown */}
+              <div className="relative w-full sm:w-40 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => setCataOpen(!cataOpen)}
-                  className="flex items-center justify-between w-full px-4 py-2 border border-gray-200 rounded text-sm"
+                  className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:border-[#cb6f4d] transition-all shadow-sm active:scale-95"
                 >
-                  <span>{selectedCata}</span>
+                  <span className="truncate">{selectedCata || "Catalog"}</span>
                   <svg
-                    className={`w-4 h-4 ml-2 transition-transform duration-200 ${
+                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${
                       cataOpen ? "rotate-180" : ""
                     }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
                       strokeLinecap="round"
@@ -665,12 +717,18 @@ export default function NavbarV2() {
                     />
                   </svg>
                 </button>
+
+                {/* Catalog Menu Overlay */}
                 {cataOpen && (
-                  <div className="mt-2 border border-gray-200 rounded shadow-md bg-white">
+                  <div className="absolute top-full left-0 right-0 mt-2 border border-gray-100 rounded-xl shadow-xl bg-white z-[60] overflow-hidden animate-fadeIn">
                     {Catagory.map((cat) => (
                       <div
                         key={cat.code}
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${
+                          selectedCata === cat.code
+                            ? "bg-orange-50 text-[#cb6f4d] font-bold"
+                            : "hover:bg-gray-50 text-gray-600"
+                        }`}
                         onClick={() => {
                           setSelectedCata(cat.code);
                           setCataOpen(false);
@@ -683,15 +741,119 @@ export default function NavbarV2() {
                 )}
               </div>
 
-              {/* Search */}
-              <div className="flex-1 flex items-center bg-gray-100 px-3 py-2 border border-gray-200 rounded-md">
-                <Search className="text-[#cb6f4d] w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search items"
-                  className="bg-transparent outline-none flex-1 px-2"
-                />
-                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
+              {/* 2. Search Container */}
+              <div className="relative flex-1">
+                <div className="flex items-center bg-gray-100 px-4 py-2.5 border border-transparent rounded-lg focus-within:bg-white focus-within:ring-2 focus-within:ring-[#cb6f4d]/20 focus-within:border-[#cb6f4d] transition-all shadow-sm">
+                  <Search className="text-[#cb6f4d] w-5 h-5 shrink-0" />
+
+                  <input
+                    type="text"
+                    placeholder="Search items or members..."
+                    className="bg-transparent outline-none flex-1 px-3 text-sm sm:text-base w-full text-gray-700 placeholder-gray-400"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => searchQuery && setShowResults(true)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearchSubmit(e);
+                      }
+                    }}
+                  />
+
+                  <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer shrink-0 hover:scale-110 transition-transform" />
+                </div>
+
+                {/* 3. Search Results Dropdown */}
+                {showResults && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[65vh] sm:max-h-96 overflow-y-auto z-50 mt-2 animate-fadeIn">
+                    {searchLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#cb6f4d] mb-2"></div>
+                        <p className="text-sm text-gray-500 font-medium">
+                          Searching our catalog...
+                        </p>
+                      </div>
+                    ) : searchResults.length === 0 &&
+                      searchResultsForMemebers.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500 text-sm italic">
+                        No results found for "{searchQuery}"
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        {/* 🔹 PRODUCTS SECTION */}
+                        {searchResults.length > 0 && (
+                          <div className="mb-2">
+                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                              Products
+                            </div>
+                            {searchResults.map((item) => (
+                              <button
+                                type="button"
+                                key={`product-${item.id}`}
+                                onClick={() => handleSearchResultClick(item.id)}
+                                className="px-4 py-3 hover:bg-orange-50 flex items-center gap-4 w-full text-left transition-colors group"
+                              >
+                                <img
+                                  src={item.imageUrl || "/placeholder.jpg"}
+                                  alt={item.item}
+                                  className="w-12 h-12 object-cover rounded-lg shadow-sm border border-gray-100 group-hover:border-[#cb6f4d]/30"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">
+                                    {item.brand || item.item}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate lowercase">
+                                    {item.item}
+                                  </p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="font-black text-[#cb6f4d] text-sm">
+                                    {item.price}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 🔹 MEMBERS SECTION */}
+                        {searchResultsForMemebers.length > 0 && (
+                          <div>
+                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mt-2">
+                              Members
+                            </div>
+                            {searchResultsForMemebers.map((member) => (
+                              <button
+                                type="button"
+                                key={`member-${member.id}`}
+                                className="px-4 py-3 hover:bg-orange-50 flex items-center gap-4 w-full text-left transition-colors group"
+                              >
+                                <img
+                                  src={
+                                    member.avatar
+                                      ? `${API_BASE_URL}${member.avatar}`
+                                      : "/avatar-placeholder.png"
+                                  }
+                                  alt={member?.username}
+                                  className="w-10 h-10 min-w-[40px] object-cover rounded-full border-2 border-gray-100 group-hover:border-[#cb6f4d]/30"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">
+                                    {member?.fullName || member?.username}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate uppercase tracking-tighter">
+                                    {member?.city} • {member?.country}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             {/* Auth buttons */}
@@ -713,27 +875,59 @@ export default function NavbarV2() {
               </div>
             )}
             {/* Language selector */}
-            <div className="relative mt-2">
+            <div className="relative mt-4">
               <button
+                type="button"
                 onClick={() => setLangOpen(!langOpen)}
-                className="w-full px-4 py-2 border border-gray-200 rounded text-sm text-center"
+                className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:border-[#cb6f4d] transition-all shadow-sm active:scale-95"
               >
-                Language: {selectedLang}
+                <span className="truncate">Language: {selectedLang}</span>
+                <svg
+                  className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${
+                    langOpen ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </button>
+
+              {/* Language Dropdown Overlay */}
               {langOpen && (
-                <div className="mt-2 border border-gray-200 rounded shadow-md bg-white">
-                  {languages.map((lang) => (
-                    <div
-                      key={lang.code}
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                      onClick={() => {
-                        setSelectedLang(lang.code);
-                        setLangOpen(false);
-                      }}
-                    >
-                      {lang.label}
-                    </div>
-                  ))}
+                <div className="absolute top-full left-0 right-0 mt-2 border border-gray-100 rounded-xl shadow-xl bg-white z-[70] overflow-hidden animate-fadeIn">
+                  <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 bg-gray-50/50">
+                    Select Language
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {languages.map((lang) => (
+                      <div
+                        key={lang.code}
+                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${
+                          selectedLang === lang.code
+                            ? "bg-orange-50 text-[#cb6f4d] font-bold"
+                            : "hover:bg-gray-50 text-gray-600"
+                        }`}
+                        onClick={() => {
+                          setSelectedLang(lang.code);
+                          setLangOpen(false);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          {lang.label}
+                          {selectedLang === lang.code && (
+                            <span className="text-[#cb6f4d] text-xs">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
