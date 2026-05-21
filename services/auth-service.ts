@@ -59,8 +59,9 @@ export function getUser(id: number) {
 }
 export function getUserAddress(id: number) {
   return apiRequest(
-    `/users/${id}?populate[address][populate]=*`,
-     { method: "GET"
+    `/users/${id}?populate[city]=*&populate[country]=*`,
+    {
+      method: "GET",
     }
   );
 }
