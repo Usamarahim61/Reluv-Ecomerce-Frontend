@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbo -H 0.0.0.0",
     "dev:local": "next dev --turbo",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "build:cap": "next build",

@@ -347,7 +347,7 @@ export async function searchProducts(
 export async function searchMemebers(
   query: string,
   pageSize = 5,
-): Promise<any> {
+) {
   const trimmedQuery = query.trim();
   const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 5));
 

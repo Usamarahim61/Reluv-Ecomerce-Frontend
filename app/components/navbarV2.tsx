@@ -833,7 +833,7 @@ export default function NavbarV2() {
                                       ? `${API_BASE_URL}${member.avatar}`
                                       : "/avatar-placeholder.png"
                                   }
-                                  alt={member?.username}
+                                  alt={member?.username || "avatar"}
                                   className="w-10 h-10 min-w-[40px] object-cover rounded-full border-2 border-gray-100 group-hover:border-[#cb6f4d]/30"
                                 />
                                 <div className="flex-1 min-w-0">

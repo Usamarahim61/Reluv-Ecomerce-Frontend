@@ -8,11 +8,13 @@ import MediaAssets from "../mediaAssets/page"
 export const dynamic = 'force-dynamic';
 
 type Props = {
-  searchParams?: { view?: string };
+  searchParams?: Promise<{
+    view?: string;
+  }>;
 };
 
-export default function ReluvGroup({ searchParams }: Props) {
-  const view = searchParams?.view;
+export default async function ReluvGroup({ searchParams }: Props) {
+  const view = (await searchParams)?.view;
 
   return (
     <div className="flex min-h-screen flex-col">

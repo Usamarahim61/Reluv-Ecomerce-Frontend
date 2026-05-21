@@ -5,7 +5,7 @@ import ProductFeed from '@/app/components/ProductFeed';
 import { useAuth } from '@/context/AuthContext';
 import { getUserFav_Products } from '@/services/auth-service';
 
-async function fetchFavProductsByUserID(userId: string): Promise<any> {
+async function fetchFavProductsByUserID(userId: string) {
   const data = await getUserFav_Products(Number(userId));
   return Array.isArray(data) ? data : data.fav_products ?? [];
 }
