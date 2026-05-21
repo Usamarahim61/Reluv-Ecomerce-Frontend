@@ -132,7 +132,7 @@ export default function ProductCard({
         <div className="relative aspect-3/4 w-full overflow-hidden bg-linear-to-br from-[#faf9f7] to-[#f0ede8]">
           {safeImageUrl ? (
             <img
-              src={`${API_BASE_URL}${safeImageUrl}`}
+              src={`${safeImageUrl}`}
               alt={brandText || nameText || "Product"}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
