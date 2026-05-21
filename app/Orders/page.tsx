@@ -197,7 +197,7 @@ function OrdersInner() {
         body: JSON.stringify({
           data: {
             // <--- Strapi requires this wrapper
-            orderStatus: "In Progress", // Make sure this key matches your Strapi field name
+            orderStatus: "in progress", // Make sure this key matches your Strapi field name
             seller: Number(user.id),
           },
         }),
@@ -206,7 +206,7 @@ function OrdersInner() {
       if (res.ok) {
         setOrdersData((prev) =>
           prev.map((o) =>
-            o.documentId === orderId ? { ...o, orderStatus: "In Progress" } : o,
+            o.documentId === orderId ? { ...o, orderStatus: "in progress" } : o,
           ),
         );
       }
@@ -273,7 +273,7 @@ function OrdersInner() {
         let mappedStatus: Status = "Cancelled";
         if (order.orderStatus === "placed") mappedStatus = "Placed";
         else if (
-          order.orderStatus === "In Progress" ||
+          order.orderStatus === "in progress" ||
           order.orderStatus === "shipped"
         )
           mappedStatus = "In Progress";
