@@ -131,7 +131,7 @@ export default function ProductCardV2({
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#f5f5f5]">
           {safeImageUrl ? (
             <img
-              src={`${API_BASE_URL}${safeImageUrl}`}
+              src={`${safeImageUrl}`}
               alt={nameText}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
