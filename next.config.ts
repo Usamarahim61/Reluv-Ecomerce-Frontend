@@ -39,6 +39,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'https://reluv-ecomerce-backend-1.onrender.com',
       },
+                  {
+        protocol: 'https',
+        hostname: 'https://reluv-ecomerce-frontend.vercel.app',
+      },
+                  {
+        protocol: 'https',
+        hostname: 'https://wealthy-authority-eb78443cb3.strapiapp.com',
+      },
     ],
   },
   async rewrites() {
