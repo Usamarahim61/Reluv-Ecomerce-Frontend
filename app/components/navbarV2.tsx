@@ -249,7 +249,7 @@ export default function NavbarV2() {
               </div>
 
               {/* The Text */}
-              <img src="/Reluv_Logo.png" alt="Reluv Logo" className="h-14 pt-2" />
+              <img src="/reluv_logo.png" alt="Reluv Logo" className="h-14 pt-2" />
             </Link>
             {/* Catalog dropdown (desktop + tablet) */}
             <div className="flex gap-0 w-[750px]">
