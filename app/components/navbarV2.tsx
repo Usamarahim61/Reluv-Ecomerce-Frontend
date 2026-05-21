@@ -250,7 +250,7 @@ export default function NavbarV2() {
               </div>
 
               {/* The Text */}
-              <Image src="/reLuv_logo.png" alt="Reluv Logo" width={120} height={56} className="pt-2" priority />
+              <Image src="/reLuv_logo.png" alt="Reluv Logo" width={120} height={56} className="pt-2 w-20 sm:w-24 md:w-28 lg:w-32 h-auto" priority />
             </Link>
             {/* Catalog dropdown (desktop + tablet) */}
             <div className="flex gap-0 w-[750px]">
