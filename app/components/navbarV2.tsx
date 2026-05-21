@@ -26,6 +26,7 @@ import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import Image from "next/image";
 import type { RootState } from "@/lib/store";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
@@ -249,7 +250,7 @@ export default function NavbarV2() {
               </div>
 
               {/* The Text */}
-              <img src="/reLuv_logo.png" alt="Reluv Logo" className="h-14 pt-2" />
+              <Image src="/reLuv_logo.png" alt="Reluv Logo" width={120} height={56} className="pt-2" priority />
             </Link>
             {/* Catalog dropdown (desktop + tablet) */}
             <div className="flex gap-0 w-[750px]">

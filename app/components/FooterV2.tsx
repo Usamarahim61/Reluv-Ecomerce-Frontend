@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 export default function FooterV2() {
   return (
@@ -6,7 +7,7 @@ export default function FooterV2() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
         {/* Brand Name - Serif Font */}
         <span className="font-serif text-xl font-bold text-gray-900">
-          <img src="/reLuv_logo.png" alt="Reluv Logo" className="h-14 pt-2" />
+          <Image src="/reLuv_logo.png" alt="Reluv Logo" width={120} height={56} className="pt-2" />
         </span>
 
         {/* Copyright Text */}

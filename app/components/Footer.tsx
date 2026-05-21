@@ -2,6 +2,7 @@
 
 import { Facebook, Linkedin, Instagram, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Capacitor } from '@capacitor/core';
 
 type FooterLink = {
@@ -65,7 +66,7 @@ export default function Footer() {
                   <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
                     Reluv
                   </h1> */}
-                  <img src="/reLuv_logo.png" alt="Reluv Logo" className="h-10" />
+                  <Image src="/reLuv_logo.png" alt="Reluv Logo" width={100} height={40} />
                 </Link>
               ) : (
                 <h4 className="mb-4 text-[16px] font-medium text-gray-500">
