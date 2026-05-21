@@ -242,16 +242,14 @@ export default function NavbarV2() {
             <Link href="/" className="flex items-center gap-2 group">
               {/* The Icon/Logo Box */}
               <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
-                <ShoppingBag
+                {/* <ShoppingBag
                   className="w-5 h-5 sm:w-6 sm:h-6 text-[#cb6f4d]"
                   strokeWidth={2.5}
-                />
+                /> */}
               </div>
 
               {/* The Text */}
-              <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
-                Reluv
-              </h1>
+              <img src="/Reluv_Logo.png" alt="Reluv Logo" className="h-14 pt-2" />
             </Link>
             {/* Catalog dropdown (desktop + tablet) */}
             <div className="flex gap-0 w-[750px]">

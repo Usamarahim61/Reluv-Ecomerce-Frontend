@@ -54,8 +54,8 @@ export default function Footer() {
               className="flex flex-col items-center text-center md:items-start md:text-left"
             >
               {section.title === 'Reluv' ? (
-                <Link href="/" className="flex items-center gap-2 group mb-4">
-                  <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
+                <Link href="/" className="flex items-center gap-2 group mb-4 pr-6">
+                  {/* <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
                     <ShoppingBag 
                       size={20}
                       className="w-5 h-5 sm:w-6 sm:h-6 text-[#cb6f4d]"
@@ -64,7 +64,8 @@ export default function Footer() {
                   </div>
                   <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
                     Reluv
-                  </h1>
+                  </h1> */}
+                  <img src="/Reluv_Logo.png" alt="Reluv Logo" className="h-10" />
                 </Link>
               ) : (
                 <h4 className="mb-4 text-[16px] font-medium text-gray-500">
