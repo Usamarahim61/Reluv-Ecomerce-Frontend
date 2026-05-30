@@ -118,6 +118,13 @@ export default function ProductDetailPage() {
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
+  const [liveRatingAvg, setLiveRatingAvg] = useState<number | null>(null);
+
+  const handleReviewsLoaded = (count: number, avg: number) => {
+    setLiveReviewCount(count);
+    setLiveRatingAvg(avg);
+  };
 
   // ── fav state ──────────────────────────────────────────────────────────────
   const [favIds, setFavIds] = useState<number[]>([]);
@@ -428,9 +435,8 @@ export default function ProductDetailPage() {
           color: #444;
         }
         .pdp-tag.condition {
-          background: #edf7ed;
-          border-color: #b8deb8;
-          color: #2d6a2d;
+          border-color: #cb6f4d;
+          color: #cb6f4d;
         }
         .pdp-btn-primary {
           width: 100%;
@@ -800,29 +806,24 @@ export default function ProductDetailPage() {
                     />
                   </button>
                 </div>
-
+                {/* Attribute pills */}
+                <div className="flex flex-wrap gap-2"><span>{condition}</span>/
+                  <span>{color}</span>
+                </div>
                 {/* Price */}
-                <div className="mt-3 flex items-baseline gap-2">
+                <div className=" flex items-baseline gap-2">
                   <span
-                    className="text-[28px] font-bold text-[#c0613a]"
+                    className="text-[18px] font-bold text-[#c0613a]"
                     style={{ fontFamily: "Georgia, serif" }}
                   >
                     {price}
                   </span>
                 </div>
-                <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#888] font-sans">
-                  <ShieldCheck size={11} className="text-[#c0613a]" />
-                  Does Not Includes Buyer Protection
+                <p className="mt-0.5 flex items-center gap-1 text-[15px] text-[#c0613a] font-sans">
+                  {productInfo.buyerProtectionFee} incl.
+                  <ShieldCheck size={15} className="text-[#c0613a]" />
                 </p>
               </div>
-
-              {/* Attribute pills */}
-              <div className="flex flex-wrap gap-2">
-                <span className="pdp-tag condition">{condition}</span>
-                {/* <span className="pdp-tag">Size: {size}</span> */}
-                <span className="pdp-tag">{color}</span>
-              </div>
-
               {/* Description */}
               <p className="text-[13px] leading-relaxed text-[#666] font-sans">
                 {description}
@@ -858,14 +859,24 @@ export default function ProductDetailPage() {
                         <div className="flex text-[#f0a500]">
                           {[
                             ...Array(
-                              Math.min(5, Math.floor(seller?.rating_avg || 0)),
+                              Math.min(
+                                5,
+                                Math.floor(
+                                  liveRatingAvg !== null
+                                    ? liveRatingAvg
+                                    : seller?.rating_avg || 0,
+                                ),
+                              ),
                             ),
                           ].map((_, i) => (
                             <Star key={i} size={10} fill="currentColor" />
                           ))}
                         </div>
                         <span className="text-[10px] text-[#999] font-sans">
-                          {toText(seller?.reviews, "0")} reviews
+                          {liveReviewCount !== null
+                            ? liveReviewCount
+                            : toText(seller?.reviews, "0")}{" "}
+                          reviews
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
@@ -895,6 +906,7 @@ export default function ProductDetailPage() {
                   sellerId={seller?.id}
                   currentUserId={user?.id}
                   isOwnProduct={!!isOwnProduct}
+                  onReviewsLoaded={handleReviewsLoaded}
                 />
               </div>
 

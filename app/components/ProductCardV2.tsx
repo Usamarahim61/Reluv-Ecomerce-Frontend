@@ -140,7 +140,7 @@ export default function ProductCardV2({
           )}
 
           {/* Condition Tag */}
-          <div className="absolute bottom-3 left-3 rounded-full border-[#cb6f4d] text-[#cb6f4d] px-3 py-1 text-[11px] font-medium transition-colors duration-300 hover:bg-[rgb(203,111,77)] hover:text-white">
+          <div className="absolute bottom-3 left-3 rounded-full border border-[#cb6f4d] text-[#cb6f4d] px-3 py-1 text-[11px] font-medium transition-colors duration-300 hover:bg-[rgb(203,111,77)] hover:text-white">
             {conditionText || "New with tags"}
           </div>
 

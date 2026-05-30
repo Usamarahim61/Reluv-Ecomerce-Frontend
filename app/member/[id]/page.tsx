@@ -21,7 +21,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
-import { getUser } from "@/services/auth-service";
+import { getUser, getUserAvatr } from "@/services/auth-service";
 import { useAuth } from "@/context/AuthContext";
 import {
   getFirstImageUrl,
@@ -123,6 +123,10 @@ const ProfilePage = () => {
   const [editProduct, setEditProduct] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
   const timeAgo = (dateString: string | undefined) => {
     if (!dateString) return "recently";
     const seconds = Math.floor(
@@ -136,11 +140,45 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!sellerId) return;
+
     setLoading(true);
-    getUser(Number(sellerId))
-      .then(setUserData)
-      .catch((err: any) => setError(err.message || "Failed to load profile"))
-      .finally(() => setLoading(false));
+    setError(null); // Clear previous errors
+
+    let isMounted = true; // Cleanup flag to prevent state updates after unmount
+
+    const fetchData = async () => {
+      try {
+        // Fetch both in parallel
+        const [avatarRes, userRes] = await Promise.all([
+          getUserAvatr(Number(sellerId)),
+          getUser(Number(sellerId)),
+        ]);
+
+        if (!isMounted) return;
+
+        // Combine data: user data takes priority, but merge avatar URL if available
+        const combinedData = {
+          ...userRes,
+          avatarUrl: avatarRes.avatar?.url || userRes.avatarUrl || null,
+        };
+        console.log("Fetched user data:", combinedData);
+        setUserData(combinedData);
+      } catch (err: any) {
+        if (!isMounted) return;
+        setError(err.message || "Failed to load profile");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, [sellerId]);
 
   useEffect(() => {
@@ -155,6 +193,13 @@ const ProfilePage = () => {
       .catch(console.error)
       .finally(() => setProductsLoading(false));
   }, [sellerId, userData, activeTab]);
+  useEffect(() => {
+    if (!user || !userData) return;
+    const alreadyFollowing = (userData.followers || []).some(
+      (f: any) => String(f.id) === String(user.id),
+    );
+    setIsFollowing(alreadyFollowing);
+  }, [user, userData]);
 
   function mapProductToCard(entry: any) {
     return {
@@ -191,6 +236,58 @@ const ProfilePage = () => {
     );
     setEditProduct(null);
   }
+  async function handleFollow() {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      if (!user) return;
+      const userData = await getUser(user.id);
+      const currentFollowing: number[] = (userData.following || []).map(
+        (f: any) => f.id ?? f,
+      );
+
+      let updatedFollowing: number[];
+      if (isFollowing) {
+        updatedFollowing = currentFollowing.filter(
+          (id) => String(id) !== String(sellerId),
+        );
+      } else {
+        updatedFollowing = [...currentFollowing, Number(sellerId)];
+      }
+
+      const storedJwt = localStorage.getItem("jwt"); // adjust to however you store the JWT
+      const res = await fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedJwt}`,
+        },
+        body: JSON.stringify({ following: updatedFollowing }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update follow status");
+
+      // Optimistically update local UI
+      setIsFollowing((prev) => !prev);
+      setUserData((prev: any) => {
+        if (!prev) return prev;
+        const followers: any[] = prev.followers || [];
+        return {
+          ...prev,
+          followers: isFollowing
+            ? followers.filter((f: any) => String(f.id) !== String(user.id))
+            : [...followers, { id: user.id }],
+        };
+      });
+    } catch (err: any) {
+      alert(err?.message || "Something went wrong.");
+    } finally {
+      setFollowLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -221,7 +318,7 @@ const ProfilePage = () => {
   const ratingAvg = userData.rating_avg || 5;
   const followers = userData.followers?.length || 0;
   const following = userData.following?.length || 0;
-  const avatarSrc = userData.avatar?.url?.trim() || null;
+  const avatarSrc = userData?.avatarUrl?.trim() || null;
 
   return (
     <>
@@ -299,8 +396,24 @@ const ProfilePage = () => {
                       </button>
                     </Link>
                   ) : (
-                    <button className="border-2 border-[#cb6f4d] text-[#cb6f4d] px-6 py-3 rounded-full font-semibold hover:bg-[#fff0e8] transition-all flex items-center gap-2">
-                      <Heart size={18} /> Follow
+                    <button
+                      onClick={handleFollow}
+                      disabled={followLoading}
+                      className={`border-2 px-6 py-3 rounded-full font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+                        isFollowing
+                          ? "border-[#cb6f4d] text-[#cb6f4d] hover:bg-[#fff0e8]"
+                          : "border-[#cb6f4d] text-[#cb6f4d] hover:bg-[#fff0e8]"
+                      }`}
+                    >
+                      {followLoading ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Heart
+                          size={18}
+                          fill={isFollowing ? "currentColor" : "none"}
+                        />
+                      )}
+                      {isFollowing ? "Following" : "Follow"}
                     </button>
                   )}
                 </div>
