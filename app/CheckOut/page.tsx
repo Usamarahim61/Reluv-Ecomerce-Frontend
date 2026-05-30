@@ -1,6 +1,18 @@
 "use client";
 import React, { useState, Suspense, useEffect, useRef } from "react";
-import { CreditCard, MapPin, Home, ChevronRight, Edit2 } from "lucide-react";
+import {
+  CreditCard,
+  MapPin,
+  Home,
+  ChevronRight,
+  Edit2,
+  X,
+  HelpCircle,
+  Banknote,
+  ShieldCheck,
+  MessageSquare,
+} from "lucide-react";
+import {Lock as LockIcon} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import CardDetailsModal from "../components/AddCard";
 import PickupPointModal from "../components/PickupPointModal";
@@ -37,6 +49,23 @@ const CheckOutContent: React.FC = () => {
     useState(false);
   const [pickupAddress, setPickupAddress] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [openAddressModal, setOpenAddressModal] = useState(false);
+  const [openBuyerProtectionModal, setOpenBuyerProtectionModal] =
+    useState(false);
+  const [tempAddressForm, setTempAddressForm] = useState({
+    country: "",
+    addressLine1: "",
+    addressLine2: "",
+    postcode: "",
+    city: "",
+  });
+
+  const handleSaveAddress = (e: React.FormEvent) => {
+    e.preventDefault();
+    const full = `${tempAddressForm.addressLine1}, ${tempAddressForm.city}, ${tempAddressForm.country}`;
+    setUserAddress(full);
+    setOpenAddressModal(false);
+  };
 
   const searchParams = useSearchParams();
 
@@ -62,29 +91,29 @@ const CheckOutContent: React.FC = () => {
     draggable: true,
   };
 
-useEffect(() => {
-  if (!user?.id || hasFetched.current) return;
+  useEffect(() => {
+    if (!user?.id || hasFetched.current) return;
 
-  hasFetched.current = true;
+    hasFetched.current = true;
 
-  const fetchData = async () => {
-    try {
-      const userData = await getUserAddress(Number(user.id));
+    const fetchData = async () => {
+      try {
+        const userData = await getUserAddress(Number(user.id));
 
-      const address =
-        `${userData.city ?? ""} ${userData.country ?? ""}`.trim();
+        const address =
+          `${userData.city ?? ""} ${userData.country ?? ""}`.trim();
 
-      setUserAddress(address);
-    } catch (error) {
-      console.error("Failed to load profile data.", error);
+        setUserAddress(address);
+      } catch (error) {
+        console.error("Failed to load profile data.", error);
 
-      // if API fails and you want retry on next render
-      hasFetched.current = false;
-    }
-  };
+        // if API fails and you want retry on next render
+        hasFetched.current = false;
+      }
+    };
 
-  fetchData();
-}, [user?.id]);
+    fetchData();
+  }, [user?.id]);
   const handlePlaceOrder = async () => {
     try {
       if (isPlacingOrder) return; // prevent double click
@@ -170,7 +199,7 @@ useEffect(() => {
       }
 
       toast.success("Order placed successfully!", toastConfig);
-      
+
       // Redirect to orders page after 2 seconds
       setTimeout(() => {
         window.location.href = "/Orders";
@@ -218,9 +247,14 @@ useEffect(() => {
                   <p className="text-gray-600 text-sm">
                     {userAddress || "No address on file"}
                   </p>
-                  <p className="text-gray-600 text-sm">47330, Traspinedo</p>
+                  <p className="text-gray-600 text-sm">
+                    {tempAddressForm.postcode} {tempAddressForm.city}
+                  </p>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600">
+                <button
+                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => setOpenAddressModal(true)}
+                >
                   <Edit2 size={18} />
                 </button>
               </div>
@@ -447,8 +481,17 @@ useEffect(() => {
                   <span>TBH {data.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 underline decoration-dotted">
-                    Buyer Protection fee
+                  <span className="flex items-center gap-1 text-gray-600">
+                    <span className="underline decoration-dotted">
+                      Buyer Protection fee
+                    </span>
+                    <button
+                      onClick={() => setOpenBuyerProtectionModal(true)}
+                      aria-label="Help"
+                      className="flex items-center"
+                    >
+                      <HelpCircle size={14} />
+                    </button>
                   </span>
                   <span>TBH {data.buyerProtectionFee.toFixed(2)}</span>
                 </div>
@@ -501,17 +544,201 @@ useEffect(() => {
           console.log("Pickup coords:", lat, lng);
         }}
       />
+      {/* Address Modal */}
+      {openAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-opacity">
+          <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[95vh]">
+            <div className="relative p-4 border-b border-gray-100 flex items-center justify-center">
+              <h2 className="text-lg font-medium text-gray-900">Address</h2>
+              <button
+                type="button"
+                onClick={() => setOpenAddressModal(false)}
+                className="absolute right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form
+              onSubmit={handleSaveAddress}
+              className="p-6 overflow-y-auto space-y-5"
+            >
+              {[
+                { label: "Country", key: "country", required: true },
+                {
+                  label: "Address line 1",
+                  key: "addressLine1",
+                  required: true,
+                },
+                {
+                  label: "Address line 2 (optional)",
+                  key: "addressLine2",
+                  required: false,
+                },
+                { label: "Postcode", key: "postcode", required: true },
+                { label: "City/Town", key: "city", required: true },
+              ].map(({ label, key, required }) => (
+                <div
+                  key={key}
+                  className="relative border-b border-gray-200 py-1 focus-within:border-[#cb6f4d] transition-colors"
+                >
+                  <label className="block text-xs font-normal text-gray-400">
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    value={tempAddressForm[key as keyof typeof tempAddressForm]}
+                    onChange={(e) =>
+                      setTempAddressForm({
+                        ...tempAddressForm,
+                        [key]: e.target.value,
+                      })
+                    }
+                    className="w-full bg-transparent border-none outline-none p-0 text-[15px] text-gray-800 mt-0.5 focus:ring-0"
+                    required={required}
+                  />
+                </div>
+              ))}
+              <div className="pt-4 space-y-3">
+                <button
+                  type="submit"
+                  className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3 rounded-lg transition-colors text-[15px]"
+                >
+                  Save address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenAddressModal(false)}
+                  className="w-full text-[#cb6f4d] hover:text-[#b05b3b] font-medium py-2 text-center text-[15px] block"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Buyer Protection Modal */}
+      {openBuyerProtectionModal && (
+       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+      <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+        
+        {/* Header Close Button Only (as per image layout) */}
+        <div className="relative p-4 flex items-center justify-end">
+          <button
+            onClick={() => setOpenBuyerProtectionModal(false)}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Scrollable Content Container */}
+        <div className="px-6 pb-6 overflow-y-auto space-y-6">
+          
+          {/* Main Top Header */}
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fdf0eb] mx-auto">
+              <ShieldCheck className="w-9 h-9 text-[#cb6f4d]" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-950 tracking-tight pt-2">
+              Buyer Protection
+            </h2>
+            <button className="text-xs font-medium text-[#cb6f4d] hover:underline block mx-auto">
+              Learn how we calculate the Buyer Protection fee
+            </button>
+          </div>
+
+          {/* Intro Text */}
+          <p className="text-gray-600 text-[15px] leading-relaxed text-center">
+            For every purchase made with us, we make sure you're covered.
+          </p>
+
+          {/* Feature List */}
+          <div className="space-y-6 text-[14px] text-gray-600 leading-relaxed">
+            
+            {/* Section 1: Refund Policy */}
+            <div className="flex gap-4 items-start">
+              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                <Banknote className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
+              </div>
+              <div className="space-y-2 flex-1">
+                <h3 className="font-semibold text-gray-900 text-[15px]">Refund policy</h3>
+                <p>You can receive a refund if your order:</p>
+                <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                  <li>was never shipped or is lost</li>
+                  <li>arrives damaged</li>
+                  <li>is significantly not as described.</li>
+                </ul>
+                <p className="pt-1">
+                  You have <span className="font-semibold text-gray-900">2 days to submit your claim</span> from when you're notified that an item was delivered, even if the item never arrived. Buyers cover the cost of returning an item unless agreed otherwise. Learn more in our{' '}
+                  <button className="text-[#cb6f4d] underline font-medium hover:text-[#b05b3b]">
+                    Refund Policy
+                  </button>
+                  .
+                </p>
+              </div>
+            </div>
+
+            {/* Section 2: Secure Transactions */}
+            <div className="flex gap-4 items-start">
+              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                <LockIcon className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
+              </div>
+              <div className="space-y-2 flex-1">
+                <h3 className="font-semibold text-gray-900 text-[15px]">Secure transactions</h3>
+                <p>
+                  Your money is held securely throughout the entire transaction. We won't release it to the seller until you receive your order and confirm everything is OK.
+                </p>
+                <p>
+                  Payments are encrypted by our payment partner, so your money is always sent and received safely. <span className="font-semibold text-gray-900">The seller will never see your payment details.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Section 3: Our Support */}
+            <div className="flex gap-4 items-start">
+              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                <MessageSquare className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
+              </div>
+              <div className="space-y-1 flex-1">
+                <h3 className="font-semibold text-gray-900 text-[15px]">Our support</h3>
+                <p>
+                  Reach out to our support team at any time – they're available to assist you with any issues.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Action Button */}
+          <button
+            onClick={() => setOpenBuyerProtectionModal(false)}
+            className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3.5 rounded-xl transition-colors text-[15px] font-semibold tracking-wide mt-4"
+          >
+            Got it
+          </button>
+
+        </div>
+      </div>
+    </div>
+      )}
     </>
   );
 };
 
 const CheckOut: React.FC = () => {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading checkout...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading checkout...
+        </div>
+      }
+    >
       <CheckOutContent />
     </Suspense>
   );
 };
 
 export default CheckOut;
-

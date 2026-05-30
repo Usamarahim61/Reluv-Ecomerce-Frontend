@@ -41,8 +41,12 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
-import { ProductDetailSkeleton, ProductErrorScreen } from "@/app/components/Skeletons";
+import {
+  ProductDetailSkeleton,
+  ProductErrorScreen,
+} from "@/app/components/Skeletons";
 import { getUserFav_Products } from "@/services/auth-service";
+import SellerReviewSection from "@/app/components/SellerReviewSection";
 
 type BreadcrumbItem = { label: string; slug: string };
 
@@ -119,7 +123,9 @@ export default function ProductDetailPage() {
   const [favIds, setFavIds] = useState<number[]>([]);
 
   // ── derived wishlist state for main product ────────────────────────────────
-  const isWishlisted = product?.id ? favIds.includes(Number(product.id)) : false;
+  const isWishlisted = product?.id
+    ? favIds.includes(Number(product.id))
+    : false;
 
   // ── fetch fav products once on mount ──────────────────────────────────────
   useEffect(() => {
@@ -131,13 +137,15 @@ export default function ProductDetailPage() {
         if (!isMounted) return;
         const ids: number[] =
           data?.fav_products?.map((p: any) =>
-            typeof p === "object" ? Number(p.id) : Number(p)
+            typeof p === "object" ? Number(p.id) : Number(p),
           ) ?? [];
         setFavIds(ids);
       })
       .catch((err) => console.error("Failed to fetch fav products", err));
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id]);
 
   // ── sync fav state after like/unlike from any card ─────────────────────────
@@ -145,7 +153,7 @@ export default function ProductDetailPage() {
     setFavIds((prev) =>
       liked
         ? [...new Set([...prev, productId])]
-        : prev.filter((id) => id !== productId)
+        : prev.filter((id) => id !== productId),
     );
   };
 
@@ -174,7 +182,9 @@ export default function ProductDetailPage() {
         if (isMounted) setIsProductLoading(false);
       });
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   /* ── 2. load related items ── */
@@ -192,7 +202,10 @@ export default function ProductDetailPage() {
             ? fetchProductsByUserId(product.user.id)
             : Promise.reject("no seller"),
           toText(product.brand).trim()
-            ? fetchFilteredProducts({ brand: toText(product.brand).trim(), pageSize: 40 })
+            ? fetchFilteredProducts({
+                brand: toText(product.brand).trim(),
+                pageSize: 40,
+              })
             : Promise.reject("no brand"),
         ]);
 
@@ -215,7 +228,9 @@ export default function ProductDetailPage() {
         if (!memberMatches.length && !similarMatches.length) {
           const feed = await fetchProductsForHome(1, 40);
           if (!isMounted) return;
-          const others = feed.items.filter((item) => String(item.id) !== String(product.id));
+          const others = feed.items.filter(
+            (item) => String(item.id) !== String(product.id),
+          );
           memberMatches = others.slice(0, 20);
           similarMatches = others.slice(20, 40);
         } else if (!memberMatches.length) {
@@ -237,17 +252,25 @@ export default function ProductDetailPage() {
     };
 
     loadRelated();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [product]);
 
   /* ── 3. category breadcrumbs ── */
   useEffect(() => {
     const categoryName = toText(product?.category, "");
-    if (!categoryName) { setCategoryTrail([]); return; }
+    if (!categoryName) {
+      setCategoryTrail([]);
+      return;
+    }
     let isMounted = true;
 
     fetch(CATEGORY_TREE_ENDPOINT)
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((payload: { data?: CategoryNode[] }) => {
         if (!isMounted) return;
         const tree = Array.isArray(payload?.data) ? payload.data : [];
@@ -259,15 +282,21 @@ export default function ProductDetailPage() {
         );
       })
       .catch(() => {
-        if (isMounted) setCategoryTrail([{ label: categoryName, slug: categoryName }]);
+        if (isMounted)
+          setCategoryTrail([{ label: categoryName, slug: categoryName }]);
       });
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [product?.category]);
 
   /* ── derived values ── */
   const productImages = useMemo(
-    () => (product?.images ?? []).map(toAbsoluteImageUrl).filter(Boolean) as string[],
+    () =>
+      (product?.images ?? [])
+        .map(toAbsoluteImageUrl)
+        .filter(Boolean) as string[],
     [product],
   );
 
@@ -281,13 +310,18 @@ export default function ProductDetailPage() {
   // const size = toText(product?.size, "One size");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
-  const description = toText(product?.description, "Product details are not available.");
+  const description = toText(
+    product?.description,
+    "Product details are not available.",
+  );
   const color = toText(product?.color, "N/A");
   const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
   const shippingFromPrice = toText(product?.shippingFromPrice, "TBH 100");
   const seller = product?.user ?? {};
   const isOwnProduct =
-    user?.id && product?.user?.id && Number(user.id) === Number(product.user.id);
+    user?.id &&
+    product?.user?.id &&
+    Number(user.id) === Number(product.user.id);
 
   const galleryGridClass =
     imageCount >= 4
@@ -299,8 +333,10 @@ export default function ProductDetailPage() {
           : "grid-cols-1";
 
   const getGalleryItemClass = (index: number) => {
-    if (imageCount >= 4) return index === 0 ? "sm:col-span-2 sm:row-span-2" : "sm:col-span-1";
-    if (imageCount === 3) return index === 0 ? "sm:col-span-2" : "sm:col-span-1";
+    if (imageCount >= 4)
+      return index === 0 ? "sm:col-span-2 sm:row-span-2" : "sm:col-span-1";
+    if (imageCount === 3)
+      return index === 0 ? "sm:col-span-2" : "sm:col-span-1";
     return "sm:col-span-1";
   };
 
@@ -361,9 +397,13 @@ export default function ProductDetailPage() {
 
   /* ─── LOADING / ERROR SCREENS ── */
   if (isProductLoading) return <ProductDetailSkeleton />;
-  if (productError) return (
-    <ProductErrorScreen message={productError} onRetry={() => window.location.reload()} />
-  );
+  if (productError)
+    return (
+      <ProductErrorScreen
+        message={productError}
+        onRetry={() => window.location.reload()}
+      />
+    );
 
   /* ─── MAIN RENDER ── */
   return (
@@ -539,7 +579,6 @@ export default function ProductDetailPage() {
 
       <main className="pdp-root pb-16 pt-0">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-
           {/* ── Top nav bar ── */}
           <div className="flex items-center justify-between py-4">
             <button
@@ -552,7 +591,9 @@ export default function ProductDetailPage() {
 
             {/* Breadcrumbs */}
             <nav className="hidden sm:flex items-center gap-1.5 text-[11px] text-[#999] font-sans">
-              <Link href="/" className="hover:text-[#c0613a] transition-colors">Home</Link>
+              <Link href="/" className="hover:text-[#c0613a] transition-colors">
+                Home
+              </Link>
               {categoryTrail.map((crumb, index) => (
                 <span key={`${crumb.slug}-${index}`} className="contents">
                   <ChevronRight size={10} className="text-[#ccc]" />
@@ -575,7 +616,6 @@ export default function ProductDetailPage() {
 
           {/* ── Main two-column layout ── */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_390px] gap-8 lg:gap-12 items-start">
-
             {/* ── LEFT: Images ── */}
             <section>
               {/* Mobile carousel */}
@@ -585,14 +625,19 @@ export default function ProductDetailPage() {
 
               {/* Desktop gallery */}
               <div className="hidden sm:block">
-                <div className={`grid gap-2 rounded-2xl overflow-hidden ${galleryGridClass}`}>
+                <div
+                  className={`grid gap-2 rounded-2xl overflow-hidden ${galleryGridClass}`}
+                >
                   {visibleImages.map((img, index) => (
                     <div
                       key={index}
                       className={`relative overflow-hidden bg-[#ede8e2] ${getGalleryItemClass(index)}`}
-                      style={{ minHeight: index === 0 && imageCount >= 2 ? 480 : 200 }}
+                      style={{
+                        minHeight: index === 0 && imageCount >= 2 ? 480 : 200,
+                      }}
                     >
-                      {index === lastVisibleIndex && productImages.length > visibleImages.length ? (
+                      {index === lastVisibleIndex &&
+                      productImages.length > visibleImages.length ? (
                         <div
                           className="relative h-full w-full cursor-pointer"
                           onClick={() => {
@@ -600,11 +645,20 @@ export default function ProductDetailPage() {
                             setShowCarousel(true);
                           }}
                         >
-                          <img src={img} alt={`${name} ${index + 1}`} className="pdp-image-main" style={{ minHeight: 200 }} />
+                          <img
+                            src={img}
+                            alt={`${name} ${index + 1}`}
+                            className="pdp-image-main"
+                            style={{ minHeight: 200 }}
+                          />
                           <div className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 text-white">
                             <div className="text-center">
-                              <p className="text-2xl font-bold">+{productImages.length - visibleImages.length}</p>
-                              <p className="text-xs mt-1 opacity-80 font-sans">View all</p>
+                              <p className="text-2xl font-bold">
+                                +{productImages.length - visibleImages.length}
+                              </p>
+                              <p className="text-xs mt-1 opacity-80 font-sans">
+                                View all
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -628,7 +682,6 @@ export default function ProductDetailPage() {
               {/* ── Member items (below image on desktop) ── */}
               {!isOwnProduct && (
                 <div className="mt-10 space-y-10">
-
                   {/* More from this seller */}
                   <section>
                     <p className="pdp-section-title">More from this seller</p>
@@ -645,12 +698,16 @@ export default function ProductDetailPage() {
                     ) : feedError ? (
                       <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-4 py-8 text-center">
                         <span className="mb-2 text-3xl">😕</span>
-                        <p className="text-[13px] text-red-400 font-sans">{feedError}</p>
+                        <p className="text-[13px] text-red-400 font-sans">
+                          {feedError}
+                        </p>
                       </div>
                     ) : memberItems.length === 0 ? (
                       <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
                         <span className="mb-2 text-3xl">🛍️</span>
-                        <p className="text-[13px] text-[#aaa] font-sans">No items found from this seller.</p>
+                        <p className="text-[13px] text-[#aaa] font-sans">
+                          No items found from this seller.
+                        </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -682,12 +739,16 @@ export default function ProductDetailPage() {
                     ) : feedError ? (
                       <div className="flex flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 px-4 py-8 text-center">
                         <span className="mb-2 text-3xl">😕</span>
-                        <p className="text-[13px] text-red-400 font-sans">{feedError}</p>
+                        <p className="text-[13px] text-red-400 font-sans">
+                          {feedError}
+                        </p>
                       </div>
                     ) : similarItems.length === 0 ? (
                       <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
                         <span className="mb-2 text-3xl">🛍️</span>
-                        <p className="text-[13px] text-[#aaa] font-sans">No similar items found.</p>
+                        <p className="text-[13px] text-[#aaa] font-sans">
+                          No similar items found.
+                        </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -702,14 +763,12 @@ export default function ProductDetailPage() {
                       </div>
                     )}
                   </section>
-
                 </div>
               )}
             </section>
 
             {/* ── RIGHT: Product info ── */}
             <aside className="space-y-5 lg:sticky lg:top-6">
-
               {/* Brand + title + wishlist */}
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -717,7 +776,10 @@ export default function ProductDetailPage() {
                     <p className="text-[12px] font-semibold tracking-widest text-[#c0613a] uppercase font-sans mb-1">
                       {brand}
                     </p>
-                    <h1 className="text-[22px] font-bold leading-tight text-[#1a1a1a]" style={{ fontFamily: 'Georgia, serif' }}>
+                    <h1
+                      className="text-[22px] font-bold leading-tight text-[#1a1a1a]"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
                       {name}
                     </h1>
                   </div>
@@ -730,20 +792,27 @@ export default function ProductDetailPage() {
                   >
                     <Heart
                       size={16}
-                      className={isWishlisted ? "fill-[#c0613a] text-[#c0613a]" : "text-[#aaa]"}
+                      className={
+                        isWishlisted
+                          ? "fill-[#c0613a] text-[#c0613a]"
+                          : "text-[#aaa]"
+                      }
                     />
                   </button>
                 </div>
 
                 {/* Price */}
                 <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-[28px] font-bold text-[#c0613a]" style={{ fontFamily: 'Georgia, serif' }}>
+                  <span
+                    className="text-[28px] font-bold text-[#c0613a]"
+                    style={{ fontFamily: "Georgia, serif" }}
+                  >
                     {price}
                   </span>
                 </div>
                 <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#888] font-sans">
                   <ShieldCheck size={11} className="text-[#c0613a]" />
-                  Includes Buyer Protection
+                  Does Not Includes Buyer Protection
                 </p>
               </div>
 
@@ -759,58 +828,75 @@ export default function ProductDetailPage() {
                 {description}
               </p>
 
-              {/* Seller row */}
-              <Link
-                href={`/member/${seller?.id}`}
-                className="flex items-center justify-between rounded-2xl border border-[#e8e2db] bg-white px-4 py-3 hover:border-[#c0613a] transition-colors group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {seller?.avatar ? (
-                    <img
-                      src={toAbsoluteImageUrl(seller.avatar)}
-                      alt={toText(seller?.username, "Seller")}
-                      className="pdp-seller-avatar"
-                    />
-                  ) : (
-                    <div
-                      className="pdp-seller-avatar"
-                      style={{ background: "#c0613a" }}
-                    >
-                      {toText(seller?.username, "S").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-[#1a1a1a] truncate font-sans">
-                      {toText(seller?.username, "Seller")}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <div className="flex text-[#f0a500]">
-                        {[...Array(Math.min(5, Math.floor(seller?.rating_avg || 0)))].map((_, i) => (
-                          <Star key={i} size={10} fill="currentColor" />
-                        ))}
+              {/* ── Seller row + Reviews ── */}
+              <div className="rounded-2xl border border-[#e8e2db] bg-white overflow-hidden">
+                {/* Seller row */}
+                <Link
+                  href={`/member/${seller?.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-[#fdf9f7] transition-colors group border-b border-[#f0ebe5]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {seller?.avatar ? (
+                      <img
+                        src={toAbsoluteImageUrl(seller.avatar)}
+                        alt={toText(seller?.username, "Seller")}
+                        className="pdp-seller-avatar"
+                      />
+                    ) : (
+                      <div
+                        className="pdp-seller-avatar"
+                        style={{ background: "#c0613a" }}
+                      >
+                        {toText(seller?.username, "S").charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-[10px] text-[#999] font-sans">
-                        {toText(seller?.reviews, "0")} reviews
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      {seller?.city && (
-                        <span className="flex items-center gap-1 text-[10px] text-[#aaa] font-sans">
-                          <MapPin size={9} />
-                          {toText(seller?.city)}, {toText(seller?.country)}
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-[#1a1a1a] truncate font-sans">
+                        {toText(seller?.username, "Seller")}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex text-[#f0a500]">
+                          {[
+                            ...Array(
+                              Math.min(5, Math.floor(seller?.rating_avg || 0)),
+                            ),
+                          ].map((_, i) => (
+                            <Star key={i} size={10} fill="currentColor" />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-[#999] font-sans">
+                          {toText(seller?.reviews, "0")} reviews
                         </span>
-                      )}
-                      {seller?.lastSeen && (
-                        <span className="flex items-center gap-1 text-[10px] text-[#aaa] font-sans">
-                          <Clock size={9} />
-                          {toText(seller?.lastSeen)}
-                        </span>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        {seller?.city && (
+                          <span className="flex items-center gap-1 text-[10px] text-[#aaa] font-sans">
+                            <MapPin size={9} />
+                            {toText(seller?.city)}, {toText(seller?.country)}
+                          </span>
+                        )}
+                        {seller?.lastSeen && (
+                          <span className="flex items-center gap-1 text-[10px] text-[#aaa] font-sans">
+                            <Clock size={9} />
+                            {toText(seller?.lastSeen)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight size={15} className="text-[#ccc] group-hover:text-[#c0613a] transition-colors flex-shrink-0" />
-              </Link>
+                  <ChevronRight
+                    size={15}
+                    className="text-[#ccc] group-hover:text-[#c0613a] transition-colors flex-shrink-0"
+                  />
+                </Link>
+
+                {/* ── Review section ── */}
+                <SellerReviewSection
+                  sellerId={seller?.id}
+                  currentUserId={user?.id}
+                  isOwnProduct={!!isOwnProduct}
+                />
+              </div>
 
               {/* CTA Buttons */}
               <div className="space-y-2.5">
@@ -820,9 +906,7 @@ export default function ProductDetailPage() {
                   </div>
                 ) : (
                   <Link href={{ pathname: "/CheckOut", query: productInfo }}>
-                    <button className="pdp-btn-primary">
-                      Buy Now
-                    </button>
+                    <button className="pdp-btn-primary">Buy Now</button>
                   </Link>
                 )}
                 <button
@@ -894,23 +978,39 @@ export default function ProductDetailPage() {
                   {/* Dynamic attributes */}
                   {product?.attributes
                     ?.filter((attr) => {
-                      const skipCodes = new Set(["brand", "size", "condition", "colour", "color"]);
-                      return attr.name && attr.value && !skipCodes.has(attr.code?.toLowerCase() ?? "");
+                      const skipCodes = new Set([
+                        "brand",
+                        "size",
+                        "condition",
+                        "colour",
+                        "color",
+                      ]);
+                      return (
+                        attr.name &&
+                        attr.value &&
+                        !skipCodes.has(attr.code?.toLowerCase() ?? "")
+                      );
                     })
                     .map((attr, index) => (
                       <div key={attr.id ?? index} className="pdp-detail-row">
                         <span className="text-[#888]">{attr.name}</span>
-                        <span className="font-medium text-[#333]">{attr.value}</span>
+                        <span className="font-medium text-[#333]">
+                          {attr.value}
+                        </span>
                       </div>
                     ))}
 
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Shipping</span>
-                    <span className="font-medium text-[#333]">from {shippingFromPrice}</span>
+                    <span className="font-medium text-[#333]">
+                      from {shippingFromPrice}
+                    </span>
                   </div>
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Listed</span>
-                    <span className="font-medium text-[#333]">{uploadedAt}</span>
+                    <span className="font-medium text-[#333]">
+                      {uploadedAt}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -937,7 +1037,6 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
               </div>
-
             </aside>
           </div>
         </div>

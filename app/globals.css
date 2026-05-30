@@ -102,3 +102,39 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 } */
+/* Branded select — matches #cb6f4d color scheme */
+.cs-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #cb6f4d;
+  border-radius: 8px;
+  color: #cb6f4d;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 32px 6px 12px;
+  cursor: pointer;
+  outline: none;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23cb6f4d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cs-select:hover {
+  border-color: #b85e3d;
+}
+
+.cs-select:focus {
+  border-color: #cb6f4d;
+  /* box-shadow: 0 0 0 3px rgba(203, 111, 77, 0.15); */
+}
+
+.cs-select option:checked {
+  background-color: #d58d73;
+  color: #fff;
+}
+.cs-select option:hover {
+  background-color: #cb6f4d;
+  color: #cb6f4d;
+}

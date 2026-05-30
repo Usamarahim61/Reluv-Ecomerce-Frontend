@@ -2,8 +2,20 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
-  Star, MapPin, Clock, Users, Mail, Heart, Shield,
-  Pencil, Trash2, Eye, X, Loader2, Check,
+  Star,
+  MapPin,
+  Clock,
+  Users,
+  Mail,
+  Heart,
+  Shield,
+  Pencil,
+  Trash2,
+  Eye,
+  X,
+  Loader2,
+  Check,
+  User,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,11 +24,11 @@ import ProductCard from "@/app/components/ProductCard";
 import { getUser } from "@/services/auth-service";
 import { useAuth } from "@/context/AuthContext";
 import {
-  getFirstImageUrl, fetchProductsByUserId,
+  getFirstImageUrl,
+  fetchProductsByUserId,
   deleteMyProduct,
 } from "@/services/products-service";
 import { API_BASE_URL } from "@/app/constants/api";
-
 
 // ── Owner product card ────────────────────────────────────────────────────
 function OwnerProductCard({
@@ -29,7 +41,9 @@ function OwnerProductCard({
   onDelete: (id: number) => void;
 }) {
   const imageUrl = product.imageUrl
-    ? product.imageUrl.startsWith("http") ? product.imageUrl : `${API_BASE_URL}${product.imageUrl}`
+    ? product.imageUrl.startsWith("http")
+      ? product.imageUrl
+      : `${API_BASE_URL}${product.imageUrl}`
     : null;
 
   return (
@@ -38,33 +52,51 @@ function OwnerProductCard({
       <Link href={`/products/${product.id}`}>
         <div className="aspect-square bg-gray-100 overflow-hidden">
           {imageUrl ? (
-            <img src={imageUrl} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <img
+              src={imageUrl}
+              alt={product.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">No image</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
+              No image
+            </div>
           )}
         </div>
       </Link>
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-sm font-medium text-gray-900 truncate">{product.title || product.brand}</p>
-        <p className="text-sm font-bold text-[#cb6f4d] mt-0.5">{product.price}</p>
-        <p className="text-sm font-normal text-[#cb6f4d] mt-0.5">{product.category.name}</p>
-        {product.condition && <p className="text-xs text-gray-400 mt-0.5">{product.condition}</p>}
+        <p className="text-sm font-medium text-gray-900 truncate">
+          {product.title || product.brand}
+        </p>
+        <p className="text-sm font-bold text-[#cb6f4d] mt-0.5">
+          {product.price}
+        </p>
+        <p className="text-sm font-normal text-[#cb6f4d] mt-0.5">
+          {product.category.name}
+        </p>
+        {product.condition && (
+          <p className="text-xs text-gray-400 mt-0.5">{product.condition}</p>
+        )}
       </div>
 
       {/* Owner action bar */}
       <div className="flex border-t border-gray-100">
-        <Link href={`/products/${product.id}`}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+        <Link
+          href={`/products/${product.id}`}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+        >
           <Eye size={13} /> View
         </Link>
         {/* <button onClick={() => onEdit(product)}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-blue-500 hover:bg-blue-50 transition-colors border-x border-gray-100">
           <Pencil size={13} /> Edit
         </button> */}
-        <button onClick={() => onDelete(product.id)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-400 hover:bg-red-50 transition-colors">
+        <button
+          onClick={() => onDelete(product.id)}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-400 hover:bg-red-50 transition-colors"
+        >
           <Trash2 size={13} /> Delete
         </button>
       </div>
@@ -93,7 +125,9 @@ const ProfilePage = () => {
 
   const timeAgo = (dateString: string | undefined) => {
     if (!dateString) return "recently";
-    const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+    const seconds = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / 1000,
+    );
     if (seconds < 60) return "just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
@@ -126,7 +160,7 @@ const ProfilePage = () => {
     return {
       id: entry.id,
       title: entry.title ?? "",
-      category:entry.category ?? "",
+      category: entry.category ?? "",
       brand: entry.brand ?? "",
       size: entry.size ?? "",
       condition: entry.condition ?? "",
@@ -152,7 +186,9 @@ const ProfilePage = () => {
   }
 
   function handleSaved(updated: any) {
-    setListings((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+    setListings((prev) =>
+      prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+    );
     setEditProduct(null);
   }
 
@@ -173,7 +209,9 @@ const ProfilePage = () => {
         <div className="text-center">
           <Users size={48} className="text-[#cb6f4d] mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">User Not Found</h2>
-          <p className="text-gray-400">{error || "We couldn't find this member."}</p>
+          <p className="text-gray-400">
+            {error || "We couldn't find this member."}
+          </p>
         </div>
       </div>
     );
@@ -188,18 +226,29 @@ const ProfilePage = () => {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-[#faf9f7] via-white to-[#f0ede8]">
-
         {/* Header */}
         <div className="border-b border-[#e0ddd8]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
             <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center md:items-start">
-
               {/* Avatar */}
               <div className="relative shrink-0">
                 <div className="w-32 h-32 md:w-56 md:h-56 rounded-full overflow-hidden shadow-xl border-4 border-white bg-white">
-                  <Image
-                    src={avatarSrc || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop"}
-                    alt={userData.username || "User"} fill className="object-cover rounded-full" priority />
+                  {avatarSrc ? (
+                    <Image
+                      src={avatarSrc}
+                      alt={userData.username || "User"}
+                      fill
+                      className="object-cover rounded-full"
+                      priority
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <User
+                        className="w-1/2 h-1/2 text-gray-500 dark:text-gray-400"
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                  )}
                 </div>
                 {userData.confirmed && (
                   <div className="absolute -bottom-2 -right-2 bg-[#cb6f4d] rounded-full p-3 shadow-lg border-4 border-white">
@@ -211,19 +260,33 @@ const ProfilePage = () => {
               {/* Info */}
               <div className="flex-1 w-full">
                 <div className="mb-6">
-                  <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#1a1a1a] mb-3">{userData.username}</h1>
+                  <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#1a1a1a] mb-3">
+                    {userData.username}
+                  </h1>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex text-[#cb6f4d]">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={16} fill={i < Math.floor(ratingAvg) ? "currentColor" : "none"}
-                          className={i < Math.floor(ratingAvg) ? "" : "text-[#e0ddd8]"} />
+                        <Star
+                          key={i}
+                          size={16}
+                          fill={
+                            i < Math.floor(ratingAvg) ? "currentColor" : "none"
+                          }
+                          className={
+                            i < Math.floor(ratingAvg) ? "" : "text-[#e0ddd8]"
+                          }
+                        />
                       ))}
                     </div>
-                    <span className="text-[#888] text-sm">{ratingAvg.toFixed(1)} • {reviews.length} reviews</span>
+                    <span className="text-[#888] text-sm">
+                      {ratingAvg.toFixed(1)} • {reviews.length} reviews
+                    </span>
                   </div>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#fff0e8] border border-[#f0c9b8]">
                     <div className="w-2 h-2 rounded-full bg-[#cb6f4d]" />
-                    <span className="text-sm font-medium text-[#cb6f4d]">✓ Active Seller</span>
+                    <span className="text-sm font-medium text-[#cb6f4d]">
+                      ✓ Active Seller
+                    </span>
                   </div>
                 </div>
 
@@ -245,38 +308,72 @@ const ProfilePage = () => {
                 {/* Info grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#aaa] mb-4">About</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#aaa] mb-4">
+                      About
+                    </p>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3 text-[#555]">
                         <MapPin size={18} className="text-[#cb6f4d]" />
-                        <span className="text-sm">{userData.country || "—"}</span>
+                        <span className="text-sm">
+                          {userData.country || "—"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-[#555]">
                         <Clock size={18} className="text-[#cb6f4d]" />
-                        <span className="text-sm">Last seen {timeAgo(userData?.updatedAt)}</span>
+                        <span className="text-sm">
+                          Last seen {timeAgo(userData?.updatedAt)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-[#555]">
                         <Users size={18} className="text-[#cb6f4d]" />
                         <span className="text-sm">
-                          <span className="font-semibold text-[#1a1a1a]">{followers}</span> followers •{" "}
-                          <span className="font-semibold text-[#1a1a1a]">{following}</span> following
+                          <span className="font-semibold text-[#1a1a1a]">
+                            {followers}
+                          </span>{" "}
+                          followers •{" "}
+                          <span className="font-semibold text-[#1a1a1a]">
+                            {following}
+                          </span>{" "}
+                          following
                         </span>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-[#aaa] mb-4">Verified</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#aaa] mb-4">
+                      Verified
+                    </p>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <Mail size={18} className={userData.confirmed ? "text-[#cb6f4d]" : "text-[#ddd]"} />
-                        <span className={`text-sm font-medium ${userData.confirmed ? "text-[#1a1a1a]" : "text-[#aaa]"}`}>
-                          {userData.confirmed ? "✓ Email Verified" : "Email Not Verified"}
+                        <Mail
+                          size={18}
+                          className={
+                            userData.confirmed
+                              ? "text-[#cb6f4d]"
+                              : "text-[#ddd]"
+                          }
+                        />
+                        <span
+                          className={`text-sm font-medium ${userData.confirmed ? "text-[#1a1a1a]" : "text-[#aaa]"}`}
+                        >
+                          {userData.confirmed
+                            ? "✓ Email Verified"
+                            : "Email Not Verified"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <Shield size={18} className="text-[#cb6f4d]" />
                         <span className="text-sm font-medium text-[#1a1a1a]">
-                          ✓ Member Since {new Date(userData.createdAt || Date.now()).getFullYear()}
+                          ✓ Member Since{" "}
+                          {(() => {
+                            const d = new Date(
+                              userData.createdAt || Date.now(),
+                            );
+                            const month = d.toLocaleString("default", {
+                              month: "short",
+                            }); // "May"
+                            return `${month} ${d.getFullYear()}`;
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -292,11 +389,18 @@ const ProfilePage = () => {
           <div className="border-b border-[#e0ddd8] mb-8">
             <div className="flex gap-8 justify-center sm:justify-start">
               {["Listings", "Reviews"].map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   className={`pb-4 text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
-                    activeTab === tab ? "border-b-2 border-[#cb6f4d] text-[#cb6f4d]" : "text-[#aaa] hover:text-[#555]"
-                  }`}>
-                  {tab === "Listings" ? `Items Listed (${listings.length})` : `Reviews (${reviews.length})`}
+                    activeTab === tab
+                      ? "border-b-2 border-[#cb6f4d] text-[#cb6f4d]"
+                      : "text-[#aaa] hover:text-[#555]"
+                  }`}
+                >
+                  {tab === "Listings"
+                    ? `Items Listed (${listings.length})`
+                    : `Reviews (${reviews.length})`}
                 </button>
               ))}
             </div>
@@ -305,17 +409,34 @@ const ProfilePage = () => {
           {activeTab === "Listings" && (
             <div>
               {productsLoading ? (
-                <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-[#cb6f4d]" /></div>
+                <div className="flex justify-center py-16">
+                  <Loader2 size={28} className="animate-spin text-[#cb6f4d]" />
+                </div>
               ) : listings.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
                   {listings.map((product: any) =>
                     isOwner ? (
-                      <div key={product.id} className={deletingId === product.id ? "opacity-40 pointer-events-none" : ""}>
-                        <OwnerProductCard product={product} onEdit={setEditProduct} onDelete={handleDelete} />
+                      <div
+                        key={product.id}
+                        className={
+                          deletingId === product.id
+                            ? "opacity-40 pointer-events-none"
+                            : ""
+                        }
+                      >
+                        <OwnerProductCard
+                          product={product}
+                          onEdit={setEditProduct}
+                          onDelete={handleDelete}
+                        />
                       </div>
                     ) : (
-                      <ProductCard key={product.id} {...product} likes={Number(product.likes || 0)} />
-                    )
+                      <ProductCard
+                        key={product.id}
+                        {...product}
+                        likes={Number(product.likes || 0)}
+                      />
+                    ),
                   )}
                 </div>
               ) : (
@@ -339,21 +460,43 @@ const ProfilePage = () => {
               {reviews.length > 0 ? (
                 <div className="space-y-6">
                   {reviews.map((review: any) => (
-                    <div key={review.id} className="bg-white rounded-2xl p-6 border border-[#e0ddd8] shadow-sm">
+                    <div
+                      key={review.id}
+                      className="bg-white rounded-2xl p-6 border border-[#e0ddd8] shadow-sm"
+                    >
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex text-[#cb6f4d]">
-                              {[...Array(review.rating || 5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
+                              {[...Array(review.rating || 5)].map((_, i) => (
+                                <Star key={i} size={16} fill="currentColor" />
+                              ))}
                             </div>
-                            <span className="text-xs font-semibold text-[#aaa]">{review.rating || 5} out of 5</span>
+                            <span className="text-xs font-semibold text-[#aaa]">
+                              {review.rating || 5} out of 5
+                            </span>
                           </div>
-                          <p className="font-semibold text-[#1a1a1a] text-sm">{review.author?.username || "Anonymous"}</p>
-                          <p className="text-xs text-[#aaa]">{new Date(review.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</p>
+                          <p className="font-semibold text-[#1a1a1a] text-sm">
+                            {review.author?.username || "Anonymous"}
+                          </p>
+                          <p className="text-xs text-[#aaa]">
+                            {new Date(review.createdAt).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}
+                          </p>
                         </div>
-                        <span className="text-xs font-medium text-[#cb6f4d]">Verified Purchase</span>
+                        <span className="text-xs font-medium text-[#cb6f4d]">
+                          Verified Purchase
+                        </span>
                       </div>
-                      <p className="text-[#555] text-sm leading-relaxed">{review.content}</p>
+                      <p className="text-[#555] text-sm leading-relaxed">
+                        {review.content}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -368,7 +511,9 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      <div className="hidden md:block"><Footer /></div>
+      <div className="hidden md:block">
+        <Footer />
+      </div>
 
       {/* Edit modal */}
       {/* {editProduct && (
