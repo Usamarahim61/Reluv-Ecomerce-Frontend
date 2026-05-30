@@ -9,10 +9,9 @@ import {
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
+import ImageCropModal from "../components/ImageCropModal"; 
 
 const MAX_AVATAR_SIZE_MB = 10;
-
-/* ---------------- UTILITY ---------------- */
 
 const renameFile = (file: File): File => {
   const timestamp = Date.now();
@@ -37,49 +36,44 @@ export default function ProfileSetting() {
     language: "",
   });
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview]     = useState<string | null>(null);
+  const [selectedFile, setSelectedFile]       = useState<File | null>(null);
+  const [cropSrc, setCropSrc]                 = useState<string | null>(null);   // ← NEW
+  const [showCropModal, setShowCropModal]     = useState(false);                  // ← NEW
+  const [loading, setLoading]                 = useState(true);
+  const [isUpdating, setIsUpdating]           = useState(false);
+  const [error, setError]                     = useState<string | null>(null);
 
   const countries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
 
   const cityByCountry: { [key: string]: string[] } = {
-    Thailand: [
-      "Bangkok", "Chiang Mai", "Phuket", "Pattaya",
-      "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani",
-    ],
+    Thailand: ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani"],
     Cambodia: ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Kompong Cham"],
-    Laos: ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
-    Vietnam: ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
-    Myanmar: ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
+    Laos:     ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
+    Vietnam:  ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
+    Myanmar:  ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
   };
 
-  const cities = formData.country ? cityByCountry[formData.country] : [];
+  const cities    = formData.country ? cityByCountry[formData.country] : [];
   const languages = ["en", "th"];
 
-  /* ---------------- FETCH USER DATA (fires once) ---------------- */
-
+  /* ---------- fetch user (once) ---------- */
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id || hasFetched.current) return;
       hasFetched.current = true;
-
       try {
         setLoading(true);
-        const data = await getUser(Number(user.id));
+        const data       = await getUser(Number(user.id));
         const userAvatar = await getUserAvatr(Number(user.id));
-
         setFormData({
           username: data.username || "",
-          about: data.about || "",
-          country: data.country || "",
-          city: data.city || "",
+          about:    data.about    || "",
+          country:  data.country  || "",
+          city:     data.city     || "",
           showCity: data.isShowCity ?? true,
           language: data.language || "",
         });
-
         if (userAvatar.avatar?.url) {
           setAvatarPreview(userAvatar.avatar.url);
           avatarPreviewRef.current = userAvatar.avatar.url;
@@ -91,18 +85,25 @@ export default function ProfileSetting() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [user?.id]);
 
-  /* ---------------- INPUT HANDLER ---------------- */
+  /* ---------- revoke blob on unmount ---------- */
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewRef.current?.startsWith("blob:"))
+        URL.revokeObjectURL(avatarPreviewRef.current);
+      if (cropSrc?.startsWith("blob:"))
+        URL.revokeObjectURL(cropSrc);
+    };
+  }, [cropSrc]);
 
+  /* ---------- input handler ---------- */
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value, type } = e.target;
     const val = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-
     setFormData((prev) => {
       const updated = { ...prev, [name]: val };
       if (name === "country") updated.city = "";
@@ -110,8 +111,7 @@ export default function ProfileSetting() {
     });
   };
 
-  /* ---------------- PHOTO HANDLER ---------------- */
-
+  /* ---------- photo change → open crop modal ---------- */  // ← CHANGED
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,81 +122,88 @@ export default function ProfileSetting() {
       return;
     }
 
-    if (avatarPreviewRef.current?.startsWith("blob:")) {
-      URL.revokeObjectURL(avatarPreviewRef.current);
-    }
+    /* revoke previous crop src */
+    if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
 
-    const previewUrl = URL.createObjectURL(file);
-    avatarPreviewRef.current = previewUrl;
-    setSelectedFile(file);
-    setAvatarPreview(previewUrl);
-
+    const objectUrl = URL.createObjectURL(file);
+    setCropSrc(objectUrl);
+    setShowCropModal(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* Revoke blob URL on unmount */
-  useEffect(() => {
-    return () => {
-      if (avatarPreviewRef.current?.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarPreviewRef.current);
-      }
-    };
-  }, []);
+  /* ---------- crop saved ---------- */   // ← NEW
+  const handleCropSave = (croppedBlob: Blob, croppedDataUrl: string) => {
+    /* revoke old preview blob */
+    if (avatarPreviewRef.current?.startsWith("blob:"))
+      URL.revokeObjectURL(avatarPreviewRef.current);
 
-  /* ---------------- UPDATE PROFILE ---------------- */
+    /* turn the cropped blob into a File for upload */
+    const croppedFile = new File([croppedBlob], `avatar_${Date.now()}.png`, {
+      type: "image/png",
+    });
 
+    avatarPreviewRef.current = croppedDataUrl;
+    setAvatarPreview(croppedDataUrl);
+    setSelectedFile(croppedFile);
+    setShowCropModal(false);
+
+    /* clean up the raw object URL */
+    if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+
+  /* ---------- update profile ---------- */
   const handleUpdate = async () => {
     if (!user?.id) return;
-
     try {
       setIsUpdating(true);
       let avatarId: number | null = null;
 
       if (selectedFile) {
         const uploadForm = new FormData();
-        uploadForm.append("files", renameFile(selectedFile)); // ← renamed file
-        
-        const storedJwt = localStorage.getItem("jwt");
+        uploadForm.append("files", renameFile(selectedFile));
+
+        const storedJwt    = localStorage.getItem("jwt");
         const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${storedJwt}`,
-          },
+          headers: { Authorization: `Bearer ${storedJwt}` },
           body: uploadForm,
         });
         const uploadPayload = await uploadResponse.json();
 
         if (!uploadResponse.ok) {
-          throw new Error(
-            uploadPayload?.error?.message ||
-              `Image upload failed: ${uploadResponse.status}`,
-          );
+          throw new Error(uploadPayload?.error?.message || `Image upload failed: ${uploadResponse.status}`);
         }
 
         const file = Array.isArray(uploadPayload) ? uploadPayload[0] : null;
-        avatarId = file?.id ? Number(file.id) : null;
-
+        avatarId   = file?.id ? Number(file.id) : null;
         if (!avatarId) throw new Error("Upload succeeded but no file ID returned.");
       }
 
       const payload = new FormData();
-      payload.append("username", formData.username || "");
-      payload.append("country", formData.country || "");
-      payload.append("city", formData.city || "");
-      payload.append("about", formData.about || "");
+      payload.append("username",   formData.username  || "");
+      payload.append("country",    formData.country   || "");
+      payload.append("city",       formData.city      || "");
+      payload.append("about",      formData.about     || "");
       payload.append("isShowCity", String(formData.showCity));
-      payload.append("language", formData.language || "");
+      payload.append("language",   formData.language  || "");
       if (avatarId) payload.append("avatar", String(avatarId));
 
       await updateUserProfile(Number(user.id), payload);
 
       toast.success("Profile updated successfully!", {
-        position: "top-right",
-        autoClose: 3000,
+        position:        "top-right",
+        autoClose:       3000,
         hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
+        closeOnClick:    true,
+        pauseOnHover:    true,
+        draggable:       true,
       });
 
       setSelectedFile(null);
@@ -207,8 +214,7 @@ export default function ProfileSetting() {
     }
   };
 
-  /* ---------------- LOADING UI ---------------- */
-
+  /* ---------- loading ---------- */
   if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
@@ -217,150 +223,123 @@ export default function ProfileSetting() {
     );
   }
 
-  /* ---------------- UI ---------------- */
+  /* ---------- UI ---------- */
+  return (
+    <div className="max-w-2xl mx-auto animate-fadeIn">
+      {/* crop modal */}
+      {showCropModal && cropSrc && (
+        <ImageCropModal
+          imageSrc={cropSrc}
+          onCancel={handleCropCancel}
+          onSave={handleCropSave}
+        />
+      )}
 
- return (
-  <div className="max-w-2xl mx-auto  animate-fadeIn">
-    {error && (
-      <div className="text-red-500 bg-red-50 p-3 rounded mb-4 text-sm">
-        {error}
-      </div>
-    )}
+      {error && (
+        <div className="text-red-500 bg-red-50 p-3 rounded mb-4 text-sm">{error}</div>
+      )}
 
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-6">
-      {/* PHOTO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-4">
-        <span className="font-medium">Your Photo</span>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden border shrink-0">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                👤
-              </div>
-            )}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-6">
+        {/* PHOTO */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-4">
+          <span className="font-medium">Your Photo</span>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden border shrink-0">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">👤</div>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handlePhotoChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm hover:bg-[#fef5f1] transition-all"
+            >
+              Change Photo
+            </button>
           </div>
+        </div>
+
+        {/* USERNAME */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 border-b pb-6">
+          <span className="font-medium">Username</span>
           <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={handlePhotoChange}
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            className="w-full sm:max-w-[200px] border border-gray-100 sm:border-none p-2 sm:p-0 text-left sm:text-right focus:ring-0 text-gray-700 font-semibold rounded"
           />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm hover:bg-[#fef5f1] transition-all"
-          >
-            Change Photo
-          </button>
+        </div>
+
+        {/* ABOUT */}
+        <div className="space-y-2">
+          <span className="font-medium">About You</span>
+          <textarea
+            name="about"
+            value={formData.about}
+            onChange={handleInputChange}
+            rows={4}
+            placeholder="Tell us about yourself..."
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-[#cb6f4d] outline-none"
+          />
         </div>
       </div>
 
-      {/* USERNAME */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 border-b pb-6">
-        <span className="font-medium">Username</span>
-        <input
-          name="username"
-          value={formData.username}
-          onChange={handleInputChange}
-          className="w-full sm:max-w-[200px] border border-gray-100 sm:border-none p-2 sm:p-0 text-left sm:text-right focus:ring-0 text-gray-700 font-semibold rounded"
-        />
+      {/* LOCATION */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-4 mt-6">
+        <h3 className="text-gray-400 text-xs font-bold uppercase">My location</h3>
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
+          <span className="font-medium">Country</span>
+          <select name="country" value={formData.country} onChange={handleInputChange} className="cs-select">
+            <option value="">Select country</option>
+            {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
+          <span className="font-medium">Town/City</span>
+          <select name="city" value={formData.city} onChange={handleInputChange} className="cs-select">
+            <option value="">Select city</option>
+            {cities.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div className="flex justify-between items-center pt-2">
+          <span className="font-medium">Show city in profile</span>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="showCity" checked={formData.showCity} onChange={handleInputChange} className="sr-only peer" />
+            <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#cb6f4d] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+          </label>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
+          <span className="font-medium">Language</span>
+          <select name="language" value={formData.language} onChange={handleInputChange} className="cs-select">
+            <option value="">Select Language</option>
+            {languages.map((l) => <option key={l}>{l}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* ABOUT */}
-      <div className="space-y-2">
-        <span className="font-medium">About You</span>
-        <textarea
-          name="about"
-          value={formData.about}
-          onChange={handleInputChange}
-          rows={4}
-          placeholder="Tell us about yourself..."
-          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-[#cb6f4d] outline-none"
-        />
+      {/* UPDATE */}
+      <div className="text-right mt-6">
+        <button
+          onClick={handleUpdate}
+          disabled={isUpdating}
+          className="w-full sm:w-auto bg-[#cb6f4d] text-white px-10 py-2.5 rounded shadow hover:bg-[#d08f77] disabled:opacity-50 transition-all font-medium"
+        >
+          {isUpdating ? "Saving..." : "Update profile"}
+        </button>
       </div>
     </div>
-
-    {/* LOCATION SECTION */}
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-4 mt-6">
-      <h3 className="text-gray-400 text-xs font-bold uppercase">My location</h3>
-
-      {/* Country Select */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
-        <span className="font-medium">Country</span>
-        <select
-          name="country"
-          value={formData.country}
-          onChange={handleInputChange}
-          className="border-none focus:ring-0 bg-transparent p-2 sm:p-0 text-gray-600 cursor-pointer"
-        >
-          <option value="">Select country</option>
-          {countries.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* City Select */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
-        <span className="font-medium">Town/City</span>
-        <select
-          name="city"
-          value={formData.city}
-          onChange={handleInputChange}
-          className="border-none focus:ring-0 bg-transparent p-2 sm:p-0 text-gray-600 cursor-pointer"
-        >
-          <option value="">Select city</option>
-          {cities.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Toggle */}
-      <div className="flex justify-between items-center pt-2">
-        <span className="font-medium">Show city in profile</span>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            name="showCity"
-            checked={formData.showCity}
-            onChange={handleInputChange}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#cb6f4d] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
-        </label>
-      </div>
-
-      {/* Language Select */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
-        <span className="font-medium">Language</span>
-        <select
-          name="language"
-          value={formData.language}
-          onChange={handleInputChange}
-          className="border-none focus:ring-0 bg-transparent p-2 sm:p-0 text-gray-600 cursor-pointer"
-        >
-          <option value="">Select Language</option>
-          {languages.map((l) => (
-            <option key={l}>{l}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-
-    {/* UPDATE BUTTON */}
-    <div className="text-right mt-6">
-      <button
-        onClick={handleUpdate}
-        disabled={isUpdating}
-        className="w-full sm:w-auto bg-[#cb6f4d] text-white px-10 py-2.5 rounded shadow hover:bg-[#d08f77] disabled:opacity-50 transition-all font-medium"
-      >
-        {isUpdating ? "Saving..." : "Update profile"}
-      </button>
-    </div>
-  </div>
-);
+  );
 }

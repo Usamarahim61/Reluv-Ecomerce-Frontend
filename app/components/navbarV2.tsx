@@ -12,6 +12,7 @@ import {
   BellOff,
   ShoppingBag,
   LogOut,
+  Loader2,         // ← NEW: spinner icon
 } from "lucide-react";
 import {
   useState,
@@ -43,14 +44,48 @@ import {
 import { getUser, getUserAvatr } from "@/services/auth-service";
 import { API_BASE_URL } from "@/app/constants/api";
 
+// ─── NEW: helper to convert File → base64 string ───────────────────────────
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // strip the "data:image/...;base64," prefix
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── NEW: ask Claude what the image shows via local API route (no CORS) ────
+async function getImageTitle(file: File): Promise<string> {
+  const base64Data = await fileToBase64(file);
+  const mediaType = file.type; // e.g. "image/jpeg"
+
+  const response = await fetch("/api/image-search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ base64Data, mediaType }),
+  });
+
+  const data = await response.json();
+  return data.title ?? "";
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 export default function NavbarV2() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
 
-  // Helper function to format absolute image URL
   const toAbsoluteImageUrl = (url: string | undefined | null): string => {
     if (!url)
-      return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+      return `<div className="w-full h-full border border-[#cb6f4d] rounded-full  flex items-center justify-center absolute inset-0">
+                      <User
+                        className="w-1/2 h-1/2 text-[#cb6f4d]"
+                        strokeWidth={1.5}
+                      />
+                    </div>`;
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
     return `${API_BASE_URL}${url}`;
   };
@@ -63,6 +98,13 @@ export default function NavbarV2() {
   const [showResults, setShowResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ─── NEW: image-search state ──────────────────────────────────────────────
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileCameraInputRef = useRef<HTMLInputElement | null>(null);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleSearchResultClick = useCallback((id: string | number) => {
     setSearchQuery("");
@@ -85,6 +127,45 @@ export default function NavbarV2() {
     },
     [router, searchQuery],
   );
+
+  // ─── NEW: handle camera/image upload and AI analysis ─────────────────────
+  const handleImageUpload = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file) return;
+
+      // show a tiny preview thumbnail
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+      setImageSearchLoading(true);
+      setSearchQuery("");
+      setShowResults(false);
+
+      try {
+        const title = await getImageTitle(file);
+        if (title) {
+          setSearchQuery(title);
+          // trigger search results automatically
+          setShowResults(true);
+        }
+      } catch (err) {
+        console.error("Image AI search error:", err);
+      } finally {
+        setImageSearchLoading(false);
+        // reset file inputs so the same file can be re-selected
+        if (cameraInputRef.current) cameraInputRef.current.value = "";
+        if (mobileCameraInputRef.current) mobileCameraInputRef.current.value = "";
+      }
+    },
+    [],
+  );
+
+  const clearImagePreview = useCallback(() => {
+    setImagePreview(null);
+    setSearchQuery("");
+    setShowResults(false);
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const { user, logout, requireLogin } = useAuth();
   const { notifications, unreadCount, markRead, markAllRead } =
     useNotifications();
@@ -135,7 +216,6 @@ export default function NavbarV2() {
         }
         if (selectedCata == "Members") {
           const response = await searchMemebers(searchQuery, 5);
-          console.log(response);
           const result = response?.items;
           setSearchResultsForMemebers(result);
           setSearchResults([]);
@@ -156,6 +236,7 @@ export default function NavbarV2() {
       }
     };
   }, [searchQuery]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) return;
@@ -173,31 +254,21 @@ export default function NavbarV2() {
   const notificationRef = useRef<HTMLDivElement | null>(null);
   const LangRef = useRef<HTMLDivElement | null>(null);
 
-  // FIX 2: Removed the `if (isAndroid) return` guard so click-outside always
-  // works for profile, notification, and lang dropdowns on all platforms.
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
-
       if (profileRef.current && !profileRef.current.contains(target)) {
         setProfileOpen(false);
       }
-
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(target)
-      ) {
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
         setNotificationOpen(false);
       }
       if (LangRef.current && !LangRef.current.contains(target)) {
         setLangOpen(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -208,13 +279,9 @@ export default function NavbarV2() {
   }, [categoriesStatus, dispatch, isAndroid]);
 
   if (!isReady) return null;
-  if (isAndroid) {
-    return <AndroidChrome />;
-  }
+  if (isAndroid) return <AndroidChrome />;
 
   const languages = [
-    // { code: "ES", label: "Español (Spanish)" },
-    // { code: "FR", label: "Français (French)" },
     { code: "EN", label: "English (English)" },
     { code: "TH", label: "Thai (ThaiLand)" },
   ];
@@ -233,63 +300,117 @@ export default function NavbarV2() {
     requireLogin("Please log in first to start selling.");
   };
 
+  // ─── NEW: shared search bar right-side content (camera or spinner) ────────
+  const SearchBarRightSlot = ({ mobile = false }: { mobile?: boolean }) => {
+    if (imageSearchLoading) {
+      return (
+        <div className="flex items-center gap-1.5 text-[#cb6f4d]">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-xs font-medium whitespace-nowrap">
+            Analyzing…
+          </span>
+        </div>
+      );
+    }
+
+    if (imagePreview) {
+      return (
+        <div className="flex items-center gap-1.5">
+          {/* tiny thumbnail */}
+          <div className="relative w-7 h-7 rounded overflow-hidden border border-[#cb6f4d]/40 flex-shrink-0">
+            <img
+              src={imagePreview}
+              alt="uploaded"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {/* clear button */}
+          <button
+            type="button"
+            onClick={clearImagePreview}
+            className="text-gray-400 hover:text-red-400 transition-colors"
+            title="Clear image search"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      );
+    }
+
+    // Only show camera icon when Catalogue is selected
+    if (selectedCata !== "Catalogue") return null;
+
+    return (
+      <>
+        {/* Hidden file input */}
+        <input
+          ref={mobile ? mobileCameraInputRef : cameraInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleImageUpload(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          title="Search by image"
+          onClick={() =>
+            mobile
+              ? mobileCameraInputRef.current?.click()
+              : cameraInputRef.current?.click()
+          }
+          className="text-[#cb6f4d] hover:text-[#a85a3c] transition-colors"
+        >
+          <Camera className="w-5 h-5 cursor-pointer" />
+        </button>
+      </>
+    );
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <>
       <nav className="w-full border-b border-gray-200 bg-white">
         {/* Top bar */}
         <div className="border-b border-gray-300">
-          <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-2 ">
+          <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-2">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
-              {/* The Icon/Logo Box */}
-              <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
-                {/* <ShoppingBag
-                  className="w-5 h-5 sm:w-6 sm:h-6 text-[#cb6f4d]"
-                  strokeWidth={2.5}
-                /> */}
-              </div>
-
-              {/* The Text */}
-              <Image src="/reLuv_logo.png" alt="Reluv Logo" width={510} height={100} className="pt-2 w-100 sm:w-30 md:w-32 lg:w-25 h-auto" priority />
+              <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center" />
+              <Image
+                src="/reLuv_logo.png"
+                alt="Reluv Logo"
+                width={510}
+                height={100}
+                className="pt-2 w-100 sm:w-30 md:w-32 lg:w-25 h-auto"
+                priority
+              />
             </Link>
-            {/* Catalog dropdown (desktop + tablet) */}
+
+            {/* Catalog dropdown + Search bar (desktop + tablet) */}
             <div className="flex gap-0 w-[750px]">
               <div className="relative hidden sm:flex md:flex">
                 <button
                   onClick={() => setCataOpen(!cataOpen)}
-                  className="flex items-center font-semibold justify-between cursor-pointer bg-gray-100 px-4 py-2 border border-gray-200 rounded text-sm sm:w-36  hover:bg-gray-100"
+                  className="flex items-center font-semibold justify-between cursor-pointer bg-gray-100 px-4 py-2 border border-gray-200 rounded text-sm sm:w-36 hover:bg-gray-100"
                 >
                   <span>{selectedCata}</span>
                   <svg
-                    className={`w-5 h-5 ml-2 transition-transform duration-200 ${
-                      cataOpen ? "rotate-180" : ""
-                    }`}
+                    className={`w-5 h-5 ml-2 transition-transform duration-200 ${cataOpen ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {cataOpen && (
                   <div className="absolute right-0 mt-10 w-44 bg-white border border-gray-200 rounded shadow-lg z-20 py-2">
                     {Catagory.map((cat, idx) => (
                       <div key={cat.code}>
-                        {idx !== 0 && (
-                          <div className="border-t border-gray-100 mx-2" />
-                        )}
+                        {idx !== 0 && <div className="border-t border-gray-100 mx-2" />}
                         <div
                           className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                          onClick={() => {
-                            setSelectedCata(cat.code);
-                            setCataOpen(false);
-                          }}
+                          onClick={() => { setSelectedCata(cat.code); setCataOpen(false); }}
                         >
                           {cat.label}
                         </div>
@@ -299,38 +420,36 @@ export default function NavbarV2() {
                 )}
               </div>
 
-              {/* Search bar (tablet + desktop) */}
-              <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200 ">
+              {/* ── DESKTOP SEARCH BAR ── */}
+              <div className="relative hidden sm:flex flex-1 items-center bg-gray-100 rounded-md px-3 py-2 border border-gray-200">
                 <Search className="text-[#cb6f4d] w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search for items"
+                  placeholder={
+                    imageSearchLoading
+                      ? "AI is analyzing your image…"
+                      : "Search for items"
+                  }
                   className="bg-transparent outline-none flex-1 px-2"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => searchQuery && setShowResults(true)}
                   onBlur={() => setTimeout(() => setShowResults(false), 200)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearchSubmit(e);
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSearchSubmit(e); }}
+                  disabled={imageSearchLoading}
                 />
-                <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer" />
+
+                {/* ─── CHANGED: replaced static <Camera> with the smart slot ─── */}
+                <SearchBarRightSlot mobile={false} />
+
                 {showResults && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-auto z-50 mt-1">
                     {searchLoading ? (
-                      <div className="p-4 text-center text-gray-500">
-                        Searching...
-                      </div>
-                    ) : searchResults.length === 0 &&
-                      searchResultsForMemebers.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
-                        No results
-                      </div>
+                      <div className="p-4 text-center text-gray-500">Searching...</div>
+                    ) : searchResults.length === 0 && searchResultsForMemebers.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">No results</div>
                     ) : (
                       <>
-                        {/* 🔹 PRODUCTS */}
                         {searchResults.length > 0 && (
                           <div>
                             {searchResults.map((item) => (
@@ -345,27 +464,17 @@ export default function NavbarV2() {
                                   alt={item.item || item.brand}
                                   className="w-12 h-12 object-cover rounded"
                                 />
-
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">
-                                    {item.brand || item.item}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {item.item}
-                                  </p>
+                                  <p className="font-medium text-sm truncate">{item.brand || item.item}</p>
+                                  <p className="text-xs text-gray-500 truncate">{item.item}</p>
                                 </div>
-
                                 <div className="text-right">
-                                  <p className="font-semibold text-sm">
-                                    {item.price}
-                                  </p>
+                                  <p className="font-semibold text-sm">{item.price}</p>
                                 </div>
                               </button>
                             ))}
                           </div>
                         )}
-
-                        {/* 🔹 MEMBERS */}
                         {searchResultsForMemebers.length > 0 && (
                           <div>
                             {searchResultsForMemebers.map((member) => (
@@ -375,26 +484,13 @@ export default function NavbarV2() {
                                 className="p-3 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-3 w-full text-left"
                               >
                                 <img
-                                  src={
-                                    member.avatar
-                                      ? `${API_BASE_URL}${member.avatar}`
-                                      : "/avatar-placeholder.png"
-                                  }
-                                  alt={
-                                    member?.fullName ||
-                                    member?.username ||
-                                    "avatar"
-                                  }
+                                  src={member.avatar ? `${API_BASE_URL}${member.avatar}` : "/avatar-placeholder.png"}
+                                  alt={member?.fullName || member?.username || "avatar"}
                                   className="w-10 h-10 min-w-[40px] object-cover rounded-full"
                                 />
-
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">
-                                    {member?.fullName || member?.username}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {member?.city}, {member?.country}
-                                  </p>
+                                  <p className="font-medium text-sm truncate">{member?.fullName || member?.username}</p>
+                                  <p className="text-xs text-gray-500 truncate">{member?.city}, {member?.country}</p>
                                 </div>
                               </button>
                             ))}
@@ -407,9 +503,8 @@ export default function NavbarV2() {
               </div>
             </div>
 
-            {/* Right actions */}
+            {/* Right actions — unchanged */}
             <div className="ml-auto flex items-center gap-0 sm:gap-3 md:gap-4 lg:gap-2">
-              {/* Email */}
               {user && (
                 <Link href={`/Messages`}>
                   <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
@@ -417,7 +512,6 @@ export default function NavbarV2() {
                   </button>
                 </Link>
               )}
-              {/* Notifications */}
               {user && (
                 <div ref={notificationRef} className="relative">
                   <button
@@ -431,37 +525,21 @@ export default function NavbarV2() {
                       </span>
                     )}
                   </button>
-
                   {notificationOpen && (
                     <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 mt-2 sm:w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fadeIn sm:max-w-none">
-                      {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white">
-                        <span className="font-bold text-sm text-gray-900">
-                          Notifications
-                        </span>
+                        <span className="font-bold text-sm text-gray-900">Notifications</span>
                         {unreadCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => markAllRead()}
-                            className="text-xs text-[#cb6f4d] font-bold hover:underline"
-                          >
+                          <button type="button" onClick={() => markAllRead()} className="text-xs text-[#cb6f4d] font-bold hover:underline">
                             Mark all as read
                           </button>
                         )}
                       </div>
-
-                      {/* List */}
                       <div className="max-h-[70vh] sm:max-h-96 overflow-y-auto divide-y divide-gray-50">
                         {notifications.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                            <BellOff
-                              size={40}
-                              strokeWidth={1.5}
-                              className="text-gray-200 mb-3"
-                            />
-                            <p className="text-sm font-medium text-gray-400">
-                              All caught up! No new notifications.
-                            </p>
+                            <BellOff size={40} strokeWidth={1.5} className="text-gray-200 mb-3" />
+                            <p className="text-sm font-medium text-gray-400">All caught up! No new notifications.</p>
                           </div>
                         ) : (
                           notifications.map((n) => (
@@ -473,51 +551,22 @@ export default function NavbarV2() {
                                 if (n.link) router.push(n.link);
                                 setNotificationOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-4 hover:bg-gray-50 transition-colors flex gap-3 items-start ${
-                                !n.read ? "bg-orange-50/50" : "bg-white"
-                              }`}
+                              className={`w-full text-left px-4 py-4 hover:bg-gray-50 transition-colors flex gap-3 items-start ${!n.read ? "bg-orange-50/50" : "bg-white"}`}
                             >
-                              {/* Status Dot */}
-                              <div
-                                className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                                  !n.read ? "bg-[#cb6f4d]" : "bg-transparent"
-                                }`}
-                              />
-
+                              <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!n.read ? "bg-[#cb6f4d]" : "bg-transparent"}`} />
                               <div className="flex-1 min-w-0">
-                                <p
-                                  className={`text-sm leading-snug truncate ${!n.read ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}
-                                >
-                                  {n.title}
-                                </p>
-                                {n.body && (
-                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                    {n.body}
-                                  </p>
-                                )}
+                                <p className={`text-sm leading-snug truncate ${!n.read ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>{n.title}</p>
+                                {n.body && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.body}</p>}
                                 <p className="text-[10px] text-gray-400 mt-2 font-medium">
-                                  {new Date(n.createdAt).toLocaleDateString(
-                                    undefined,
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )}
+                                  {new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                 </p>
                               </div>
                             </button>
                           ))
                         )}
                       </div>
-
-                      {/* Mobile Footer to close */}
                       <div className="sm:hidden border-t border-gray-100 p-2 bg-gray-50">
-                        <button
-                          onClick={() => setNotificationOpen(false)}
-                          className="w-full py-2 text-xs font-bold text-gray-500 uppercase tracking-widest"
-                        >
+                        <button onClick={() => setNotificationOpen(false)} className="w-full py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                           Close
                         </button>
                       </div>
@@ -525,7 +574,6 @@ export default function NavbarV2() {
                   )}
                 </div>
               )}
-              {/* Likes */}
               {user && (
                 <Link href={`/FavItems`}>
                   <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
@@ -533,7 +581,6 @@ export default function NavbarV2() {
                   </button>
                 </Link>
               )}
-              {/* Profile Dropdown */}
               {user && (
                 <div ref={profileRef} className="relative">
                   <button
@@ -543,75 +590,40 @@ export default function NavbarV2() {
                     <img
                       src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
                       alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src =
-                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
-                      }}
+                      id="avatar-img"
+                      className="w-full h-full object-cover relative z-10"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
                     />
+                    <div className="w-full h-full border border-[#cb6f4d] rounded-full flex items-center justify-center absolute inset-0">
+                      <User className="w-1/2 h-1/2 text-[#cb6f4d]" strokeWidth={1.5} />
+                    </div>
                   </button>
-
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-                      {/* Profile */}
-                      {/* FIX 1: Close profileOpen AND mobileMenuOpen on every profile menu item click */}
                       <Link href={`/member/${user?.id}`}>
-                        <div
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                        >
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
                           <span>Profile</span>
                         </div>
                       </Link>
-                      {/* Invite friends */}
                       <Link href={`/Referrals`}>
-                        <div
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                        >
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
                           <span>Invite friends</span>
                         </div>
                       </Link>
-                      {/* Settings */}
                       <Link href={`/setting`}>
-                        <div
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                        >
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
                           <span>Settings</span>
                         </div>
                       </Link>
-                      {/* My orders */}
                       <Link href={`/Orders`}>
-                        <div
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setMobileMenuOpen(false);
-                          }}
-                        >
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
                           <span>My orders / Offers</span>
                         </div>
                       </Link>
                       <div className="border-t border-gray-200 my-1" />
-
-                      {/* Logout */}
                       <button
                         type="button"
-                        onClick={() => {
-                          logout();
-                          setProfileOpen(false);
-                          setMobileMenuOpen(false);
-                        }}
+                        onClick={() => { logout(); setProfileOpen(false); setMobileMenuOpen(false); }}
                         className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-red-600 hover:bg-gray-100"
                       >
                         <LogOut size={16} />
@@ -621,7 +633,6 @@ export default function NavbarV2() {
                   )}
                 </div>
               )}
-              {/* Desktop + Tablet Auth buttons */}
               {!user && (
                 <button
                   onClick={() => setOpenSign(true)}
@@ -635,7 +646,6 @@ export default function NavbarV2() {
                   + Sell Now
                 </button>
               </Link>
-              {/* Desktop + Tablet Language */}
               <div ref={LangRef} className="relative hidden sm:block">
                 <button
                   onClick={() => setLangOpen(!langOpen)}
@@ -647,16 +657,8 @@ export default function NavbarV2() {
                   <div className="absolute left-0 mt-1 w-44 cursor-pointer bg-white border border-gray-300 rounded shadow-lg z-20 py-2">
                     {languages.map((lang, idx) => (
                       <div key={lang.code}>
-                        {idx !== 0 && (
-                          <div className="border-t border-gray-100 mx-2" />
-                        )}
-                        <div
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                          onClick={() => {
-                            setSelectedLang(lang.code);
-                            setLangOpen(false);
-                          }}
-                        >
+                        {idx !== 0 && <div className="border-t border-gray-100 mx-2" />}
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100" onClick={() => { setSelectedLang(lang.code); setLangOpen(false); }}>
                           {lang.label}
                         </div>
                       </div>
@@ -665,34 +667,27 @@ export default function NavbarV2() {
                 )}
               </div>
             </div>
+
             {/* Hamburger for mobile only */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="sm:hidden flex items-center justify-center w-9 h-9 rounded hover:bg-gray-100"
             >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6 text-gray-700" />
-              ) : (
-                <Menu className="w-6 h-6 text-gray-700" />
-              )}
+              {mobileMenuOpen ? <X className="w-6 h-6 text-gray-700" /> : <Menu className="w-6 h-6 text-gray-700" />}
             </button>
           </div>
         </div>
 
         {/* Mega Menu */}
         <div className="hidden sm:block max-w-7xl mx-auto px-4">
-          <SubMenus
-            subCategories={menuCategories}
-            loading={categoriesLoading}
-          />
+          <SubMenus subCategories={menuCategories} loading={categoriesLoading} />
         </div>
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="sm:hidden w-full bg-white border-t border-gray-200 shadow-lg py-4 px-4">
-            {/* Catalog + Search Row Container */}
             <div className="flex flex-col sm:flex-row gap-3 mb-4 px-1">
-              {/* 1. Catalog Dropdown */}
+              {/* Catalog Dropdown */}
               <div className="relative w-full sm:w-40 flex-shrink-0">
                 <button
                   type="button"
@@ -700,38 +695,17 @@ export default function NavbarV2() {
                   className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:border-[#cb6f4d] transition-all shadow-sm active:scale-95"
                 >
                   <span className="truncate">{selectedCata || "Catalog"}</span>
-                  <svg
-                    className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${
-                      cataOpen ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                  <svg className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${cataOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-
-                {/* Catalog Menu Overlay */}
                 {cataOpen && (
                   <div className="absolute top-full left-0 right-0 mt-2 border border-gray-100 rounded-xl shadow-xl bg-white z-[60] overflow-hidden animate-fadeIn">
                     {Catagory.map((cat) => (
                       <div
                         key={cat.code}
-                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${
-                          selectedCata === cat.code
-                            ? "bg-orange-50 text-[#cb6f4d] font-bold"
-                            : "hover:bg-gray-50 text-gray-600"
-                        }`}
-                        onClick={() => {
-                          setSelectedCata(cat.code);
-                          setCataOpen(false);
-                        }}
+                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${selectedCata === cat.code ? "bg-orange-50 text-[#cb6f4d] font-bold" : "hover:bg-gray-50 text-gray-600"}`}
+                        onClick={() => { setSelectedCata(cat.code); setCataOpen(false); }}
                       >
                         {cat.label}
                       </div>
@@ -740,52 +714,40 @@ export default function NavbarV2() {
                 )}
               </div>
 
-              {/* 2. Search Container */}
+              {/* ── MOBILE SEARCH BAR ── */}
               <div className="relative flex-1">
                 <div className="flex items-center bg-gray-100 px-4 py-2.5 border border-transparent rounded-lg focus-within:bg-white focus-within:ring-2 focus-within:ring-[#cb6f4d]/20 focus-within:border-[#cb6f4d] transition-all shadow-sm">
                   <Search className="text-[#cb6f4d] w-5 h-5 shrink-0" />
-
                   <input
                     type="text"
-                    placeholder="Search items or members..."
+                    placeholder={imageSearchLoading ? "AI is analyzing your image…" : "Search items or members..."}
                     className="bg-transparent outline-none flex-1 px-3 text-sm sm:text-base w-full text-gray-700 placeholder-gray-400"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => searchQuery && setShowResults(true)}
                     onBlur={() => setTimeout(() => setShowResults(false), 200)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSearchSubmit(e);
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSearchSubmit(e); }}
+                    disabled={imageSearchLoading}
                   />
-
-                  <Camera className="text-[#cb6f4d] w-5 h-5 cursor-pointer shrink-0 hover:scale-110 transition-transform" />
+                  {/* ─── CHANGED: replaced static <Camera> with the smart slot ─── */}
+                  <SearchBarRightSlot mobile={true} />
                 </div>
 
-                {/* 3. Search Results Dropdown */}
+                {/* Search Results Dropdown */}
                 {showResults && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-[65vh] sm:max-h-96 overflow-y-auto z-50 mt-2 animate-fadeIn">
                     {searchLoading ? (
                       <div className="p-8 text-center">
-                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#cb6f4d] mb-2"></div>
-                        <p className="text-sm text-gray-500 font-medium">
-                          Searching our catalog...
-                        </p>
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#cb6f4d] mb-2" />
+                        <p className="text-sm text-gray-500 font-medium">Searching our catalog...</p>
                       </div>
-                    ) : searchResults.length === 0 &&
-                      searchResultsForMemebers.length === 0 ? (
-                      <div className="p-8 text-center text-gray-500 text-sm italic">
-                        No results found for "{searchQuery}"
-                      </div>
+                    ) : searchResults.length === 0 && searchResultsForMemebers.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500 text-sm italic">No results found for "{searchQuery}"</div>
                     ) : (
                       <div className="py-2">
-                        {/* 🔹 PRODUCTS SECTION */}
                         {searchResults.length > 0 && (
                           <div className="mb-2">
-                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                              Products
-                            </div>
+                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">Products</div>
                             {searchResults.map((item) => (
                               <button
                                 type="button"
@@ -793,35 +755,21 @@ export default function NavbarV2() {
                                 onClick={() => handleSearchResultClick(item.id)}
                                 className="px-4 py-3 hover:bg-orange-50 flex items-center gap-4 w-full text-left transition-colors group"
                               >
-                                <img
-                                  src={item.imageUrl || "/placeholder.jpg"}
-                                  alt={item.item}
-                                  className="w-12 h-12 object-cover rounded-lg shadow-sm border border-gray-100 group-hover:border-[#cb6f4d]/30"
-                                />
+                                <img src={item.imageUrl || "/placeholder.jpg"} alt={item.item} className="w-12 h-12 object-cover rounded-lg shadow-sm border border-gray-100 group-hover:border-[#cb6f4d]/30" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">
-                                    {item.brand || item.item}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate lowercase">
-                                    {item.item}
-                                  </p>
+                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">{item.brand || item.item}</p>
+                                  <p className="text-xs text-gray-500 truncate lowercase">{item.item}</p>
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <p className="font-black text-[#cb6f4d] text-sm">
-                                    {item.price}
-                                  </p>
+                                  <p className="font-black text-[#cb6f4d] text-sm">{item.price}</p>
                                 </div>
                               </button>
                             ))}
                           </div>
                         )}
-
-                        {/* 🔹 MEMBERS SECTION */}
                         {searchResultsForMemebers.length > 0 && (
                           <div>
-                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mt-2">
-                              Members
-                            </div>
+                            <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mt-2">Members</div>
                             {searchResultsForMemebers.map((member) => (
                               <button
                                 type="button"
@@ -829,21 +777,13 @@ export default function NavbarV2() {
                                 className="px-4 py-3 hover:bg-orange-50 flex items-center gap-4 w-full text-left transition-colors group"
                               >
                                 <img
-                                  src={
-                                    member.avatar
-                                      ? `${API_BASE_URL}${member.avatar}`
-                                      : "/avatar-placeholder.png"
-                                  }
+                                  src={member.avatar ? `${API_BASE_URL}${member.avatar}` : "/avatar-placeholder.png"}
                                   alt={member?.username || "avatar"}
                                   className="w-10 h-10 min-w-[40px] object-cover rounded-full border-2 border-gray-100 group-hover:border-[#cb6f4d]/30"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">
-                                    {member?.fullName || member?.username}
-                                  </p>
-                                  <p className="text-xs text-gray-400 truncate uppercase tracking-tighter">
-                                    {member?.city} • {member?.country}
-                                  </p>
+                                  <p className="font-bold text-gray-900 text-sm truncate group-hover:text-[#cb6f4d]">{member?.fullName || member?.username}</p>
+                                  <p className="text-xs text-gray-400 truncate uppercase tracking-tighter">{member?.city} • {member?.country}</p>
                                 </div>
                               </button>
                             ))}
@@ -855,24 +795,19 @@ export default function NavbarV2() {
                 )}
               </div>
             </div>
+
             {/* Auth buttons */}
             {!user && (
               <div className="flex flex-col gap-2 mb-3">
-                <button
-                  onClick={() => setOpenSign(true)}
-                  className="w-full px-4 py-2 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm"
-                >
+                <button onClick={() => setOpenSign(true)} className="w-full px-4 py-2 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm">
                   Sign up | Log in
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSellNowClick}
-                  className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm"
-                >
+                <button type="button" onClick={handleSellNowClick} className="w-full px-4 py-2 bg-[#cb6f4d] text-white rounded text-sm">
                   Sell
                 </button>
               </div>
             )}
+
             {/* Language selector */}
             <div className="relative mt-4">
               <button
@@ -881,48 +816,23 @@ export default function NavbarV2() {
                 className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:border-[#cb6f4d] transition-all shadow-sm active:scale-95"
               >
                 <span className="truncate">Language: {selectedLang}</span>
-                <svg
-                  className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${
-                    langOpen ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
+                <svg className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-300 ${langOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-
-              {/* Language Dropdown Overlay */}
               {langOpen && (
                 <div className="absolute top-full left-0 right-0 mt-2 border border-gray-100 rounded-xl shadow-xl bg-white z-[70] overflow-hidden animate-fadeIn">
-                  <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 bg-gray-50/50">
-                    Select Language
-                  </div>
+                  <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 bg-gray-50/50">Select Language</div>
                   <div className="max-h-60 overflow-y-auto">
                     {languages.map((lang) => (
                       <div
                         key={lang.code}
-                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${
-                          selectedLang === lang.code
-                            ? "bg-orange-50 text-[#cb6f4d] font-bold"
-                            : "hover:bg-gray-50 text-gray-600"
-                        }`}
-                        onClick={() => {
-                          setSelectedLang(lang.code);
-                          setLangOpen(false);
-                        }}
+                        className={`px-4 py-3 text-sm cursor-pointer transition-colors border-b last:border-b-0 border-gray-50 ${selectedLang === lang.code ? "bg-orange-50 text-[#cb6f4d] font-bold" : "hover:bg-gray-50 text-gray-600"}`}
+                        onClick={() => { setSelectedLang(lang.code); setLangOpen(false); }}
                       >
                         <div className="flex items-center justify-between">
                           {lang.label}
-                          {selectedLang === lang.code && (
-                            <span className="text-[#cb6f4d] text-xs">✓</span>
-                          )}
+                          {selectedLang === lang.code && <span className="text-[#cb6f4d] text-xs">✓</span>}
                         </div>
                       </div>
                     ))}
@@ -930,7 +840,8 @@ export default function NavbarV2() {
                 </div>
               )}
             </div>
-            {/* Sub Categories with icons */}
+
+            {/* Sub Categories */}
             <div className="flex flex-col gap-2 mb-3">
               {menuCategories.map((cat) => (
                 <Link

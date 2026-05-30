@@ -427,7 +427,7 @@ export default function SignUpLogin({
           {view === "initial" && (
             <>
               <h2 className="text-xl sm:text-2xl font-bold text-center leading-tight mb-8">
-                Join and sell pre-loved clothes with no fees
+                Join and sell your pre-loved stuff with Secure payments & buyer protection
               </h2>
               <div className="space-y-3">
                 <SocialButton
