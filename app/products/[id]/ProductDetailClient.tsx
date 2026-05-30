@@ -278,7 +278,7 @@ export default function ProductDetailPage() {
 
   const name = toText(product?.title, "Product title");
   const brand = toText(product?.brand, "No brand");
-  const size = toText(product?.size, "One size");
+  // const size = toText(product?.size, "One size");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
   const description = toText(product?.description, "Product details are not available.");
@@ -309,7 +309,7 @@ export default function ProductDetailPage() {
     documentId: product?.documentId,
     title: name,
     brand,
-    size,
+    // size,
     price: getPriceValue(price) || 0,
     currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
@@ -750,7 +750,7 @@ export default function ProductDetailPage() {
               {/* Attribute pills */}
               <div className="flex flex-wrap gap-2">
                 <span className="pdp-tag condition">{condition}</span>
-                <span className="pdp-tag">Size: {size}</span>
+                {/* <span className="pdp-tag">Size: {size}</span> */}
                 <span className="pdp-tag">{color}</span>
               </div>
 
@@ -878,10 +878,10 @@ export default function ProductDetailPage() {
                     <span className="text-[#888]">Brand</span>
                     <span className="font-medium text-[#333]">{brand}</span>
                   </div>
-                  <div className="pdp-detail-row">
+                  {/* <div className="pdp-detail-row">
                     <span className="text-[#888]">Size</span>
                     <span className="font-medium text-[#333]">{size}</span>
-                  </div>
+                  </div> */}
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Condition</span>
                     <span className="font-medium text-[#333]">{condition}</span>
