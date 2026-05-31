@@ -36,17 +36,11 @@ import {
 } from "@/services/products-service";
 import { getUser, getUserAvatr } from "@/services/auth-service";
 import { API_BASE_URL } from "@/app/constants/api";
+import { getUserAvatarUrl } from "@/lib/user-profile";
 
 export default function Navbar() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
-
-  // Helper function to format absolute image URL
-  const toAbsoluteImageUrl = (url: string | undefined | null): string => {
-    if (!url) return "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
-    if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    return `${API_BASE_URL}${url}`;
-  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
@@ -78,6 +72,10 @@ export default function Navbar() {
   const { user, logout, requireLogin } = useAuth();
   let LoggedInUser = user;
   const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const profileAvatarUrl =
+    getUserAvatarUrl(loggedInUser) ||
+    getUserAvatarUrl(user) ||
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -447,7 +445,7 @@ export default function Navbar() {
                   >
                     {/* Avatar from backend */}
                     <img
-                      src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
+                      src={profileAvatarUrl}
                       alt="Profile"
                       className="w-full h-full object-cover"
                       onError={(e) => {

@@ -22,6 +22,7 @@ import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
 import { getUser, getUserAddress } from "@/services/auth-service";
+import { formatUserAddress, getGoogleAddress } from "@/lib/user-profile";
 
 interface ProductData {
   title: string;
@@ -100,10 +101,18 @@ const CheckOutContent: React.FC = () => {
       try {
         const userData = await getUserAddress(Number(user.id));
 
-        const address =
-          `${userData.city ?? ""} ${userData.country ?? ""}`.trim();
+        const address = formatUserAddress(userData);
+        const googleAddress = getGoogleAddress(userData);
 
         setUserAddress(address);
+        setTempAddressForm((prev) => ({
+          ...prev,
+          country: prev.country || userData.country || googleAddress?.country || "",
+          addressLine1:
+            prev.addressLine1 || googleAddress?.street_address || googleAddress?.formatted || "",
+          postcode: prev.postcode || googleAddress?.postal_code || "",
+          city: prev.city || userData.city || googleAddress?.locality || "",
+        }));
       } catch (error) {
         console.error("Failed to load profile data.", error);
 

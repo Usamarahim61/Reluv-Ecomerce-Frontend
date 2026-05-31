@@ -10,7 +10,7 @@ export default function AuthSessionPrompt() {
 
   return (
     <SignUpLogin
-      initialView="login"
+      // initialView="register"
       message={loginRequiredMessage || undefined}
       onClose={closeLoginRequired}
     />

@@ -43,6 +43,7 @@ import {
 } from "@/services/products-service";
 import { getUser, getUserAvatr } from "@/services/auth-service";
 import { API_BASE_URL } from "@/app/constants/api";
+import { getUserAvatarUrl } from "@/lib/user-profile";
 
 // ─── NEW: helper to convert File → base64 string ───────────────────────────
 function fileToBase64(file: File): Promise<string> {
@@ -77,18 +78,6 @@ async function getImageTitle(file: File): Promise<string> {
 export default function NavbarV2() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
-
-  const toAbsoluteImageUrl = (url: string | undefined | null): string => {
-    if (!url)
-      return `<div className="w-full h-full border border-[#cb6f4d] rounded-full  flex items-center justify-center absolute inset-0">
-                      <User
-                        className="w-1/2 h-1/2 text-[#cb6f4d]"
-                        strokeWidth={1.5}
-                      />
-                    </div>`;
-    if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    return `${API_BASE_URL}${url}`;
-  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
@@ -171,7 +160,10 @@ export default function NavbarV2() {
     useNotifications();
   const [loggedInUser, setLoggedInUser] = useState<{
     avatar?: { url?: string };
+    googlePicture?: string;
+    googleProfile?: { picture?: string };
   } | null>(null);
+  const profileAvatarUrl = getUserAvatarUrl(loggedInUser) || getUserAvatarUrl(user);
   const [openSign, setOpenSign] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [cataOpen, setCataOpen] = useState(false);
@@ -587,13 +579,15 @@ export default function NavbarV2() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 cursor-pointer overflow-hidden hover:bg-gray-100"
                   >
-                    <img
-                      src={toAbsoluteImageUrl(loggedInUser?.avatar?.url)}
-                      alt="Profile"
-                      id="avatar-img"
-                      className="w-full h-full object-cover relative z-10"
-                      onError={(e) => { e.currentTarget.style.display = "none"; }}
-                    />
+                    {profileAvatarUrl && (
+                      <img
+                        src={profileAvatarUrl}
+                        alt="Profile"
+                        id="avatar-img"
+                        className="w-full h-full object-cover relative z-10"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    )}
                     <div className="w-full h-full border border-[#cb6f4d] rounded-full flex items-center justify-center absolute inset-0">
                       <User className="w-1/2 h-1/2 text-[#cb6f4d]" strokeWidth={1.5} />
                     </div>

@@ -28,6 +28,7 @@ import {
   fetchProductsByUserId,
   deleteMyProduct,
 } from "@/services/products-service";
+import { getUserAvatarUrl } from "@/lib/user-profile";
 import { API_BASE_URL } from "@/app/constants/api";
 
 // ── Owner product card ────────────────────────────────────────────────────
@@ -126,7 +127,12 @@ const ProfilePage = () => {
   // Follow state
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-
+    let LoggedInUser = user;
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const profileAvatarUrl =
+    getUserAvatarUrl(loggedInUser) ||
+    getUserAvatarUrl(user) ||
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
   const timeAgo = (dateString: string | undefined) => {
     if (!dateString) return "recently";
     const seconds = Math.floor(
@@ -155,7 +161,7 @@ const ProfilePage = () => {
         ]);
 
         if (!isMounted) return;
-
+        setLoggedInUser(userRes);
         // Combine data: user data takes priority, but merge avatar URL if available
         const combinedData = {
           ...userRes,
@@ -335,8 +341,14 @@ const ProfilePage = () => {
                       src={avatarSrc}
                       alt={userData.username || "User"}
                       fill
-                      className="object-cover rounded-full"
+                      className="object-cover content-center rounded-full"
                       priority
+                    />
+                  ) : profileAvatarUrl ? (
+                    <img
+                      src={profileAvatarUrl}
+                      alt={userData.username || "User"}
+                      className="object-cover w-full h-full rounded-full"
                     />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">

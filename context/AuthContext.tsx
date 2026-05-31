@@ -9,7 +9,11 @@ type User = {
   email: string;
   city?: string;
   country?: string;
-  avatar: string,
+  fullName?: string;
+  googlePicture?: string;
+  googleAddress?: unknown;
+  googleProfile?: Record<string, unknown>;
+  avatar?: string | { url?: string } | null;
   fav_products?: unknown
 };
 

@@ -194,7 +194,7 @@ export default function SignUpLogin({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: `${window.location.origin}/auth/callback/google`,
       response_type: "token",
-      scope: "openid email profile",
+      scope: "openid email profile address phone",
       prompt: "select_account",
     });
     const popup = openPopup(

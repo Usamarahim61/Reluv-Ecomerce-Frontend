@@ -47,6 +47,7 @@ import {
 } from "@/app/components/Skeletons";
 import { getUserFav_Products } from "@/services/auth-service";
 import SellerReviewSection from "@/app/components/SellerReviewSection";
+import { toast } from "react-toastify";
 
 type BreadcrumbItem = { label: string; slug: string };
 
@@ -102,7 +103,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { user } = useAuth();
+  const { user, requireLogin } = useAuth();
+
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
 
@@ -363,10 +365,18 @@ export default function ProductDetailPage() {
 
   const handleAskSeller = async () => {
     if (!product?.id || !product.user?.id) {
-      alert("Seller information not available");
+      toast.error("Seller information not available");
       return;
     }
+
+    if (!user?.id) {
+      requireLogin("Please log in to ask the seller.");
+      return;
+    }
+
+
     try {
+
       const conversation = await createConversationForProduct({
         productId: Number(product.id),
         otherUserId: Number(product.user.id),
@@ -374,11 +384,14 @@ export default function ProductDetailPage() {
       if (conversation?.id) {
         dispatch(fetchConversations());
         router.push(`/Messages?conversationId=${conversation.id}`);
+      } else {
+        toast.error("Unable to start conversation. Please try again.");
       }
     } catch {
-      alert("Failed to start conversation. Please try again.");
+      toast.error("Failed to start conversation. Please try again.");
     }
   };
+
 
   // ── wishlist handler for main product heart button ─────────────────────────
   const handleWishlist = async () => {
@@ -917,21 +930,61 @@ export default function ProductDetailPage() {
                     You cannot buy your own product.
                   </div>
                 ) : (
-                  <Link href={{ pathname: "/CheckOut", query: productInfo }}>
-                    <button className="pdp-btn-primary">Buy Now</button>
-                  </Link>
+                  <button
+                    type="button"
+                    className="pdp-btn-primary"
+                    onClick={() => {
+                    if (!user?.id) {
+                        requireLogin("Please log in to buy.");
+                        return;
+                      }
+
+
+                      router.push(`/CheckOut?${new URLSearchParams(
+                        Object.entries(productInfo).reduce<Record<string, string>>(
+                          (acc, [k, v]) => {
+                            acc[k] = String(v ?? "");
+                            return acc;
+                          },
+                          {},
+                        )
+                      )}`);
+                    }}
+                  >
+                    Buy Now
+                  </button>
                 )}
+
+
                 <button
-                  onClick={handleAskSeller}
+                  type="button"
+                  onClick={() => {
+                    if (!user?.id) {
+                        requireLogin("Please log in to ask seller.");
+                        return;
+                      }
+
+                    handleAskSeller();
+                  }}
                   disabled={!!isOwnProduct}
                   className="pdp-btn-secondary"
                 >
                   <MessageCircle size={14} />
                   {isOwnProduct ? "Your product" : "Ask seller"}
                 </button>
+
                 {!isOwnProduct && product?.user?.id && (
                   <button
-                    onClick={() => setShowOfferModal(true)}
+                    type="button"
+                    onClick={() => {
+                      if (!user?.id) {
+                        requireLogin("Please log in to make an offer.");
+                        return;
+                      }
+
+
+                      setShowOfferModal(true);
+                    }}
                     className="pdp-btn-secondary"
                   >
                     <Tag size={14} />

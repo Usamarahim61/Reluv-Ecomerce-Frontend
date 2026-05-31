@@ -13,6 +13,12 @@ export default function AccountSetting() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false); // ← NEW
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [errors, setErrors] = useState<{
+    phoneNumber?: string;
+    fullName?: string;
+    gender?: string;
+    birthday?: string;
+  }>({});
   const [formData, setFormData] = useState({
     email: "",
     phoneNumber: "",
@@ -55,11 +61,33 @@ export default function AccountSetting() {
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const validateForm = () => {
+    const nextErrors: typeof errors = {};
+
+    if (!formData.fullName.trim()) {
+      nextErrors.fullName = "Full name is required.";
+    }
+    if (!formData.phoneNumber.trim()) {
+      nextErrors.phoneNumber = "Phone number is required.";
+    }
+    if (!formData.gender) {
+      nextErrors.gender = "Gender is required.";
+    }
+    if (!formData.birthday) {
+      nextErrors.birthday = "Birthday is required.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
+    if (!validateForm()) return;
 
     try {
       setIsSubmitting(true);
@@ -134,14 +162,20 @@ export default function AccountSetting() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-t border-[#cb6f4d] pt-6 gap-2">
-            <span className="font-semibold text-gray-700">Phone number</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-t border-[#cb6f4d] pt-6 gap-2">
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold text-gray-700">Phone number</span>
+              {errors.phoneNumber && (
+                <span className="text-sm text-red-500">{errors.phoneNumber}</span>
+              )}
+            </div>
             <input
               type="tel"
               value={formData.phoneNumber}
               onChange={(e) => handleChange("phoneNumber", e.target.value)}
-              className="w-full sm:max-w-[250px] border border-[#cb6f4d] p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium"
+              className={`w-full sm:max-w-[250px] border p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium ${errors.phoneNumber ? "border-red-500" : "border-[#cb6f4d]"}`}
               placeholder="Enter phone number"
+              required
             />
           </div>
         </div>
@@ -152,23 +186,35 @@ export default function AccountSetting() {
             Identity Details
           </h3>
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-50 pb-6 gap-2">
-            <label className="font-semibold text-gray-700">Full name</label>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-gray-700">Full name</label>
+              {errors.fullName && (
+                <span className="text-sm text-red-500">{errors.fullName}</span>
+              )}
+            </div>
             <input
               type="text"
               value={formData.fullName}
               onChange={(e) => handleChange("fullName", e.target.value)}
               placeholder="Your full name"
-              className="w-full sm:max-w-[300px] border border-[#cb6f4d] p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium"
+              className={`w-full sm:max-w-[300px] border p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium ${errors.fullName ? "border-red-500" : "border-[#cb6f4d]"}`}
+              required
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-50 pb-6 gap-2">
-            <label className="font-semibold text-gray-700">Gender</label>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-gray-700">Gender</label>
+              {errors.gender && (
+                <span className="text-sm text-red-500">{errors.gender}</span>
+              )}
+            </div>
             <select
               value={formData.gender}
               onChange={(e) => handleChange("gender", e.target.value)}
-              className="cs-select"
+              className={`cs-select ${errors.gender ? "border-red-500" : ""}`}
+              required
             >
               <option value="">Select gender</option>
               <option value="Male">Male</option>
@@ -177,13 +223,19 @@ export default function AccountSetting() {
             </select>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <label className="font-semibold text-gray-700">Birthday</label>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-gray-700">Birthday</label>
+              {errors.birthday && (
+                <span className="text-sm text-red-500">{errors.birthday}</span>
+              )}
+            </div>
             <input
               type="date"
               value={formData.birthday}
               onChange={(e) => handleChange("birthday", e.target.value)}
-              className="w-full sm:w-auto text-gray-600 sm:bg-transparent p-3 sm:p-0 rounded-lg focus:outline-[#cb6f4d] font-medium sm:text-right"
+              className={`w-full sm:w-auto text-gray-600 sm:bg-transparent p-3 sm:p-0 rounded-lg focus:outline-[#cb6f4d] font-medium sm:text-right ${errors.birthday ? "border border-red-500" : ""}`}
+              required
             />
           </div>
         </div>

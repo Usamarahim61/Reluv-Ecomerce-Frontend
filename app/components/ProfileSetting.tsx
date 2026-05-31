@@ -10,6 +10,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
 import ImageCropModal from "../components/ImageCropModal"; 
+import { getGoogleAddress, getUserAvatarUrl } from "@/lib/user-profile";
 
 const MAX_AVATAR_SIZE_MB = 10;
 
@@ -44,7 +45,11 @@ export default function ProfileSetting() {
   const [isUpdating, setIsUpdating]           = useState(false);
   const [error, setError]                     = useState<string | null>(null);
 
-  const countries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
+  const baseCountries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
+  const countries =
+    formData.country && !baseCountries.includes(formData.country)
+      ? [...baseCountries, formData.country]
+      : baseCountries;
 
   const cityByCountry: { [key: string]: string[] } = {
     Thailand: ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani"],
@@ -54,7 +59,11 @@ export default function ProfileSetting() {
     Myanmar:  ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
   };
 
-  const cities    = formData.country ? cityByCountry[formData.country] : [];
+  const baseCities = formData.country ? cityByCountry[formData.country] || [] : [];
+  const cities =
+    formData.city && !baseCities.includes(formData.city)
+      ? [...baseCities, formData.city]
+      : baseCities;
   const languages = ["en", "th"];
 
   /* ---------- fetch user (once) ---------- */
@@ -66,17 +75,20 @@ export default function ProfileSetting() {
         setLoading(true);
         const data       = await getUser(Number(user.id));
         const userAvatar = await getUserAvatr(Number(user.id));
+        const mergedUser = { ...data, ...userAvatar };
+        const googleAddress = getGoogleAddress(mergedUser);
         setFormData({
           username: data.username || "",
           about:    data.about    || "",
-          country:  data.country  || "",
-          city:     data.city     || "",
+          country:  data.country  || googleAddress?.country || "",
+          city:     data.city     || googleAddress?.locality || "",
           showCity: data.isShowCity ?? true,
           language: data.language || "",
         });
-        if (userAvatar.avatar?.url) {
-          setAvatarPreview(userAvatar.avatar.url);
-          avatarPreviewRef.current = userAvatar.avatar.url;
+        const avatarUrl = getUserAvatarUrl(mergedUser);
+        if (avatarUrl) {
+          setAvatarPreview(avatarUrl);
+          avatarPreviewRef.current = avatarUrl;
         }
       } catch {
         hasFetched.current = false;
