@@ -29,7 +29,12 @@ type Category =
   | "Disputes_Raised";
 type Status = "All" | "Placed" | "In Progress" | "Completed" | "Cancelled";
 type OfferStatus = "All" | "pending" | "accepted" | "declined";
-type DisputeStatus = "OPEN" | "UNDER_REVIEW" | "RESOLVED" | "REJECTED" | "CLOSED";
+type DisputeStatus =
+  | "OPEN"
+  | "UNDER_REVIEW"
+  | "RESOLVED"
+  | "REJECTED"
+  | "CLOSED";
 
 const STATUS_STYLES: Record<
   Exclude<Status, "All">,
@@ -115,7 +120,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
   const handleSubmit = async () => {
     if (!reason || !details.trim()) return;
     setSubmitting(true);
-    await onSubmit(order.id, reason, details);
+    await onSubmit(order, reason, details);
     setSubmitting(false);
     setSubmitted(true);
   };
@@ -379,10 +384,12 @@ function DisputeStatusModal({
   dispute,
   onClose,
 }: DisputeStatusModalProps) {
-  const statusKey =
-    (dispute?.disputeStatus || dispute?.status || "OPEN").toUpperCase();
-  const cfg =
-    DISPUTE_STATUS_CONFIG[statusKey] || DISPUTE_STATUS_CONFIG["OPEN"];
+  const statusKey = (
+    dispute?.disputeStatus ||
+    dispute?.status ||
+    "OPEN"
+  ).toUpperCase();
+  const cfg = DISPUTE_STATUS_CONFIG[statusKey] || DISPUTE_STATUS_CONFIG["OPEN"];
   const StatusIcon = cfg.icon;
 
   useEffect(() => {
@@ -409,7 +416,7 @@ function DisputeStatusModal({
     {
       label: "Under review by support team",
       done: ["UNDER_REVIEW", "RESOLVED", "REJECTED", "CLOSED"].includes(
-        statusKey
+        statusKey,
       ),
       date: null,
     },
@@ -622,10 +629,12 @@ function OrdersInner() {
   const [activeCategory, setActiveCategory] = useState<Category>("Sold");
   const [activeStatus, setActiveStatus] = useState<Status>("All");
   const [offerStatus, setOfferStatus] = useState<OfferStatus>("All");
-  const [disputeRaisedStatus, setDisputeRaisedStatus] =
-    useState<DisputeStatus | "All">("All");
-  const [disputeReceivedStatus, setDisputeReceivedStatus] =
-    useState<DisputeStatus | "All">("All");
+  const [disputeRaisedStatus, setDisputeRaisedStatus] = useState<
+    DisputeStatus | "All"
+  >("All");
+  const [disputeReceivedStatus, setDisputeReceivedStatus] = useState<
+    DisputeStatus | "All"
+  >("All");
 
   const [respondingTo, setRespondingTo] = useState<number | null>(null);
   const [confirmingOrder, setConfirmingOrder] = useState<number | null>(null);
@@ -653,7 +662,12 @@ function OrdersInner() {
     "Completed",
     "Cancelled",
   ];
-  const offerStatuses: OfferStatus[] = ["All", "pending", "accepted", "declined"];
+  const offerStatuses: OfferStatus[] = [
+    "All",
+    "pending",
+    "accepted",
+    "declined",
+  ];
   const disputeStatuses: (DisputeStatus | "All")[] = [
     "All",
     "OPEN",
@@ -671,7 +685,7 @@ function OrdersInner() {
   // Countdown timer
   useEffect(() => {
     const acceptedOffers = offersData.filter(
-      (o) => o.status === "accepted" && o.expiresAt
+      (o) => o.status === "accepted" && o.expiresAt,
     );
     if (acceptedOffers.length === 0) return;
     const interval = setInterval(() => {
@@ -703,7 +717,7 @@ function OrdersInner() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: Number(user.id) }),
-          }
+          },
         );
         if (!res.ok) return;
         const data = await res.json();
@@ -745,7 +759,7 @@ function OrdersInner() {
     if (!user?.id) return;
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/disputes?filters[raisedBy][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id`
+        `${API_BASE_URL}/api/disputes?filters[raisedBy][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -760,7 +774,7 @@ function OrdersInner() {
     if (!user?.id) return;
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/disputes?filters[order][seller][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id&populate[raisedBy][fields][1]=username`
+        `${API_BASE_URL}/api/disputes?filters[order][seller][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id&populate[raisedBy][fields][1]=username`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -777,22 +791,19 @@ function OrdersInner() {
 
   const handleRespondToOffer = async (
     offerId: number,
-    action: "accepted" | "declined"
+    action: "accepted" | "declined",
   ) => {
     if (!user?.id) return;
     setRespondingTo(offerId);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/offers/${offerId}/respond`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, sellerId: Number(user.id) }),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/api/offers/${offerId}/respond`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, sellerId: Number(user.id) }),
+      });
       if (res.ok)
         setOffersData((prev) =>
-          prev.map((o) => (o.id === offerId ? { ...o, status: action } : o))
+          prev.map((o) => (o.id === offerId ? { ...o, status: action } : o)),
         );
     } catch {
       /* silent */
@@ -844,8 +855,8 @@ function OrdersInner() {
       if (res.ok) {
         setOrdersData((prev) =>
           prev.map((o) =>
-            o.documentId === orderId ? { ...o, orderStatus: "cancelled" } : o
-          )
+            o.documentId === orderId ? { ...o, orderStatus: "cancelled" } : o,
+          ),
         );
       }
     } catch (err) {
@@ -871,24 +882,28 @@ function OrdersInner() {
         shippingFee: "100",
         sellerId: String(offer.seller?.id || ""),
         offerId: String(offer.id),
-      }).toString()}`
+      }).toString()}`,
     );
   };
 
   const handleDisputeSubmit = async (
-    orderId: any,
+    order: any,
     reason: string,
-    details: string
+    details: string,
   ) => {
     if (!user?.id) return;
     try {
+      const sellerID = ordersData.find((o) => {
+        return o.id === order.id;
+      })?.seller?.id;
       const res = await fetch(`${API_BASE_URL}/api/disputes/file-dispute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           data: {
-            order: orderId,
+            order: order?.id,
             raisedBy: Number(user.id),
+            sellerId: Number(sellerID),
             reason,
             details,
           },
@@ -939,7 +954,7 @@ function OrdersInner() {
       .filter(
         (o) =>
           o.type === activeCategory &&
-          (activeStatus === "All" || o.status === activeStatus)
+          (activeStatus === "All" || o.status === activeStatus),
       );
   }, [ordersData, activeCategory, activeStatus]);
 
@@ -982,7 +997,7 @@ function OrdersInner() {
       .map(mapDisputeToCard)
       .filter(
         (d) =>
-          disputeRaisedStatus === "All" || d.status === disputeRaisedStatus
+          disputeRaisedStatus === "All" || d.status === disputeRaisedStatus,
       );
   }, [disputesData, disputeRaisedStatus]);
 
@@ -991,36 +1006,35 @@ function OrdersInner() {
       .map(mapDisputeToCard)
       .filter(
         (d) =>
-          disputeReceivedStatus === "All" ||
-          d.status === disputeReceivedStatus
+          disputeReceivedStatus === "All" || d.status === disputeReceivedStatus,
       );
   }, [disputesReceivedData, disputeReceivedStatus]);
 
   const filteredOffers = useMemo(
     () =>
       offersData.filter(
-        (o) => offerStatus === "All" || o.status === offerStatus
+        (o) => offerStatus === "All" || o.status === offerStatus,
       ),
-    [offersData, offerStatus]
+    [offersData, offerStatus],
   );
 
   // Counts
   const soldCount = useMemo(
     () => ordersData.filter((o) => o.type === "Sold").length,
-    [ordersData]
+    [ordersData],
   );
   const boughtCount = useMemo(
     () => ordersData.filter((o) => o.type === "Bought").length,
-    [ordersData]
+    [ordersData],
   );
   const offersCount = useMemo(() => offersData.length, [offersData]);
   const disputesRaisedCount = useMemo(
     () => disputesData.length,
-    [disputesData]
+    [disputesData],
   );
   const disputesReceivedCount = useMemo(
     () => disputesReceivedData.length,
-    [disputesReceivedData]
+    [disputesReceivedData],
   );
 
   // Helper: does this order already have a raised dispute?
@@ -1122,7 +1136,8 @@ function OrdersInner() {
     if (cat === "Sold") return "Items you have sold";
     if (cat === "Bought") return "Items you have bought";
     if (cat === "Offers") return "Offers you've sent or received";
-    if (cat === "Disputes_Recieved") return "Disputes filed against your orders";
+    if (cat === "Disputes_Recieved")
+      return "Disputes filed against your orders";
     if (cat === "Disputes_Raised") return "Disputes you have filed";
     return "";
   };
@@ -1220,7 +1235,7 @@ function OrdersInner() {
         return renderEmptyState(
           <Shield size={40} className="text-[#cb6f4d]" strokeWidth={1.2} />,
           "No disputes raised",
-          "Disputes you file will appear here"
+          "Disputes you file will appear here",
         );
       return (
         <div className="space-y-3">
@@ -1239,12 +1254,12 @@ function OrdersInner() {
             strokeWidth={1.2}
           />,
           "No disputes received",
-          "Disputes filed against your orders will appear here"
+          "Disputes filed against your orders will appear here",
         );
       return (
         <div className="space-y-3">
           {filteredDisputesReceived.map((card) =>
-            renderDisputeCard(card, true)
+            renderDisputeCard(card, true),
           )}
         </div>
       );
@@ -1256,7 +1271,7 @@ function OrdersInner() {
         return renderEmptyState(
           <DollarSign size={40} className="text-[#cb6f4d]" strokeWidth={1.2} />,
           "No offers yet",
-          "Offers you send or receive will appear here"
+          "Offers you send or receive will appear here",
         );
       return (
         <div className="space-y-3">
@@ -1267,8 +1282,8 @@ function OrdersInner() {
               offer.status === "accepted"
                 ? "bg-[#edf7f0] text-[#2e7d4f] border-[#b8e0c8]"
                 : offer.status === "declined"
-                ? "bg-[#fdf2f2] text-[#b33333] border-[#f0c8c8]"
-                : "bg-[#fff7f0] text-[#cb6f4d] border-[#f5d5c0]";
+                  ? "bg-[#fdf2f2] text-[#b33333] border-[#f0c8c8]"
+                  : "bg-[#fff7f0] text-[#cb6f4d] border-[#f5d5c0]";
             return (
               <div
                 key={offer.id}
@@ -1332,18 +1347,14 @@ function OrdersInner() {
                 {isSeller && isPending && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() =>
-                        handleRespondToOffer(offer.id, "accepted")
-                      }
+                      onClick={() => handleRespondToOffer(offer.id, "accepted")}
                       disabled={respondingTo === offer.id}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#2e7d4f] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#256a42] disabled:opacity-50"
                     >
                       <Check size={14} /> Accept
                     </button>
                     <button
-                      onClick={() =>
-                        handleRespondToOffer(offer.id, "declined")
-                      }
+                      onClick={() => handleRespondToOffer(offer.id, "declined")}
                       disabled={respondingTo === offer.id}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#ddd] bg-white px-4 py-2 text-sm font-semibold text-[#555] transition-all hover:border-[#b33333] hover:text-[#b33333] disabled:opacity-50"
                     >
@@ -1396,14 +1407,13 @@ function OrdersInner() {
       return renderEmptyState(
         <Package size={40} className="text-[#cb6f4d]" strokeWidth={1.2} />,
         "No orders yet",
-        `When you ${activeCategory.toLowerCase()} something, it'll appear here`
+        `When you ${activeCategory.toLowerCase()} something, it'll appear here`,
       );
 
     return (
       <div className="space-y-3">
         {filteredOrders.map((order) => {
-          const ss =
-            STATUS_STYLES[order.status as Exclude<Status, "All">];
+          const ss = STATUS_STYLES[order.status as Exclude<Status, "All">];
           const isPlacedSold =
             order.status === "Placed" && activeCategory === "Sold";
 
@@ -1587,7 +1597,7 @@ function OrdersInner() {
   const renderEmptyState = (
     icon: React.ReactNode,
     title: string,
-    subtitle: string
+    subtitle: string,
   ) => (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="relative mb-6">
@@ -1611,7 +1621,11 @@ function OrdersInner() {
     { label: "Sold", count: soldCount, Icon: Tag },
     { label: "Bought", count: boughtCount, Icon: ShoppingBag },
     { label: "Offers", count: offersCount, Icon: DollarSign },
-    { label: "Disputes", count: disputesRaisedCount + disputesReceivedCount, Icon: AlertTriangle },
+    {
+      label: "Disputes",
+      count: disputesRaisedCount + disputesReceivedCount,
+      Icon: AlertTriangle,
+    },
   ] as const;
 
   return (
@@ -1748,8 +1762,8 @@ function OrdersInner() {
                             {cat === "Offers"
                               ? "offers"
                               : cat.startsWith("Disputes")
-                              ? "disputes"
-                              : "orders"}
+                                ? "disputes"
+                                : "orders"}
                           </span>
                         </div>
                       </div>

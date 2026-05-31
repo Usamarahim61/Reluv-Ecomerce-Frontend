@@ -5,7 +5,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import Providers from "./providers";
 import Script from "next/script";
-import Navbar from "./components/navbar";
 import NavbarV2 from "./components/navbarV2";
 import AuthSessionPrompt from "./components/AuthSessionPrompt";
 

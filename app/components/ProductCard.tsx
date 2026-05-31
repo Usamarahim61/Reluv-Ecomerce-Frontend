@@ -40,7 +40,7 @@ const toImageUrl = (value: unknown): string | null => {
 };
 
 export default function ProductCard({
-  id,
+   id,
   documentId,
   brand,
   title,
@@ -49,16 +49,17 @@ export default function ProductCard({
   price,
   totalPrice,
   imageUrl,
+  images,
   likes,
   variant = "default",
-  isLiked: isLikedProp = false,   // ✅ from parent
-  onFavChange,                     // ✅ from parent
+  isLiked: isLikedProp = false,
+  onFavChange,                    // ✅ from parent
 }: any) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(isLikedProp);
   const [likesCount, setLikesCount] = useState(Number(likes || 0));
 
-  const safeImageUrl = toImageUrl(imageUrl);
+  const safeImageUrl = toImageUrl(imageUrl ?? images?.[0]);
   const productId = encodeURIComponent(String(id ?? "").trim() || "0");
   const productDocumentId = encodeURIComponent(
     String(documentId ?? "").trim() || "0"
@@ -163,9 +164,9 @@ export default function ProductCard({
           </button>
 
           {/* Condition Badge */}
-          <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-[#1a1a1a] shadow-md">
+          {/* <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-[#1a1a1a] shadow-md">
             {conditionText || "New"}
-          </div>
+          </div> */}
 
           {/* Likes Counter */}
           {likesCount > 0 && (
@@ -197,7 +198,7 @@ export default function ProductCard({
                 <span>•</span>
               </>
             )}
-            <span className="bg-[#f5f5f5] px-2 py-0.5 rounded-md font-medium">{conditionText || "Good"}</span>
+            <span className="rounded-full border border-[#cb6f4d] text-[#cb6f4d] px-3 py-1 text-[11px] font-medium transition-colors duration-300 hover:bg-[rgb(203,111,77)] hover:text-white">{conditionText || "Good"}</span>
           </div>
 
           {/* Spacer */}
@@ -211,9 +212,9 @@ export default function ProductCard({
             </div>
 
             <div className="flex items-center justify-between text-xs">
-              <span className="text-[#aaa]">Incl. fees</span>
+              <span className="text-[#aaa]">buyer protection Incl.</span>
               <div className="flex items-center gap-1 text-[#1a1a1a] font-semibold">
-                <span>{totalPriceText}</span>
+                <span>100 TBH</span>
                 <ShieldCheck size={12} className="text-[#cb6f4d]" />
               </div>
             </div>

@@ -6,6 +6,7 @@ import ProductCardV2 from './ProductCardV2';
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { getUserFav_Products } from '@/services/auth-service';
+import ProductCard from './ProductCard';
 
 export default function ProductFeed({
   productList,
@@ -81,7 +82,7 @@ export default function ProductFeed({
     <section className={wrapper}>
       <div className={grid}>
         {productList.map((item, index) => (
-          <ProductCardV2
+          <ProductCard
             key={index}
             {...item}
             variant={cardVariant}

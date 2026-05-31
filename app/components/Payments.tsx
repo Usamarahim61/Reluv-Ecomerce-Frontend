@@ -1,9 +1,12 @@
 "use client";
-import React, { JSX, useState } from "react";
+import React, { JSX, useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 
 import CardDetailsModal from "./AddCard";
 import AddBankAccount from "./AddBankAccount";
+import { API_BASE_URL } from "../constants/api";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PaymentOptionProps {
   title: string;
@@ -11,9 +14,53 @@ interface PaymentOptionProps {
   onClick?: () => void;
 }
 
-export default function Payments(): JSX.Element {
+interface SavedCard {
+  id: string;
+  cardName: string;
+  cardNumber: string; // last 4 digits
+  expiry: string;
+}
+
+interface SavedBank {
+  id: string;
+  accountHolder: string;
+  iban: string;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface PaymentsProps {
+  userId: string;
+}
+
+export default function Payments({ userId }: PaymentsProps): JSX.Element {
   const [openCardModal, setOpenCardModal] = useState(false);
   const [openBankAccountModal, setOpenBankAccountModal] = useState(false);
+
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [savedBanks, setSavedBanks] = useState<SavedBank[]>([]);
+  const [loadingCards, setLoadingCards] = useState(true);
+  const [loadingBanks, setLoadingBanks] = useState(true);
+
+  // ── Fetch on mount ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/users/${userId}/payment-methods`)
+      .then((r) => r.json())
+      .then((data: SavedCard[]) => setSavedCards(data))
+      .catch(console.error)
+      .finally(() => setLoadingCards(false));
+  }, [userId]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/users/${userId}/bank-accounts`)
+      .then((r) => r.json())
+      .then((data: SavedBank[]) => setSavedBanks(data))
+      .catch(console.error)
+      .finally(() => setLoadingBanks(false));
+  }, [userId]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const openCard = () => {
     setOpenBankAccountModal(false);
@@ -25,6 +72,62 @@ export default function Payments(): JSX.Element {
     setOpenBankAccountModal(true);
   };
 
+  const handleSaveCard = async (card: {
+    cardName: string;
+    cardNumber: string;
+    expiry: string;
+    cvv: string;
+  }) => {
+    try {
+      const payload = {
+        cardName: card.cardName,
+        cardNumber: card.cardNumber.replace(/\s/g, "").slice(-4), // store last 4 only
+        expiry: card.expiry,
+      };
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/users/${userId}/payment-methods`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to save card");
+
+      const saved: SavedCard = await res.json();
+      setSavedCards((prev) => [...prev, saved]);
+      setOpenCardModal(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCard = async (id: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/users/${userId}/payment-methods/${id}`, {
+        method: "DELETE",
+      });
+      setSavedCards((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBank = async (id: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/users/${userId}/bank-accounts/${id}`, {
+        method: "DELETE",
+      });
+      setSavedBanks((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <>
       <div className="max-w-2xl mx-auto p-4 space-y-8 bg-white text-[#111111]">
@@ -35,10 +138,28 @@ export default function Payments(): JSX.Element {
             Payment options
           </h3>
 
-          <PaymentRow
-            title="Add card"
-            onClick={openCard}
-          />
+          {/* Saved cards */}
+          {!loadingCards && savedCards.map((card) => (
+            <div
+              key={card.id}
+              className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <span className="font-medium text-gray-900 text-[15px]">
+                  {card.cardName} •••• {card.cardNumber}
+                </span>
+                <span className="text-xs text-gray-400">{card.expiry}</span>
+              </div>
+              <button
+                onClick={() => handleDeleteCard(card.id)}
+                className="text-xs text-red-400 hover:text-red-600 transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+
+          <PaymentRow title="Add card" onClick={openCard} />
         </section>
 
         {/* Withdrawal Options */}
@@ -48,10 +169,31 @@ export default function Payments(): JSX.Element {
           </h3>
 
           <div className="space-y-3">
-            <PaymentRow
-              title="Add bank account"
-              onClick={openBank}
-            />
+
+            {/* Saved bank accounts */}
+            {!loadingBanks && savedBanks.map((bank) => (
+              <div
+                key={bank.id}
+                className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-gray-900 text-[15px]">
+                    {bank.accountHolder}
+                  </span>
+                  <span className="text-xs text-gray-400 uppercase">
+                    {bank.iban.slice(0, 6)}••••
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDeleteBank(bank.id)}
+                  className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+
+            <PaymentRow title="Add bank account" onClick={openBank} />
 
             <PaymentRow
               title="DAC7 centre"
@@ -76,12 +218,12 @@ export default function Payments(): JSX.Element {
         </section>
       </div>
 
-      {/* ===== Modals ===== */}
+      {/* ===== Modals — your originals, untouched ===== */}
 
       <CardDetailsModal
         isOpen={openCardModal}
         onClose={() => setOpenCardModal(false)}
-        onSave={(card) => console.log("Card saved:", card)}
+        onSave={handleSaveCard}
       />
 
       <AddBankAccount
@@ -92,12 +234,8 @@ export default function Payments(): JSX.Element {
   );
 }
 
-/* Row */
-function PaymentRow({
-  title,
-  icon,
-  onClick,
-}: PaymentOptionProps): JSX.Element {
+/* Row — original, untouched */
+function PaymentRow({ title, icon, onClick }: PaymentOptionProps): JSX.Element {
   return (
     <button
       onClick={onClick}
@@ -105,11 +243,8 @@ function PaymentRow({
     >
       <div className="flex items-center gap-3">
         {icon && <div>{icon}</div>}
-        <span className="font-medium text-gray-900 text-[15px]">
-          {title}
-        </span>
+        <span className="font-medium text-gray-900 text-[15px]">{title}</span>
       </div>
-
       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
     </button>
   );
