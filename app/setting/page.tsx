@@ -41,7 +41,7 @@ export default function SettingsComp() {
       case "Profile Setting": return <ProfileSetting />;
       case "Account Setting": return <AccountSetting />;
       case "Postage": return <Postage />;
-      case "Payments": return <Payments />;
+      case "Payments": return <Payments userId="" />;
       case "Bundle Discount": return <BundleDiscount />;
       case "Notification": return <Notification />;
       case "Privacy Setting": return <PrivacySetting />;

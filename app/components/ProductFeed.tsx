@@ -2,7 +2,6 @@
 import { ChevronDown } from 'lucide-react';
 import type { ProductCardItem } from '@/services/products-service';
 import { ProductGridError, ProductGridSkeleton, ProductGridEmpty } from "../components/Skeletons";
-import ProductCardV2 from './ProductCardV2';
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { getUserFav_Products } from '@/services/auth-service';
