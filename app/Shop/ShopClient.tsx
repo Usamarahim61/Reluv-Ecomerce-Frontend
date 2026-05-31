@@ -291,7 +291,7 @@ export default function ShopClient() {
               </button>
 
               {categoryMenuOpen ? (
-                <div className="absolute left-0 top-full z-30 mt-2 w-[380px] overflow-hidden rounded-xl border border-[#d5dfe4] bg-white shadow-[0_14px_40px_rgba(0,0,0,0.14)]">
+                <div className="absolute left-0 top-full z-30 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#d5dfe4] bg-white shadow-[0_14px_40px_rgba(0,0,0,0.14)]">
                   <div className="space-y-3 border-b border-[#e9eef1] bg-[#f8fbfc] p-3">
                     <input
                       type="text"

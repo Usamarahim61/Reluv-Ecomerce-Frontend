@@ -463,9 +463,9 @@ function ShopPageContent() {
 
             {/* ── Slide-down filter panel ── */}
             <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${filtersOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${filtersOpen ? 'max-h-[min(85vh,720px)] opacity-100' : 'max-h-0 opacity-0'}`}
             >
-              <div className="mb-4 rounded-2xl border border-[#e0ddd8] bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+              <div className="mb-4 rounded-2xl border border-[#e0ddd8] bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.05)] max-h-[min(82vh,680px)] overflow-y-auto">
 
                 {/* Category row */}
                 <div className="mb-5" ref={categoryMenuRef}>
@@ -515,7 +515,7 @@ function ShopPageContent() {
 
                     {/* Category tree dropdown */}
                     {categoryMenuOpen && (
-                      <div className="absolute left-0 top-full z-30 mt-2 w-[380px] overflow-hidden rounded-2xl border border-[#e0ddd8] bg-white shadow-[0_14px_40px_rgba(0,0,0,0.12)]">
+                      <div className="absolute left-0 top-full z-30 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#e0ddd8] bg-white shadow-[0_14px_40px_rgba(0,0,0,0.12)]">
                         <div className="border-b border-[#f0ede8] bg-[#faf9f7] p-3 space-y-2">
                           <input
                             type="text"
