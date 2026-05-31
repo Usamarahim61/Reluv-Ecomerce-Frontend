@@ -47,7 +47,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/users/${userId}/payment-methods`)
       .then((r) => r.json())
-      .then((data: SavedCard[]) => setSavedCards(data))
+      .then((data: any) => setSavedCards(Array.isArray(data) ? data : data?.data ?? []))
       .catch(console.error)
       .finally(() => setLoadingCards(false));
   }, [userId]);
@@ -55,7 +55,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/users/${userId}/bank-accounts`)
       .then((r) => r.json())
-      .then((data: SavedBank[]) => setSavedBanks(data))
+      .then((data: any) => setSavedBanks(Array.isArray(data) ? data : data?.data ?? []))
       .catch(console.error)
       .finally(() => setLoadingBanks(false));
   }, [userId]);
@@ -139,7 +139,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
           </h3>
 
           {/* Saved cards */}
-          {!loadingCards && savedCards.map((card) => (
+          {!loadingCards && Array.isArray(savedCards) ? savedCards.map((card:any) => (
             <div
               key={card.id}
               className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
@@ -157,7 +157,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
                 Remove
               </button>
             </div>
-          ))}
+          )) : null}
 
           <PaymentRow title="Add card" onClick={openCard} />
         </section>
@@ -171,7 +171,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
           <div className="space-y-3">
 
             {/* Saved bank accounts */}
-            {!loadingBanks && savedBanks.map((bank) => (
+            {!loadingBanks && Array.isArray(savedBanks) ? savedBanks.map((bank) => (
               <div
                 key={bank.id}
                 className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
@@ -191,7 +191,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
                   Remove
                 </button>
               </div>
-            ))}
+            )) : null}
 
             <PaymentRow title="Add bank account" onClick={openBank} />
 

@@ -15,7 +15,7 @@ interface CardDetailsModalProps {
 }
 
 export default function CardDetailsModal({ isOpen, onClose, onSave  }: CardDetailsModalProps): JSX.Element | null {
-  const [cardName, setCardName] = useState<string>("Raja Abad");
+  const [cardName, setCardName] = useState<string>("");
   const [cardNumber, setCardNumber] = useState<string>("");
   const [expiry, setExpiry] = useState<string>("");
   const [cvv, setCvv] = useState<string>("");
@@ -108,6 +108,7 @@ export default function CardDetailsModal({ isOpen, onClose, onSave  }: CardDetai
                 type="text"
                 value={cardName}
                 onChange={(e) => setCardName(e.target.value)}
+                placeholder="Enter your name as it appears on the card"
                 className="w-full focus:outline-none text-gray-900 py-1"
               />
             </div>

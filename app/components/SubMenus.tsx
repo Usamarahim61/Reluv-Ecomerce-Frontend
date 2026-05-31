@@ -66,10 +66,10 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
 
       {/* MegaMenu panel */}
       {activeCategory && activeCategory.children && (
-        <div className="absolute left-0 top-full w-full bg-white shadow-lg border-t border-gray-200 z-50 py-4 px-6 flex gap-6 h-[320px]">
+        <div className="absolute left-0 top-full right-0 w-full bg-white shadow-lg border-t border-gray-200 z-50 py-4 px-6 flex gap-6 max-h-[60vh] overflow-y-auto pointer-events-auto">
           
           {/* Children Column */}
-          <div className="flex flex-col gap-2 min-w-[200px]">
+          <div className="flex flex-col gap-2 min-w-[200px] max-h-[55vh] overflow-y-auto pr-2">
             {activeCategory.children.map((child) => (
               <div
                 key={child.label}
@@ -94,19 +94,21 @@ export function SubMenus({ subCategories = [], loading = false }: SubMenusProps)
           <div className="w-[1px] bg-gray-200"></div>
 
           {/* Items Column */}
-          <div className="flex flex-col flex-wrap gap-5">
-            {activeCategory.children
-              .filter((child) => child.label === selectedChild)
-              .flatMap((child) => child.items.map((item, idx) => ({ item, slug: child.itemSlugs?.[idx] })))
-              .map(({ item, slug }) => (
-                <Link
-                  href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(selectedChild || "")}&item=${encodeURIComponent(slug || item)}`}
-                  key={item}
-                  className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#cb6f4d] hover:font-semibold whitespace-nowrap"
-                >
-                  {item}
-                </Link>
-              ))}
+          <div className="flex-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[55vh] py-1">
+              {activeCategory.children
+                .filter((child) => child.label === selectedChild)
+                .flatMap((child) => child.items.map((item, idx) => ({ item, slug: child.itemSlugs?.[idx] })))
+                .map(({ item, slug }) => (
+                  <Link
+                    href={`/Shop?category=${encodeURIComponent(activeCategory.slug || activeCategory.label)}&subCategory=${encodeURIComponent(selectedChild || "")}&item=${encodeURIComponent(slug || item)}`}
+                    key={item}
+                    className="px-3 py-1 cursor-pointer text-gray-700 hover:text-[#cb6f4d] hover:font-semibold break-words"
+                  >
+                    {item}
+                  </Link>
+                ))}
+            </div>
           </div>
         </div>
       )}
