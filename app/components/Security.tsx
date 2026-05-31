@@ -8,7 +8,7 @@ import LoginActivityModal from "./Loginactivitymodal";
 import { useAuth } from "@/context/AuthContext";
 
 interface Props {
-  email: string;
+  email?: string;
   twoFactorEnabled?: boolean;
   onEmailChanged?: (newEmail: string) => void;
   on2FAChanged?: (enabled: boolean) => void;
@@ -20,13 +20,15 @@ export default function Security({
   onEmailChanged,
   on2FAChanged,
 }: Props): JSX.Element {
+
   const { user } = useAuth();
   const [showPasswordModal,  setShowPasswordModal]  = useState(false);
   const [showEmailModal,     setShowEmailModal]     = useState(false);
   const [show2FAModal,       setShow2FAModal]       = useState(false);
   const [showActivityModal,  setShowActivityModal]  = useState(false);
 
-  const [currentEmail, setCurrentEmail] = useState(user?.email);
+  const [currentEmail, setCurrentEmail] = useState<string>(user?.email ?? "");
+
   const [is2FAEnabled, setIs2FAEnabled] = useState(twoFactorEnabled);
 
   function handleEmailChanged(newEmail: string) {
