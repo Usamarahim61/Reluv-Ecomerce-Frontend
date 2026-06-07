@@ -8,8 +8,10 @@ import { useState } from "react";
 type Step = "send" | "verify" | "reset" | "done";
 
 interface Props {
-  email: string;          // pre-filled from logged-in user
+  email: string;
   onClose: () => void;
+  onSuccess?: (password: string) => void;  // ← add this
+  onError?: () => void;   // ← add this
 }
 
 /* ─────────────────────────────────────────────
@@ -63,7 +65,7 @@ function OtpInput({
 /* ─────────────────────────────────────────────
    Main modal
 ───────────────────────────────────────────── */
-export default function ChangePasswordModal({ email, onClose }: Props) {
+export default function ChangePasswordModal({ email, onClose, onSuccess, onError }: Props) {
   const [step, setStep]           = useState<Step>("send");
   const [otp, setOtp]             = useState(["", "", "", "", "", ""]);
   const [password, setPassword]   = useState("");
@@ -155,20 +157,22 @@ export default function ChangePasswordModal({ email, onClose }: Props) {
     }
   }
 
-  async function handleResetPassword() {
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-    if (password !== confirm) { setError("Passwords do not match."); return; }
-    setError("");
-    setLoading(true);
-    try {
-      await apiPost("/api/password-reset/reset", { email, otp: otpString, password });
-      setStep("done");
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+ async function handleResetPassword() {
+  if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+  if (password !== confirm) { setError("Passwords do not match."); return; }
+  setError("");
+  setLoading(true);
+  try {
+    await apiPost("/api/password-reset/reset", { email, otp: otpString, password });
+    setStep("done");
+    onSuccess?.(password); // ← pass the actual password value
+  } catch (e: any) {
+    setError(e.message);
+    onError?.();
+  } finally {
+    setLoading(false);
   }
+}
 
   /* ─────────────────────────────────────────────
      Render
@@ -305,7 +309,7 @@ export default function ChangePasswordModal({ email, onClose }: Props) {
                       type={showPw ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
+                      placeholder="Min. 6 characters"
                       className="w-full border border-gray-200 focus:border-[#cb6f4d] focus:outline-none
                                  rounded-lg px-4 py-3 pr-11 text-sm text-gray-700 transition-colors"
                     />
@@ -327,7 +331,7 @@ export default function ChangePasswordModal({ email, onClose }: Props) {
                         const strength =
                           password.length >= 12 && /[^a-zA-Z0-9]/.test(password) ? 4
                           : password.length >= 10 ? 3
-                          : password.length >= 8  ? 2
+                          : password.length >= 6  ? 2
                           : 1;
                         return (
                           <div

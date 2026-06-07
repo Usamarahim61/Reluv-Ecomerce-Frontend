@@ -28,7 +28,7 @@ export default function SettingsComp() {
     { label: "Account Setting", icon: Lock },
     { label: "Postage", icon: Truck },
     { label: "Payments", icon: CreditCard },
-    { label: "Bundle Discount", icon: Gift },
+    // { label: "Bundle Discount", icon: Gift },
     { label: "Notification", icon: Bell },
     { label: "Privacy Setting", icon: Eye },
     { label: "Security", icon: Shield },
@@ -42,7 +42,7 @@ export default function SettingsComp() {
       case "Account Setting": return <AccountSetting />;
       case "Postage": return <Postage />;
       case "Payments": return <Payments userId="" />;
-      case "Bundle Discount": return <BundleDiscount />;
+      // case "Bundle Discount": return <BundleDiscount />;
       case "Notification": return <Notification />;
       case "Privacy Setting": return <PrivacySetting />;
       case "Security": return <SecuritySetting />;

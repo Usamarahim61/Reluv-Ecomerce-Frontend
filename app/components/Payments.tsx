@@ -27,11 +27,11 @@ interface SavedBank {
   iban: string;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 interface PaymentsProps {
   userId: string;
 }
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Payments({ userId }: PaymentsProps): JSX.Element {
   const [openCardModal, setOpenCardModal] = useState(false);
@@ -39,28 +39,33 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
 
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [savedBanks, setSavedBanks] = useState<SavedBank[]>([]);
-  const [loadingCards, setLoadingCards] = useState(true);
-  const [loadingBanks, setLoadingBanks] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // ── Fetch on mount ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/users/${userId}/payment-methods`)
-      .then((r) => r.json())
-      .then((data: any) => setSavedCards(Array.isArray(data) ? data : data?.data ?? []))
-      .catch(console.error)
-      .finally(() => setLoadingCards(false));
-  }, [userId]);
+  // ── Unified User Schema Target Fetching Logic ───────────────────────────────
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/users/${userId}/bank-accounts`)
-      .then((r) => r.json())
-      .then((data: any) => setSavedBanks(Array.isArray(data) ? data : data?.data ?? []))
+    const storedJwt = localStorage.getItem("jwt");
+    
+    fetch(`${API_BASE_URL}/api/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${storedJwt}`,
+      },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Could not pull payment elements portfolio");
+        return r.json();
+      })
+      .then((data) => {
+        if (data) {
+          setSavedCards(Array.isArray(data.savedCards) ? data.savedCards : []);
+          setSavedBanks(Array.isArray(data.savedBanks) ? data.savedBanks : []);
+        }
+      })
       .catch(console.error)
-      .finally(() => setLoadingBanks(false));
+      .finally(() => setLoading(false));
   }, [userId]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // ── Modal State Switchers ───────────────────────────────────────────────────
 
   const openCard = () => {
     setOpenBankAccountModal(false);
@@ -72,6 +77,31 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
     setOpenBankAccountModal(true);
   };
 
+  // ── Unified Database Sync Action Middleware ─────────────────────────────────
+
+  const syncPaymentMethodsToStrapi = async (
+    updatedCards: SavedCard[],
+    updatedBanks: SavedBank[]
+  ) => {
+    const storedJwt = localStorage.getItem("jwt");
+    const res = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${storedJwt}`,
+      },
+      body: JSON.stringify({
+        savedCards: updatedCards,
+        savedBanks: updatedBanks,
+      }),
+    });
+
+    if (!res.ok) throw new Error("Synchronization to user record rejected");
+    return res.json();
+  };
+
+  // ── Action Event Handlers ───────────────────────────────────────────────────
+
   const handleSaveCard = async (card: {
     cardName: string;
     cardNumber: string;
@@ -79,67 +109,66 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
     cvv: string;
   }) => {
     try {
-      const payload = {
+      const cleanNewCard: SavedCard = {
+        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9),
         cardName: card.cardName,
-        cardNumber: card.cardNumber.replace(/\s/g, "").slice(-4), // store last 4 only
+        cardNumber: card.cardNumber.replace(/\s/g, "").slice(-4),
         expiry: card.expiry,
       };
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/users/${userId}/payment-methods`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to save card");
-
-      const saved: SavedCard = await res.json();
-      setSavedCards((prev) => [...prev, saved]);
+      const updatedCardsArray = [...savedCards, cleanNewCard];
+      
+      // Persist directly to user object state array structures
+      await syncPaymentMethodsToStrapi(updatedCardsArray, savedBanks);
+      
+      setSavedCards(updatedCardsArray);
       setOpenCardModal(false);
     } catch (err) {
-      console.error(err);
+      console.error("Save process execution failed:", err);
     }
   };
 
   const handleDeleteCard = async (id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/api/users/${userId}/payment-methods/${id}`, {
-        method: "DELETE",
-      });
-      setSavedCards((prev) => prev.filter((c) => c.id !== id));
+      const updatedCardsArray = savedCards.filter((c) => c.id !== id);
+      await syncPaymentMethodsToStrapi(updatedCardsArray, savedBanks);
+      setSavedCards(updatedCardsArray);
     } catch (err) {
-      console.error(err);
+      console.error("Deletion operation error context details:", err);
     }
   };
 
   const handleDeleteBank = async (id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/api/users/${userId}/bank-accounts/${id}`, {
-        method: "DELETE",
-      });
-      setSavedBanks((prev) => prev.filter((b) => b.id !== id));
+      const updatedBanksArray = savedBanks.filter((b) => b.id !== id);
+      await syncPaymentMethodsToStrapi(savedCards, updatedBanksArray);
+      setSavedBanks(updatedBanksArray);
     } catch (err) {
-      console.error(err);
+      console.error("Bank layout clearing mutation rejected:", err);
     }
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render Tree ─────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 text-center text-sm text-gray-500 bg-white">
+        Loading secure wallet options…
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="max-w-2xl mx-auto p-4 space-y-8 bg-white text-[#111111]">
-
         {/* Payment Options */}
         <section className="space-y-2">
           <h3 className="text-xs text-gray-500 font-medium ml-1">
             Payment options
           </h3>
 
-          {/* Saved cards */}
-          {!loadingCards && Array.isArray(savedCards) ? savedCards.map((card:any) => (
+          {/* Saved cards array lookup layout block */}
+          {savedCards.map((card) => (
             <div
               key={card.id}
               className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
@@ -157,7 +186,7 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
                 Remove
               </button>
             </div>
-          )) : null}
+          ))}
 
           <PaymentRow title="Add card" onClick={openCard} />
         </section>
@@ -169,9 +198,8 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
           </h3>
 
           <div className="space-y-3">
-
-            {/* Saved bank accounts */}
-            {!loadingBanks && Array.isArray(savedBanks) ? savedBanks.map((bank) => (
+            {/* Saved bank accounts array lookup layout block */}
+            {savedBanks.map((bank) => (
               <div
                 key={bank.id}
                 className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
@@ -191,34 +219,12 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
                   Remove
                 </button>
               </div>
-            )) : null}
+            ))}
 
             <PaymentRow title="Add bank account" onClick={openBank} />
-
-            <PaymentRow
-              title="DAC7 centre"
-              icon={
-                <div className="p-1.5 border border-gray-300 rounded bg-gray-50">
-                  <svg
-                    className="w-4 h-4 text-gray-600"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <line x1="7" y1="8" x2="17" y2="8" />
-                    <line x1="7" y1="12" x2="17" y2="12" />
-                    <line x1="7" y1="16" x2="12" y2="16" />
-                  </svg>
-                </div>
-              }
-            />
           </div>
         </section>
       </div>
-
-      {/* ===== Modals — your originals, untouched ===== */}
 
       <CardDetailsModal
         isOpen={openCardModal}
@@ -234,7 +240,6 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
   );
 }
 
-/* Row — original, untouched */
 function PaymentRow({ title, icon, onClick }: PaymentOptionProps): JSX.Element {
   return (
     <button

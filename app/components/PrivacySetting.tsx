@@ -454,16 +454,16 @@ export default function PrivacySettings(): React.ReactElement {
           onToggle={() => toggle("thirdPartyTracking")}
         />
 
-        <PrivacyRow
+        {/* <PrivacyRow
           title="Allow Reluv to personalise my feed and search results by evaluating my preferences, settings, previous purchases and usage of Reluv website and app"
           active={settings.personaliseFeed}
           onToggle={() => toggle("personaliseFeed")}
           isLast
-        />
+        /> */}
       </div>
 
       {/* Second Section: Recently Viewed */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">
+      {/* <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">
         <PrivacyRow
           title="Allow Reluv to display my recently viewed items on my Homepage."
           description="If you turn this option off but allow personalised content, these items will still be used to personalise your Feed."
@@ -471,7 +471,7 @@ export default function PrivacySettings(): React.ReactElement {
           onToggle={() => toggle("displayRecentlyViewed")}
           isLast
         />
-      </div>
+      </div> */}
 
       {/* Manage Account Data Link */}
       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">

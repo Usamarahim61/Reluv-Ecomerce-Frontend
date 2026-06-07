@@ -14,6 +14,20 @@ import { getGoogleAddress, getUserAvatarUrl } from "@/lib/user-profile";
 
 const MAX_AVATAR_SIZE_MB = 10;
 
+// ISO 2-letter codes for flagcdn.com images
+const COUNTRY_CODES: { [key: string]: string } = {
+  "Thailand": "th",
+  "United States": "us",
+  "United Kingdom": "gb",
+  "China": "cn",
+  "Pakistan": "pk",
+  "Philippines": "ph",
+  "Cambodia": "kh",
+  "Laos": "la",
+  "Vietnam": "vn",
+  "Myanmar": "mm",
+};
+
 const renameFile = (file: File): File => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
@@ -27,6 +41,7 @@ export default function ProfileSetting() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarPreviewRef = useRef<string | null>(null);
   const hasFetched = useRef(false);
+  const dropdownRef = useRef<HTMLDivElement>(null); // To close dropdown when clicking outside
 
   const [formData, setFormData] = useState({
     username: "",
@@ -39,24 +54,73 @@ export default function ProfileSetting() {
 
   const [avatarPreview, setAvatarPreview]     = useState<string | null>(null);
   const [selectedFile, setSelectedFile]       = useState<File | null>(null);
-  const [cropSrc, setCropSrc]                 = useState<string | null>(null);   // ← NEW
-  const [showCropModal, setShowCropModal]     = useState(false);                  // ← NEW
+  const [cropSrc, setCropSrc]                 = useState<string | null>(null);
+  const [showCropModal, setShowCropModal]     = useState(false);
   const [loading, setLoading]                 = useState(true);
   const [isUpdating, setIsUpdating]           = useState(false);
   const [error, setError]                     = useState<string | null>(null);
+  const [isOpen, setIsOpen]                   = useState(false); // Custom dropdown state
 
-  const baseCountries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Myanmar"];
+ const baseCountries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Pakistan", "Myanmar"];
   const countries =
     formData.country && !baseCountries.includes(formData.country)
       ? [...baseCountries, formData.country]
       : baseCountries;
 
   const cityByCountry: { [key: string]: string[] } = {
-    Thailand: ["Bangkok", "Chiang Mai", "Phuket", "Pattaya", "Rayong", "Chiang Rai", "Khon Kaen", "Udon Thani"],
-    Cambodia: ["Phnom Penh", "Siem Reap", "Battambang", "Sihanoukville", "Kompong Cham"],
-    Laos:     ["Vientiane", "Luang Prabang", "Savannakhet", "Pakse", "Vang Vieng"],
-    Vietnam:  ["Ho Chi Minh City", "Hanoi", "Da Nang", "Ha Long", "Ho Tay"],
-    Myanmar:  ["Yangon", "Mandalay", "Naypyidaw", "Bagan", "Inle Lake"],
+    Thailand: [
+      "Bangkok", 
+      "Chiang Mai", 
+      "Phuket", 
+      "Pattaya", 
+      "Nonthaburi", 
+      "Hat Yai", 
+      "Khon Kaen", 
+      "Nakhon Ratchasima"
+    ],
+    Cambodia: [
+      "Phnom Penh", 
+      "Siem Reap", 
+      "Battambang", 
+      "Sihanoukville", 
+      "Poipet", 
+      "Kampong Cham"
+    ],
+    Laos: [
+      "Vientiane", 
+      "Luang Prabang", 
+      "Savannakhet", 
+      "Pakse", 
+      "Vang Vieng", 
+      "Thakhek"
+    ],
+    Vietnam: [
+      "Hanoi", 
+      "Ho Chi Minh City", 
+      "Da Nang", 
+      "Haiphong", 
+      "Nha Trang", 
+      "Can Tho", 
+      "Hue"
+    ],
+    Pakistan: [
+      "Islamabad", 
+      "Karachi", 
+      "Lahore", 
+      "Faisalabad", 
+      "Rawalpindi", 
+      "Multan", 
+      "Peshawar", 
+      "Quetta"
+    ],
+    Myanmar: [
+      "Naypyidaw", 
+      "Yangon", 
+      "Mandalay", 
+      "Taunggyi", 
+      "Bago", 
+      "Mawlamyine"
+    ],
   };
 
   const baseCities = formData.country ? cityByCountry[formData.country] || [] : [];
@@ -65,6 +129,17 @@ export default function ProfileSetting() {
       ? [...baseCities, formData.city]
       : baseCities;
   const languages = ["en", "th"];
+
+  // Close custom dropdown if clicked outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   /* ---------- fetch user (once) ---------- */
   useEffect(() => {
@@ -123,7 +198,17 @@ export default function ProfileSetting() {
     });
   };
 
-  /* ---------- photo change → open crop modal ---------- */  // ← CHANGED
+  // Dedicated handler for the custom country selection
+  const handleCountrySelect = (countryName: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      country: countryName,
+      city: "", // Reset city when country changes
+    }));
+    setIsOpen(false);
+  };
+
+  /* ---------- photo change → open crop modal ---------- */
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -134,7 +219,6 @@ export default function ProfileSetting() {
       return;
     }
 
-    /* revoke previous crop src */
     if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
 
     const objectUrl = URL.createObjectURL(file);
@@ -143,13 +227,11 @@ export default function ProfileSetting() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* ---------- crop saved ---------- */   // ← NEW
+  /* ---------- crop saved ---------- */
   const handleCropSave = (croppedBlob: Blob, croppedDataUrl: string) => {
-    /* revoke old preview blob */
     if (avatarPreviewRef.current?.startsWith("blob:"))
       URL.revokeObjectURL(avatarPreviewRef.current);
 
-    /* turn the cropped blob into a File for upload */
     const croppedFile = new File([croppedBlob], `avatar_${Date.now()}.png`, {
       type: "image/png",
     });
@@ -159,7 +241,6 @@ export default function ProfileSetting() {
     setSelectedFile(croppedFile);
     setShowCropModal(false);
 
-    /* clean up the raw object URL */
     if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
   };
@@ -226,7 +307,6 @@ export default function ProfileSetting() {
     }
   };
 
-  /* ---------- loading ---------- */
   if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
@@ -235,10 +315,8 @@ export default function ProfileSetting() {
     );
   }
 
-  /* ---------- UI ---------- */
   return (
     <div className="max-w-2xl mx-auto animate-fadeIn">
-      {/* crop modal */}
       {showCropModal && cropSrc && (
         <ImageCropModal
           imageSrc={cropSrc}
@@ -309,12 +387,60 @@ export default function ProfileSetting() {
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6 space-y-4 mt-6">
         <h3 className="text-gray-400 text-xs font-bold uppercase">My location</h3>
 
+        {/* CUSTOM DESIGNED COUNTRY SELECT WITH FLAG IMAGE */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">
           <span className="font-medium">Country</span>
-          <select name="country" value={formData.country} onChange={handleInputChange} className="cs-select">
-            <option value="">Select country</option>
-            {countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          
+          <div className="relative w-full sm:max-w-[240px]" ref={dropdownRef}>
+            {/* Main Selection Display Window */}
+            <div
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex items-center justify-between border border-[#cb6f4d] rounded p-2 text-sm cursor-pointer bg-white hover:border-[#cb6f4d] h-9 transition-all"
+            >
+              <div className="flex items-center gap-2">
+                {formData.country && COUNTRY_CODES[formData.country] ? (
+                  <img
+                    src={`https://flagcdn.com/16x12/${COUNTRY_CODES[formData.country]}.png`}
+                    alt={formData.country}
+                    className="w-4 h-3 object-cover rounded-sm inline-block shrink-0"
+                  />
+                ) : null}
+                <span className="text-[#cb6f4d] ">{formData.country || "Select country"}</span>
+              </div>
+              <span className="text-[#cb6f4d]  text-xs">▼</span>
+            </div>
+
+            {/* Floating Dropdown Panel */}
+            {isOpen && (
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto z-50 animate-fadeIn">
+                <div
+                  onClick={() => handleCountrySelect("")}
+                  className="p-2 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer"
+                >
+                  Select country
+                </div>
+                {countries.map((c) => {
+                  const code = COUNTRY_CODES[c];
+                  return (
+                    <div
+                      key={c}
+                      onClick={() => handleCountrySelect(c)}
+                      className="flex items-center gap-2 p-2 text-sm text-gray-700 hover:bg-[#fef5f1] hover:text-[#cb6f4d] cursor-pointer transition-colors"
+                    >
+                      {code && (
+                        <img
+                          src={`https://flagcdn.com/16x12/${code}.png`}
+                          alt={c}
+                          className="w-4 h-3 object-cover rounded-sm shrink-0"
+                        />
+                      )}
+                      <span>{c}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-1 sm:gap-4">

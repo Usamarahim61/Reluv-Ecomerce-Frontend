@@ -12,10 +12,11 @@ import {
   ShieldCheck,
   MessageSquare,
 } from "lucide-react";
-import {Lock as LockIcon} from "lucide-react";
+import { Lock as LockIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import CardDetailsModal from "../components/AddCard";
 import PickupPointModal from "../components/PickupPointModal";
+import PhoneField from "../components/PhoneField";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "../constants/api";
 import { toast, ToastContainer } from "react-toastify";
@@ -107,27 +108,29 @@ const CheckOutContent: React.FC = () => {
         setUserAddress(address);
         setTempAddressForm((prev) => ({
           ...prev,
-          country: prev.country || userData.country || googleAddress?.country || "",
+          country:
+            prev.country || userData.country || googleAddress?.country || "",
           addressLine1:
-            prev.addressLine1 || googleAddress?.street_address || googleAddress?.formatted || "",
+            prev.addressLine1 ||
+            googleAddress?.street_address ||
+            googleAddress?.formatted ||
+            "",
           postcode: prev.postcode || googleAddress?.postal_code || "",
           city: prev.city || userData.city || googleAddress?.locality || "",
         }));
       } catch (error) {
         console.error("Failed to load profile data.", error);
-
-        // if API fails and you want retry on next render
         hasFetched.current = false;
       }
     };
 
     fetchData();
   }, [user?.id]);
+
   const handlePlaceOrder = async () => {
     try {
-      if (isPlacingOrder) return; // prevent double click
+      if (isPlacingOrder) return;
 
-      // ❌ validations (same as yours)
       if (!cardDetails) {
         toast.error("Please add card details", toastConfig);
         return;
@@ -151,7 +154,7 @@ const CheckOutContent: React.FC = () => {
         return;
       }
 
-      setIsPlacingOrder(true); // 🔥 START LOADING
+      setIsPlacingOrder(true);
 
       const payload = {
         productId: searchParams.get("productId"),
@@ -194,7 +197,6 @@ const CheckOutContent: React.FC = () => {
         return;
       }
 
-      // If this order is from an accepted offer, mark it as completed
       const offerId = searchParams.get("offerId");
       if (offerId && result?.data?.id) {
         await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
@@ -209,7 +211,6 @@ const CheckOutContent: React.FC = () => {
 
       toast.success("Order placed successfully!", toastConfig);
 
-      // Redirect to orders page after 2 seconds
       setTimeout(() => {
         window.location.href = "/Orders";
       }, 2000);
@@ -217,7 +218,7 @@ const CheckOutContent: React.FC = () => {
       console.error("Order Error:", error);
       toast.error("Something went wrong. Please try again.", toastConfig);
     } finally {
-      setIsPlacingOrder(false); // 🔥 STOP LOADING (always runs)
+      setIsPlacingOrder(false);
     }
   };
 
@@ -398,12 +399,12 @@ const CheckOutContent: React.FC = () => {
                     </h2>
                     <div className="bg-white p-4 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between border border-gray-200 gap-4">
                       <div className="flex items-center flex-1 w-full border-b md:border-b-0 pb-2 md:pb-0 border-gray-100">
-                        <input
-                          type="tel"
-                          placeholder="Enter Phone number"
+                        <PhoneField
                           value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          className="flex-1 outline-none text-sm md:text-base text-gray-900 placeholder:text-gray-400"
+                          onChange={(val) => setPhoneNumber(val)}
+                          hasError={false}
+                          placeholder="81 234 5678"
+                          width="60%"
                         />
                       </div>
                       <div className="flex items-center gap-2 cursor-pointer select-none">
@@ -553,6 +554,7 @@ const CheckOutContent: React.FC = () => {
           console.log("Pickup coords:", lat, lng);
         }}
       />
+
       {/* Address Modal */}
       {openAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-opacity">
@@ -629,108 +631,126 @@ const CheckOutContent: React.FC = () => {
 
       {/* Buyer Protection Modal */}
       {openBuyerProtectionModal && (
-       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-      <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        
-        {/* Header Close Button Only (as per image layout) */}
-        <div className="relative p-4 flex items-center justify-end">
-          <button
-            onClick={() => setOpenBuyerProtectionModal(false)}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Scrollable Content Container */}
-        <div className="px-6 pb-6 overflow-y-auto space-y-6">
-          
-          {/* Main Top Header */}
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fdf0eb] mx-auto">
-              <ShieldCheck className="w-9 h-9 text-[#cb6f4d]" strokeWidth={1.5} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="relative p-4 flex items-center justify-end">
+              <button
+                onClick={() => setOpenBuyerProtectionModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-950 tracking-tight pt-2">
-              Buyer Protection
-            </h2>
-            <button className="text-xs font-medium text-[#cb6f4d] hover:underline block mx-auto">
-              Learn how we calculate the Buyer Protection fee
-            </button>
+
+            <div className="px-6 pb-6 overflow-y-auto space-y-6">
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fdf0eb] mx-auto">
+                  <ShieldCheck
+                    className="w-9 h-9 text-[#cb6f4d]"
+                    strokeWidth={1.5}
+                  />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-950 tracking-tight pt-2">
+                  Buyer Protection
+                </h2>
+                <button className="text-xs font-medium text-[#cb6f4d] hover:underline block mx-auto">
+                  Learn how we calculate the Buyer Protection fee
+                </button>
+              </div>
+
+              <p className="text-gray-600 text-[15px] leading-relaxed text-center">
+                For every purchase made with us, we make sure you're covered.
+              </p>
+
+              <div className="space-y-6 text-[14px] text-gray-600 leading-relaxed">
+                <div className="flex gap-4 items-start">
+                  <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                    <Banknote
+                      className="w-5 h-5 text-[#cb6f4d]"
+                      strokeWidth={2}
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <h3 className="font-semibold text-gray-900 text-[15px]">
+                      Refund policy
+                    </h3>
+                    <p>You can receive a refund if your order:</p>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                      <li>was never shipped or is lost</li>
+                      <li>arrives damaged</li>
+                      <li>is significantly not as described.</li>
+                    </ul>
+                    <p className="pt-1">
+                      You have{" "}
+                      <span className="font-semibold text-gray-900">
+                        2 days to submit your claim
+                      </span>{" "}
+                      from when you're notified that an item was delivered, even
+                      if the item never arrived. Buyers cover the cost of
+                      returning an item unless agreed otherwise. Learn more in
+                      our{" "}
+                      <button className="text-[#cb6f4d] underline font-medium hover:text-[#b05b3b]">
+                        Refund Policy
+                      </button>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                    <LockIcon
+                      className="w-5 h-5 text-[#cb6f4d]"
+                      strokeWidth={2}
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <h3 className="font-semibold text-gray-900 text-[15px]">
+                      Secure transactions
+                    </h3>
+                    <p>
+                      Your money is held securely throughout the entire
+                      transaction. We won't release it to the seller until you
+                      receive your order and confirm everything is OK.
+                    </p>
+                    <p>
+                      Payments are encrypted by our payment partner, so your
+                      money is always sent and received safely.{" "}
+                      <span className="font-semibold text-gray-900">
+                        The seller will never see your payment details.
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
+                    <MessageSquare
+                      className="w-5 h-5 text-[#cb6f4d]"
+                      strokeWidth={2}
+                    />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h3 className="font-semibold text-gray-900 text-[15px]">
+                      Our support
+                    </h3>
+                    <p>
+                      Reach out to our support team at any time – they're
+                      available to assist you with any issues.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setOpenBuyerProtectionModal(false)}
+                className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3.5 rounded-xl transition-colors text-[15px] font-semibold tracking-wide mt-4"
+              >
+                Got it
+              </button>
+            </div>
           </div>
-
-          {/* Intro Text */}
-          <p className="text-gray-600 text-[15px] leading-relaxed text-center">
-            For every purchase made with us, we make sure you're covered.
-          </p>
-
-          {/* Feature List */}
-          <div className="space-y-6 text-[14px] text-gray-600 leading-relaxed">
-            
-            {/* Section 1: Refund Policy */}
-            <div className="flex gap-4 items-start">
-              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                <Banknote className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
-              </div>
-              <div className="space-y-2 flex-1">
-                <h3 className="font-semibold text-gray-900 text-[15px]">Refund policy</h3>
-                <p>You can receive a refund if your order:</p>
-                <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                  <li>was never shipped or is lost</li>
-                  <li>arrives damaged</li>
-                  <li>is significantly not as described.</li>
-                </ul>
-                <p className="pt-1">
-                  You have <span className="font-semibold text-gray-900">2 days to submit your claim</span> from when you're notified that an item was delivered, even if the item never arrived. Buyers cover the cost of returning an item unless agreed otherwise. Learn more in our{' '}
-                  <button className="text-[#cb6f4d] underline font-medium hover:text-[#b05b3b]">
-                    Refund Policy
-                  </button>
-                  .
-                </p>
-              </div>
-            </div>
-
-            {/* Section 2: Secure Transactions */}
-            <div className="flex gap-4 items-start">
-              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                <LockIcon className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
-              </div>
-              <div className="space-y-2 flex-1">
-                <h3 className="font-semibold text-gray-900 text-[15px]">Secure transactions</h3>
-                <p>
-                  Your money is held securely throughout the entire transaction. We won't release it to the seller until you receive your order and confirm everything is OK.
-                </p>
-                <p>
-                  Payments are encrypted by our payment partner, so your money is always sent and received safely. <span className="font-semibold text-gray-900">The seller will never see your payment details.</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Section 3: Our Support */}
-            <div className="flex gap-4 items-start">
-              <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                <MessageSquare className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
-              </div>
-              <div className="space-y-1 flex-1">
-                <h3 className="font-semibold text-gray-900 text-[15px]">Our support</h3>
-                <p>
-                  Reach out to our support team at any time – they're available to assist you with any issues.
-                </p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Action Button */}
-          <button
-            onClick={() => setOpenBuyerProtectionModal(false)}
-            className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3.5 rounded-xl transition-colors text-[15px] font-semibold tracking-wide mt-4"
-          >
-            Got it
-          </button>
-
         </div>
-      </div>
-    </div>
       )}
     </>
   );

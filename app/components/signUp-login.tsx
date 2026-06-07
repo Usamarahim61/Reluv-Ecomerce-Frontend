@@ -22,10 +22,11 @@ import {
   loginWithFacebook,
 } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
+import { BACKEND_URL, NEXT_PUBLIC_FACEBOOK_APP_ID, NEXT_PUBLIC_GOOGLE_CLIENT_ID } from "@/constants";
 
-const GOOGLE_CLIENT_ID =
-  "793055192577-592s2th4cdsjoclel6il7a5lbqs954dc.apps.googleusercontent.com";
-const FACEBOOK_APP_ID = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID!;
+const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""
+const API = BACKEND_URL ?? "";
+const FACEBOOK_APP_ID = NEXT_PUBLIC_FACEBOOK_APP_ID ?? "";
 
 type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
 interface AuthError {
@@ -308,6 +309,10 @@ export default function SignUpLogin({
   // ── Register (send OTP) ───────────────────────────────────────────────────
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+      if (password.length < 6) {
+    showError({ kind: "auth", message: "Password must be at least 6 characters." });
+    return;
+  }
     setLoadingProvider("email");
     dismissError();
     try {

@@ -60,7 +60,7 @@ const ReluvAdForm = () => {
               <InputRow label="First name" placeholder="Enter your first name(s)" />
               <InputRow label="Last name" placeholder="Enter your last name(s)" />
               <InputRow label="Email address" placeholder="Enter your email" type="email" />
-              <InputRow label="Phone number (optional)" placeholder="Enter your phone number" />
+              <InputRow label="Phone number (optional)" placeholder="Enter your phone number" type="tel" />
             </FormSection>
 
             {/* Section 2: Company Info */}

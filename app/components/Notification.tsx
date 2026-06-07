@@ -4,7 +4,7 @@ import React, { useState } from "react";
 // 1. Define the shape of the settings state
 interface NotificationSettings {
   updates: boolean;
-  marketing: boolean;
+  // marketing: boolean;
   messages: boolean;
   feedback: boolean;
   reduced: boolean;
@@ -26,7 +26,7 @@ export default function Notification(): React.ReactElement {
   // 3. Initialize state with the defined interface
   const [settings, setSettings] = useState<NotificationSettings>({
     updates: true,
-    marketing: true,
+    // marketing: true,
     messages: true,
     feedback: true,
     reduced: true,
@@ -52,13 +52,13 @@ export default function Notification(): React.ReactElement {
             active={settings.updates}
             onToggle={() => toggle("updates")}
           />
-          <NotificationRow
+          {/* <NotificationRow
             title="Marketing communications"
             description="Receive personalised offers, news, and recommendations"
             active={settings.marketing}
             onToggle={() => toggle("marketing")}
             isLast
-          />
+          /> */}
         </div>
       </section>
 

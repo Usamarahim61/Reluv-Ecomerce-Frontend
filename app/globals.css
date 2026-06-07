@@ -107,11 +107,11 @@ body {
   appearance: none;
   -webkit-appearance: none;
   border: 1px solid #cb6f4d;
-  border-radius: 8px;
+  border-radius: 5px;
   color: #cb6f4d;
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 32px 6px 12px;
+  padding: 4px 40px 6px 8px;
   cursor: pointer;
   outline: none;
   background-color: transparent;
