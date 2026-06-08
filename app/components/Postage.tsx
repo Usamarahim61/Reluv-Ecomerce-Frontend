@@ -325,7 +325,7 @@ export default function Postage() {
     <>
       <div className="max-w-2xl mx-auto space-y-8 bg-white pb-12">
         <section>
-          <h2 className="text-lg font-semibold mb-2">Address</h2>
+          <h2 className="text-lg font-semibold mb-2">From Address</h2>
           <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-l-[#cb6f4d] border border-gray-100">
             <div>
               <p className="font-bold text-gray-800">{user?.username}</p>
@@ -341,9 +341,9 @@ export default function Postage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold mb-2">Pick-up Point</h2>
+          <h2 className="text-lg font-semibold mb-2">drop off Point</h2>
           {pickupAddress ? (
-            <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-l-blue-400 border border-gray-100">
+            <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-l-[#cb6f4d] border border-gray-100">
               <div>
                 <p className="font-bold text-gray-800">
                   Selected Pickup Location
@@ -367,14 +367,14 @@ export default function Postage() {
               <span className="text-gray-900 text-sm md:text-base font-medium">
                 Choose a pick-up point
               </span>
-              <span className="text-2xl font-light text-blue-500 group-hover:scale-110 transition-transform pr-1">
+              <span className="text-2xl font-light text-[#cb6f4d] group-hover:scale-110 transition-transform pr-1">
                 +
               </span>
             </button>
           )}
         </section>
 
-        <div className="flex gap-3 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+        {/* <div className="flex gap-3 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
           <div className="mt-0.5 shrink-0">
             <Info className="w-5 h-5 text-[#cb6f4d]" />
           </div>
@@ -384,7 +384,7 @@ export default function Postage() {
               Learn more.
             </a>
           </p>
-        </div>
+        </div> */}
 
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">
