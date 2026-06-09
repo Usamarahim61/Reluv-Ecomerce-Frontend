@@ -1,7 +1,6 @@
 import { ShieldCheck, RotateCcw } from 'lucide-react';
 import Image from 'next/image';
 import Footer from '../components/Footer';
-import "../global.css"
 
 export default function ReluvHowItWorks() {
   return (
