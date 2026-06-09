@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronRight, X, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getUser, getUserAvatr } from "@/services/auth-service";
+import { BACKEND_URL } from "@/constants";
 
 // Define the shape of the privacy settings state
 interface PrivacySettingsState {
@@ -24,7 +25,6 @@ interface PrivacyRowProps {
 
 type ExportFormat = "xlsx" | "csv";
 
-// Strapi User Schema Interface
 interface StrapiUser {
   id?: number;
   username?: string;
@@ -58,8 +58,11 @@ interface StrapiUser {
   updatedAt?: string;
 }
 
+const APIPath = BACKEND_URL ?? "";
+
 export default function PrivacySettings(): React.ReactElement {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  
   const [settings, setSettings] = useState<PrivacySettingsState>({
     featureItems: true,
     notifyOwners: true,
@@ -68,12 +71,82 @@ export default function PrivacySettings(): React.ReactElement {
     displayRecentlyViewed: true,
   });
 
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("xlsx");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const toggle = (key: keyof PrivacySettingsState): void => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  // Hydrate Data on Mount
+  useEffect(() => {
+    const fetchPrivacySettings = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await fetch(`${APIPath}/api/users/${user.id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
+
+        if (!response.ok) throw new Error("Failed to load privacy preferences");
+
+        const data = await response.json();
+        if (data?.privacySettings) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data.privacySettings,
+          }));
+        }
+      } catch (error) {
+        console.error(error);
+        setToast({ message: "Could not restore privacy items from server.", type: "error" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPrivacySettings();
+  }, [user?.id, token]);
+
+  // Dismiss Toast Banner Automatically
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Persist State Changes on Switch Toggle
+  const toggle = async (key: keyof PrivacySettingsState) => {
+    if (!user?.id) return;
+
+    const updatedSettings = { ...settings, [key]: !settings[key] };
+    
+    // UI optimistic update
+    setSettings(updatedSettings);
+
+    try {
+      const response = await fetch(`${APIPath}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          privacySettings: updatedSettings,
+        }),
+      });
+
+      if (!response.ok) throw new Error();
+      
+      setToast({ message: "Privacy settings updated successfully.", type: "success" });
+    } catch (error) {
+      // Revert UI State if network fails
+      setSettings(settings);
+      setToast({ message: "Failed to update preference on remote server.", type: "error" });
+    }
   };
 
   const openModal = () => setIsModalOpen(true);
@@ -109,6 +182,7 @@ export default function PrivacySettings(): React.ReactElement {
       }
     } catch (error) {
       console.error("Failed to download user data:", error);
+      setToast({ message: "Data extraction failed.", type: "error" });
     } finally {
       setIsDownloading(false);
       closeModal();
@@ -126,7 +200,6 @@ export default function PrivacySettings(): React.ReactElement {
     window.URL.revokeObjectURL(url);
   };
 
-  // Helper to safely get string value
   const safeString = (value: any): string => {
     if (value === null || value === undefined) return "N/A";
     if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -137,7 +210,6 @@ export default function PrivacySettings(): React.ReactElement {
     return String(value);
   };
 
-  // Helper to get avatar URL
   const getAvatarUrl = (avatar: any): string => {
     if (!avatar) return "N/A";
     if (typeof avatar === "string") return avatar;
@@ -149,7 +221,6 @@ export default function PrivacySettings(): React.ReactElement {
   const generateCSV = (data: StrapiUser): string => {
     const rows: string[][] = [];
 
-    // Section: Account Information
     rows.push(["ACCOUNT INFORMATION"]);
     rows.push(["Field", "Value"]);
     rows.push(["User ID", safeString(data.id)]);
@@ -164,7 +235,6 @@ export default function PrivacySettings(): React.ReactElement {
     rows.push(["Role", safeString(data.role?.name)]);
     rows.push([""]);
 
-    // Section: Profile Information
     rows.push(["PROFILE INFORMATION"]);
     rows.push(["Field", "Value"]);
     rows.push(["About", safeString(data.about)]);
@@ -177,7 +247,6 @@ export default function PrivacySettings(): React.ReactElement {
     rows.push(["Average Rating", safeString(data.rating_avg)]);
     rows.push([""]);
 
-    // Section: Social & Settings
     rows.push(["SOCIAL & SETTINGS"]);
     rows.push(["Field", "Value"]);
     rows.push(["Facebook Linked", safeString(data.facebookLinked)]);
@@ -187,7 +256,6 @@ export default function PrivacySettings(): React.ReactElement {
     rows.push(["Following Count", safeString(data.following?.length)]);
     rows.push([""]);
 
-    // Section: Products
     if (data.products && data.products.length > 0) {
       rows.push(["MY LISTINGS"]);
       rows.push(["ID", "Title", "Price"]);
@@ -197,7 +265,6 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Favorite Products
     if (data.fav_products && data.fav_products.length > 0) {
       rows.push(["FAVORITE PRODUCTS"]);
       rows.push(["ID", "Title", "Price"]);
@@ -207,7 +274,6 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Received Reviews
     if (data.received_reviews && data.received_reviews.length > 0) {
       rows.push(["RECEIVED REVIEWS"]);
       rows.push(["ID", "Rating", "Comment"]);
@@ -217,7 +283,6 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Written Reviews
     if (data.written_reviews && data.written_reviews.length > 0) {
       rows.push(["WRITTEN REVIEWS"]);
       rows.push(["ID", "Rating", "Comment"]);
@@ -227,7 +292,6 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Followers List
     if (data.followers && data.followers.length > 0) {
       rows.push(["FOLLOWERS"]);
       rows.push(["User ID", "Username"]);
@@ -237,7 +301,6 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Following List
     if (data.following && data.following.length > 0) {
       rows.push(["FOLLOWING"]);
       rows.push(["User ID", "Username"]);
@@ -247,14 +310,12 @@ export default function PrivacySettings(): React.ReactElement {
       rows.push([""]);
     }
 
-    // Section: Metadata
     rows.push(["ACCOUNT METADATA"]);
     rows.push(["Field", "Value"]);
     rows.push(["Created At", safeString(data.createdAt)]);
     rows.push(["Updated At", safeString(data.updatedAt)]);
     rows.push(["Export Generated At", new Date().toISOString()]);
 
-    // Escape CSV values
     const escapeCSV = (value: string): string => {
       if (value.includes(",") || value.includes('"') || value.includes("\n")) {
         return `"${value.replace(/"/g, '""')}"`;
@@ -284,11 +345,9 @@ export default function PrivacySettings(): React.ReactElement {
       <body>
         <table>`;
 
-    // Title
     html += `<tr><th colspan="2" style="font-size:18px; text-align:center;">Reluv Account Data Export</th></tr>`;
     html += `<tr><td colspan="2" style="text-align:center; color:#6b7280; font-size:12px; padding-bottom:16px;">Generated on ${new Date().toLocaleString()}</td></tr>`;
 
-    // Account Information
     html += `<tr><td colspan="2" class="section-header">ACCOUNT INFORMATION</td></tr>`;
     html += row("User ID", data.id);
     html += row("Username", data.username);
@@ -302,7 +361,6 @@ export default function PrivacySettings(): React.ReactElement {
     html += row("Role", data.role?.name);
     html += emptyRow();
 
-    // Profile Information
     html += `<tr><td colspan="2" class="section-header">PROFILE INFORMATION</td></tr>`;
     html += row("About", data.about);
     html += row("Gender", data.gender);
@@ -314,7 +372,6 @@ export default function PrivacySettings(): React.ReactElement {
     html += row("Average Rating", data.rating_avg);
     html += emptyRow();
 
-    // Social & Settings
     html += `<tr><td colspan="2" class="section-header">SOCIAL & SETTINGS</td></tr>`;
     html += row("Facebook Linked", data.facebookLinked);
     html += row("Google Linked", data.googleLinked);
@@ -323,7 +380,6 @@ export default function PrivacySettings(): React.ReactElement {
     html += row("Following Count", data.following?.length);
     html += emptyRow();
 
-    // Products
     if (data.products && data.products.length > 0) {
       html += `<tr><td colspan="2" class="section-header">MY LISTINGS (${data.products.length})</td></tr>`;
       html += `<tr><th>ID</th><th>Title</th><th>Price</th></tr>`;
@@ -333,7 +389,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Favorite Products
     if (data.fav_products && data.fav_products.length > 0) {
       html += `<tr><td colspan="2" class="section-header">FAVORITE PRODUCTS (${data.fav_products.length})</td></tr>`;
       html += `<tr><th>ID</th><th>Title</th><th>Price</th></tr>`;
@@ -343,7 +398,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Received Reviews
     if (data.received_reviews && data.received_reviews.length > 0) {
       html += `<tr><td colspan="2" class="section-header">RECEIVED REVIEWS (${data.received_reviews.length})</td></tr>`;
       html += `<tr><th>ID</th><th>Rating</th><th>Comment</th></tr>`;
@@ -353,7 +407,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Written Reviews
     if (data.written_reviews && data.written_reviews.length > 0) {
       html += `<tr><td colspan="2" class="section-header">WRITTEN REVIEWS (${data.written_reviews.length})</td></tr>`;
       html += `<tr><th>ID</th><th>Rating</th><th>Comment</th></tr>`;
@@ -363,7 +416,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Followers
     if (data.followers && data.followers.length > 0) {
       html += `<tr><td colspan="2" class="section-header">FOLLOWERS (${data.followers.length})</td></tr>`;
       html += `<tr><th>User ID</th><th>Username</th></tr>`;
@@ -373,7 +425,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Following
     if (data.following && data.following.length > 0) {
       html += `<tr><td colspan="2" class="section-header">FOLLOWING (${data.following.length})</td></tr>`;
       html += `<tr><th>User ID</th><th>Username</th></tr>`;
@@ -383,7 +434,6 @@ export default function PrivacySettings(): React.ReactElement {
       html += emptyRow();
     }
 
-    // Metadata
     html += `<tr><td colspan="2" class="section-header">ACCOUNT METADATA</td></tr>`;
     html += row("Created At", data.createdAt);
     html += row("Updated At", data.updatedAt);
@@ -429,8 +479,27 @@ export default function PrivacySettings(): React.ReactElement {
     },
   ];
 
+  if (isLoading) {
+  return (
+      <div className="min-h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#cb6f4d]" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-2 bg-white text-[#111111] relative">
+      {/* Toast Alert Banner */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl text-white transition-all transform duration-300 ${
+            toast.type === "success" ? "bg-[#cb6f4d]" : "bg-red-600"
+          }`}
+        >
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
       {/* Header */}
       <h3 className="text-xs text-gray-500 font-medium ml-1 mb-2">Privacy settings</h3>
 
@@ -452,26 +521,9 @@ export default function PrivacySettings(): React.ReactElement {
           title="Allow third-party tracking"
           active={settings.thirdPartyTracking}
           onToggle={() => toggle("thirdPartyTracking")}
-        />
-
-        {/* <PrivacyRow
-          title="Allow Reluv to personalise my feed and search results by evaluating my preferences, settings, previous purchases and usage of Reluv website and app"
-          active={settings.personaliseFeed}
-          onToggle={() => toggle("personaliseFeed")}
           isLast
-        /> */}
+        />
       </div>
-
-      {/* Second Section: Recently Viewed */}
-      {/* <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">
-        <PrivacyRow
-          title="Allow Reluv to display my recently viewed items on my Homepage."
-          description="If you turn this option off but allow personalised content, these items will still be used to personalise your Feed."
-          active={settings.displayRecentlyViewed}
-          onToggle={() => toggle("displayRecentlyViewed")}
-          isLast
-        />
-      </div> */}
 
       {/* Manage Account Data Link */}
       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm mt-4">
@@ -492,31 +544,19 @@ export default function PrivacySettings(): React.ReactElement {
       {/* Modal Overlay */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={closeModal}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeModal} />
 
-          {/* Modal Content */}
           <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Download your data</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Choose a format for your account export
-                </p>
+                <p className="text-sm text-gray-500 mt-0.5">Choose a format for your account export</p>
               </div>
-              <button
-                onClick={closeModal}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              >
+              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            {/* Format Selection */}
             <div className="p-5 space-y-2.5">
               {formatOptions.map((option) => (
                 <button
@@ -528,39 +568,19 @@ export default function PrivacySettings(): React.ReactElement {
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  <div
-                    className={`p-2 rounded-lg ${
-                      selectedFormat === option.value
-                        ? "bg-[#cb6f4d] text-white"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
+                  <div className={`p-2 rounded-lg ${selectedFormat === option.value ? "bg-[#cb6f4d] text-white" : "bg-gray-100 text-gray-500"}`}>
                     {option.icon}
                   </div>
                   <div className="flex-1">
-                    <p
-                      className={`font-medium text-[15px] ${
-                        selectedFormat === option.value ? "text-[#cb6f4d]" : "text-gray-900"
-                      }`}
-                    >
+                    <p className={`font-medium text-[15px] ${selectedFormat === option.value ? "text-[#cb6f4d]" : "text-gray-900"}`}>
                       {option.label}
                     </p>
                     <p className="text-sm text-gray-500">{option.description}</p>
                   </div>
                   {selectedFormat === option.value && (
                     <div className="w-5 h-5 rounded-full bg-[#cb6f4d] flex items-center justify-center">
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={3}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                   )}
@@ -568,7 +588,6 @@ export default function PrivacySettings(): React.ReactElement {
               ))}
             </div>
 
-            {/* Info Box */}
             <div className="mx-5 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
               <p className="text-xs text-gray-500 leading-relaxed">
                 Your download will include your profile info, listings, favorites, reviews,
@@ -576,12 +595,8 @@ export default function PrivacySettings(): React.ReactElement {
               </p>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex gap-3 p-5 pt-0">
-              <button
-                onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={closeModal} className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
               <button
@@ -592,20 +607,8 @@ export default function PrivacySettings(): React.ReactElement {
                 {isDownloading ? (
                   <>
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     Preparing...
                   </>
@@ -624,7 +627,6 @@ export default function PrivacySettings(): React.ReactElement {
   );
 }
 
-/* TypeScript sub-component for rows */
 function PrivacyRow({
   title,
   description,
@@ -633,16 +635,10 @@ function PrivacyRow({
   isLast,
 }: PrivacyRowProps): React.ReactElement {
   return (
-    <div
-      className={`flex items-start justify-between p-4 bg-white ${
-        !isLast ? "border-b border-gray-100" : ""
-      }`}
-    >
+    <div className={`flex items-start justify-between p-4 bg-white ${!isLast ? "border-b border-gray-100" : ""}`}>
       <div className="pr-6">
         <p className="font-medium text-gray-900 text-[15px] leading-tight">{title}</p>
-        {description && (
-          <p className="text-sm text-gray-500 mt-1.5 leading-normal">{description}</p>
-        )}
+        {description && <p className="text-sm text-gray-500 mt-1.5 leading-normal">{description}</p>}
       </div>
       <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
         <input type="checkbox" className="sr-only peer" checked={active} onChange={onToggle} />
@@ -650,4 +646,4 @@ function PrivacyRow({
       </label>
     </div>
   );
-}
+} 
