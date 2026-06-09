@@ -191,8 +191,6 @@ export default function Postage() {
             }),
           );
         }
-
-        toast.dismiss(fetchToastId);
         setLoading(false);
       } catch (error) {
         console.error(

@@ -27,7 +27,7 @@ const APIPath = BACKEND_URL ?? "";
 
 export default function Notification(): React.ReactElement {
   // Destructure token from useAuth to authentic requests with Strapi
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   // State for toggles
   const [settings, setSettings] = useState<NotificationSettings>({
@@ -57,11 +57,12 @@ export default function Notification(): React.ReactElement {
       if (!user?.id) return;
 
       try {
+        const token = localStorage.getItem("jwt"); // Assuming token is stored in localStorage after login
         const response = await fetch(`${APIPath}/api/users/${user.id}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
+             Authorization: `Bearer ${token}` ,
           },
         });
 
@@ -87,7 +88,7 @@ export default function Notification(): React.ReactElement {
     };
 
     fetchUserSettings();
-  }, [user?.id, token]);
+  }, [user?.id]);
 
   // Auto-clear toaster after 3 seconds
   useEffect(() => {
@@ -110,11 +111,12 @@ export default function Notification(): React.ReactElement {
 
     setIsSaving(true);
     try {
+      const token = localStorage.getItem("jwt");
       const response = await fetch(`${APIPath}/api/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
+         Authorization: `Bearer ${token}` 
         },
         body: JSON.stringify({
           notificationSettings: settings,
@@ -144,7 +146,7 @@ export default function Notification(): React.ReactElement {
       <div className="min-h-[300px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#cb6f4d]" />
       </div>
-    );s
+    );
   }
 
   return (

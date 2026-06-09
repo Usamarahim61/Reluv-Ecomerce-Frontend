@@ -61,7 +61,7 @@ interface StrapiUser {
 const APIPath = BACKEND_URL ?? "";
 
 export default function PrivacySettings(): React.ReactElement {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   
   const [settings, setSettings] = useState<PrivacySettingsState>({
     featureItems: true,
@@ -82,11 +82,12 @@ export default function PrivacySettings(): React.ReactElement {
     const fetchPrivacySettings = async () => {
       if (!user?.id) return;
       try {
+        const token = localStorage.getItem("jwt"); // Assuming token is stored in localStorage after login
         const response = await fetch(`${APIPath}/api/users/${user.id}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
+            Authorization: `Bearer ${token}` 
           },
         });
 
@@ -108,7 +109,7 @@ export default function PrivacySettings(): React.ReactElement {
     };
 
     fetchPrivacySettings();
-  }, [user?.id, token]);
+  }, [user?.id]);
 
   // Dismiss Toast Banner Automatically
   useEffect(() => {
@@ -128,11 +129,12 @@ export default function PrivacySettings(): React.ReactElement {
     setSettings(updatedSettings);
 
     try {
+      const token = localStorage.getItem("jwt");
       const response = await fetch(`${APIPath}/api/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
+       Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           privacySettings: updatedSettings,
