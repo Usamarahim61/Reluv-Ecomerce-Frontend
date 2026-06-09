@@ -48,6 +48,7 @@ import {
 import { getUserFav_Products } from "@/services/auth-service";
 import SellerReviewSection from "@/app/components/SellerReviewSection";
 import { toast } from "react-toastify";
+import PriceBreakdownDialog from "@/app/components/PriceBreakdownDialog";
 
 type BreadcrumbItem = { label: string; slug: string };
 
@@ -107,7 +108,7 @@ export default function ProductDetailPage() {
 
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
-
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [product, setProduct] = useState<ProductDetailItem | null>(null);
   const [memberItems, setMemberItems] = useState<ProductCardItem[]>([]);
   const [similarItems, setSimilarItems] = useState<ProductCardItem[]>([]);
@@ -374,9 +375,7 @@ export default function ProductDetailPage() {
       return;
     }
 
-
     try {
-
       const conversation = await createConversationForProduct({
         productId: Number(product.id),
         otherUserId: Number(product.user.id),
@@ -391,7 +390,6 @@ export default function ProductDetailPage() {
       toast.error("Failed to start conversation. Please try again.");
     }
   };
-
 
   // ── wishlist handler for main product heart button ─────────────────────────
   const handleWishlist = async () => {
@@ -424,7 +422,8 @@ export default function ProductDetailPage() {
         onRetry={() => window.location.reload()}
       />
     );
-
+  const priceNum = parseFloat(price.replace(/[^\d.]/g, "")) || 0;
+  const currency = getCurrencyCode(price) || "TBH";
   /* ─── MAIN RENDER ── */
   return (
     <>
@@ -820,8 +819,8 @@ export default function ProductDetailPage() {
                   </button>
                 </div>
                 {/* Attribute pills */}
-                <div className="flex flex-wrap gap-2"><span>{condition}</span>/
-                  <span>{color}</span>
+                <div className="flex flex-wrap gap-2">
+                  <span>{condition}</span>/<span>{color}</span>
                 </div>
                 {/* Price */}
                 <div className=" flex items-baseline gap-2">
@@ -832,10 +831,17 @@ export default function ProductDetailPage() {
                     {price}
                   </span>
                 </div>
-                <p className="mt-0.5 flex items-center gap-1 text-[15px] text-[#c0613a] font-sans">
-                  {productInfo.buyerProtectionFee} incl.
-                  <ShieldCheck size={15} className="text-[#c0613a]" />
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPriceBreakdown(true)}
+                  className="mt-1 flex items-center gap-1.5 text-[12px] text-[#c0613a] font-sans hover:underline transition-all cursor-pointer bg-transparent border-none p-0"
+                >
+                  <ShieldCheck size={13} className="text-[#c0613a]" />
+                  {currency}{" "}
+                  {(priceNum + productInfo.buyerProtectionFee).toFixed(2)} ·
+                  Includes Buyer Protection
+                  <Info size={11} className="text-[#c0613a] opacity-70" />
+                </button>
               </div>
               {/* Description */}
               <p className="text-[13px] leading-relaxed text-[#666] font-sans">
@@ -934,35 +940,34 @@ export default function ProductDetailPage() {
                     type="button"
                     className="pdp-btn-primary"
                     onClick={() => {
-                    if (!user?.id) {
+                      if (!user?.id) {
                         requireLogin("Please log in to buy.");
                         return;
                       }
 
-
-                      router.push(`/CheckOut?${new URLSearchParams(
-                        Object.entries(productInfo).reduce<Record<string, string>>(
-                          (acc, [k, v]) => {
+                      router.push(
+                        `/CheckOut?${new URLSearchParams(
+                          Object.entries(productInfo).reduce<
+                            Record<string, string>
+                          >((acc, [k, v]) => {
                             acc[k] = String(v ?? "");
                             return acc;
-                          },
-                          {},
-                        )
-                      )}`);
+                          }, {}),
+                        )}`,
+                      );
                     }}
                   >
                     Buy Now
                   </button>
                 )}
 
-
                 <button
                   type="button"
                   onClick={() => {
                     if (!user?.id) {
-                        requireLogin("Please log in to ask seller.");
-                        return;
-                      }
+                      requireLogin("Please log in to ask seller.");
+                      return;
+                    }
 
                     handleAskSeller();
                   }}
@@ -981,7 +986,6 @@ export default function ProductDetailPage() {
                         requireLogin("Please log in to make an offer.");
                         return;
                       }
-
 
                       setShowOfferModal(true);
                     }}
@@ -1133,6 +1137,14 @@ export default function ProductDetailPage() {
           buyerId={Number(user.id)}
         />
       )}
+      <PriceBreakdownDialog
+        isOpen={showPriceBreakdown}
+        onClose={() => setShowPriceBreakdown(false)}
+        title={name}
+        price={price}
+        buyerProtectionFee={productInfo.buyerProtectionFee}
+        shippingFromPrice={shippingFromPrice}
+      />
     </>
   );
 }
