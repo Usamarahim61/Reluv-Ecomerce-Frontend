@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Info, CheckCircle2, Send, Image as ImageIcon, Clock, MapPin, Heart, MessageCircle, Search, X, Phone, Globe } from "lucide-react";
+import { Info, CheckCircle2, Send, Image as ImageIcon, Clock, MapPin, Heart, MessageCircle, Search, X, Phone, Globe, Plus, Paperclip, Tag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useSearchParams } from "next/navigation";
-import { ConversationItem, MessageItem } from "@/services/messages-service";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { ConversationItem, MessageItem, uploadFiles } from "@/services/messages-service";
 import { getChatSocket, disconnectChatSocket } from "@/lib/chat-socket";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { useAndroidNative } from "@/app/components/useAndroidNative";
+import { API_BASE_URL } from "@/app/constants/api";
 import {
   addOptimisticMessage,
   fetchConversations,
@@ -58,6 +60,7 @@ export default function MessagesClient() {
   const { isAndroid } = useAndroidNative();
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const conversations = useAppSelector((state) => state.messages.conversations);
   const selectedId = useAppSelector((state) => state.messages.selectedConversationId);
   const loadingConversations = useAppSelector((state) => state.messages.conversationsStatus === "loading");
@@ -73,7 +76,16 @@ export default function MessagesClient() {
   const [inputValue, setInputValue] = useState("");
   const [viewMessage, setViewMessage] = useState(false);
   const [searchConversation, setSearchConversation] = useState("");
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [imageModal, setImageModal] = useState<{ url: string; name: string } | null>(null);
+  const [pdfModal, setPdfModal] = useState<{ url: string; name: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const plusMenuRef = useRef<HTMLDivElement | null>(null);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === selectedId) || null,
@@ -105,7 +117,25 @@ export default function MessagesClient() {
 
   useEffect(() => {
     if (!selectedId || !user?.id) return;
-    dispatch(fetchMessages(selectedId));
+    dispatch(fetchMessages(selectedId)).then((result: any) => {
+      if (result.payload?.messages) {
+        console.log('Fetched messages for conversation', selectedId, ':', result.payload.messages);
+        result.payload.messages.forEach((msg: any, i: number) => {
+          console.log(`Message ${i}:`, {
+            id: msg.id,
+            content: msg.content,
+            hasAttachments: !!msg.attachments,
+            attachmentsCount: msg.attachments?.length || 0,
+            attachments: msg.attachments
+          });
+        });
+      }
+    });
+
+    // Re-fetch conversations when messages are loaded to update unread count
+    return () => {
+      dispatch(fetchConversations());
+    };
   }, [dispatch, selectedId, user?.id]);
 
   useEffect(() => {
@@ -115,6 +145,7 @@ export default function MessagesClient() {
 
     const handleNewMessage = (message: MessageItem & { conversationId?: number; clientMessageId?: string }) => {
       if (message.conversationId && message.conversationId !== selectedId) return;
+      console.log('Socket message:new received:', message);
       dispatch(
         upsertMessage({
           conversationId: message.conversationId ?? selectedId,
@@ -130,11 +161,18 @@ export default function MessagesClient() {
       );
     };
 
+    const handleMessagesRead = () => {
+      // Re-fetch conversations when messages are marked as read
+      dispatch(fetchConversations());
+    };
+
     socket.on("message:new", handleNewMessage);
+    socket.on("messages:read", handleMessagesRead);
     return () => {
       socket.off("message:new", handleNewMessage);
+      socket.off("messages:read", handleMessagesRead);
     };
-  }, [selectedId, user?.id]);
+  }, [selectedId, user?.id, dispatch]);
 
   const activeMessages = selectedId ? messagesByConversation[String(selectedId)] ?? [] : [];
   const loadingMessages =
@@ -164,27 +202,146 @@ export default function MessagesClient() {
     };
   }, []);
 
-  const handleSend = () => {
+  // Close plus menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
+        setShowPlusMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSend = async () => {
     const text = inputValue.trim();
-    if (!text || !selectedId) return;
+    if ((!text && selectedFiles.length === 0) || !selectedId) return;
+    
+    try {
+      setIsUploading(true);
+      setError(null);
+      let attachmentIds: number[] = [];
+      
+      if (selectedFiles.length > 0) {
+        attachmentIds = await uploadFiles(selectedFiles);
+      }
+      
+      const socket = getChatSocket();
+      const clientMessageId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const optimisticMessage: MessageItem = {
+        id: `temp-${clientMessageId}`,
+        content: text || (selectedFiles.length > 0 ? '📎 Sending file...' : ''),
+        createdAt: new Date().toISOString(),
+        sender: user ? { id: user.id, username: user.username } : null,
+      };
+      
+      dispatch(addOptimisticMessage({ conversationId: selectedId, message: optimisticMessage }));
+      dispatch(
+        updateConversationPreview({
+          conversationId: selectedId,
+          lastMessagePreview: text || '📎 Attachment',
+          lastMessageAt: optimisticMessage.createdAt,
+        })
+      );
+      
+      socket.emit("message:send", { 
+        conversationId: selectedId, 
+        content: text || '', 
+        attachments: attachmentIds,
+        clientMessageId 
+      });
+      
+      console.log('Emitted message:send with:', {
+        conversationId: selectedId,
+        contentLength: text?.length || 0,
+        attachmentIds,
+        clientMessageId,
+        socketConnected: socket.connected
+      });
+      
+      setInputValue("");
+      setSelectedFiles([]);
+    } catch (error: any) {
+      console.error('Failed to send message:', error);
+      if (error.message === 'Authentication required') {
+        setError('Please log in again to upload files.');
+      } else {
+        setError(error.message || 'Failed to upload files. Please try again.');
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024;
+    const oversizedFiles = files.filter(f => f.size > maxSize);
+    
+    if (oversizedFiles.length > 0) {
+      setError(`Some files are too large. Maximum size is 10MB.`);
+      return;
+    }
+    
+    setSelectedFiles(files);
+    setShowPlusMenu(false);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+  };
+
+  const getFileIcon = (mime: string) => {
+    if (mime.startsWith('image/')) return '🖼️';
+    if (mime === 'application/pdf') return '📄';
+    return '📎';
+  };
+
+  const handleMakeOffer = () => {
+    setShowPlusMenu(false);
+    setShowOfferModal(true);
+  };
+
+  const handleSendOffer = () => {
+    const amount = parseFloat(offerAmount);
+    if (!amount || amount <= 0 || !selectedId) {
+      setError("Please enter a valid offer amount");
+      return;
+    }
+    
     const socket = getChatSocket();
     const clientMessageId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const offerText = `💰 Made an offer: $${amount.toFixed(2)}`;
     const optimisticMessage: MessageItem = {
       id: `temp-${clientMessageId}`,
-      content: text,
+      content: offerText,
       createdAt: new Date().toISOString(),
       sender: user ? { id: user.id, username: user.username } : null,
     };
+    
     dispatch(addOptimisticMessage({ conversationId: selectedId, message: optimisticMessage }));
     dispatch(
       updateConversationPreview({
         conversationId: selectedId,
-        lastMessagePreview: text,
+        lastMessagePreview: offerText,
         lastMessageAt: optimisticMessage.createdAt,
       })
     );
-    socket.emit("message:send", { conversationId: selectedId, content: text, clientMessageId });
-    setInputValue("");
+    
+    socket.emit("message:send", { 
+      conversationId: selectedId, 
+      content: offerText, 
+      clientMessageId 
+    });
+    
+    setShowOfferModal(false);
+    setOfferAmount("");
+    setError(null);
   };
 
   if (!user) {
@@ -326,7 +483,7 @@ export default function MessagesClient() {
               {/* Chat Header */}
               <div className="border-b border-[#f0ede8] px-6 py-4 bg-linear-to-r from-[#faf9f7] to-white">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Back Button */}
                     <button
                       onClick={() => setViewMessage(false)}
@@ -335,26 +492,34 @@ export default function MessagesClient() {
                       ←
                     </button>
 
-                    {/* Product Image */}
-                    <div className="w-14 h-14 bg-[#f0ede8] rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8]">
+                    {/* Product Image - Clickable */}
+                    <Link 
+                      href={`/products/${activeConversation.product?.id}`}
+                      className="w-14 h-14 bg-[#f0ede8] rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8] hover:border-[#cb6f4d] transition-all cursor-pointer group"
+                    >
                       {activeConversation.product?.images && getFirstImageUrl(activeConversation.product.images) ? (
                         <img
                           src={getFirstImageUrl(activeConversation.product.images) || ""}
                           alt={activeConversation.product?.title || "Product"}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (
-                        <ImageIcon className="text-[#ccc]" size={24} />
+                        <ImageIcon className="text-[#ccc] group-hover:text-[#cb6f4d] transition-colors" size={24} />
                       )}
-                    </div>
+                    </Link>
 
-                    {/* Header Info */}
+                    {/* Header Info - Clickable */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-[#1a1a1a] text-sm">{peerUser?.username || "User"}</span>
                         <CheckCircle2 size={14} className="text-[#cb6f4d] shrink-0" />
                       </div>
-                      <p className="text-xs text-[#888] truncate">{activeConversation.product?.title || "Product"}</p>
+                      <Link 
+                        href={`/products/${activeConversation.product?.id}`}
+                        className="text-xs text-[#888] hover:text-[#cb6f4d] truncate block transition-colors cursor-pointer"
+                      >
+                        {activeConversation.product?.title || "Product"}
+                      </Link>
                     </div>
                   </div>
 
@@ -388,6 +553,7 @@ export default function MessagesClient() {
                 ) : (
                   activeMessages.map((msg, idx) => {
                     const isMine = msg.sender?.id === user.id;
+                    console.log('Rendering message:', msg.id, 'Has attachments:', msg.attachments?.length || 0, msg.attachments);
                     return (
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                         <div className="flex flex-col max-w-xs">
@@ -398,7 +564,62 @@ export default function MessagesClient() {
                                 : "bg-white border border-[#e0ddd8] text-[#333] rounded-bl-none shadow-sm"
                             }`}
                           >
-                            <p className="wrap-break-word">{msg.content}</p>
+                            {msg.content && <p className="wrap-break-word mb-1">{msg.content}</p>}
+                            
+                            {/* Display Attachments */}
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className={`space-y-2 ${msg.content ? 'mt-2' : ''}`}>
+                                {msg.attachments.map((att) => {
+                                  const fullUrl = `${API_BASE_URL}${att.url}`;
+                                  
+                                  return (
+                                    <div key={att.id}>
+                                      {att.mime.startsWith('image/') ? (
+                                        <div
+                                          onClick={() => setImageModal({ url: fullUrl, name: att.name })}
+                                          className="cursor-pointer group relative"
+                                        >
+                                          <img
+                                            src={fullUrl}
+                                            alt={att.name}
+                                            className="rounded-xl max-w-full h-auto shadow-md"
+                                            style={{ maxHeight: '250px', maxWidth: '250px' }}
+                                          />
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-all" />
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => setPdfModal({ url: fullUrl, name: att.name })}
+                                          className={`flex items-center gap-2 p-2.5 rounded-xl cursor-pointer transition-all shadow-sm w-full text-left ${
+                                            isMine
+                                              ? 'bg-white/20 hover:bg-white/30'
+                                              : 'bg-white hover:bg-[#f9f8f7]'
+                                          }`}
+                                        >
+                                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                            isMine ? 'bg-white/30' : 'bg-[#f0ede8]'
+                                          }`}>
+                                            <span className="text-xl">📄</span>
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className={`text-xs font-semibold truncate ${
+                                              isMine ? 'text-white' : 'text-[#1a1a1a]'
+                                            }`}>
+                                              {att.name}
+                                            </p>
+                                            <p className={`text-xs ${
+                                              isMine ? 'text-white/70' : 'text-[#888]'
+                                            }`}>
+                                              {(att.size / 1024).toFixed(1)} KB
+                                            </p>
+                                          </div>
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                           <span className={`text-xs mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}>
                             {formatFullDateTime(msg.createdAt)}
@@ -415,7 +636,100 @@ export default function MessagesClient() {
               <div className={`border-t border-[#f0ede8] px-6 py-4 bg-white shrink-0 ${
                 isAndroid ? "android-message-composer" : ""
               }`}>
+                {/* Selected Files Preview */}
+                {selectedFiles.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {selectedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 bg-[#f0ede8] rounded-lg px-3 py-2 border border-[#e0ddd8]"
+                      >
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                        ) : (
+                          <span className="text-2xl">
+                            {file.type === 'application/pdf' ? '📄' : '📎'}
+                          </span>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#1a1a1a] truncate max-w-[150px]">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-[#888]">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="w-6 h-6 rounded-full hover:bg-[#e0ddd8] flex items-center justify-center transition-colors"
+                        >
+                          <X size={14} className="text-[#888]" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
+                  {/* Plus Icon with Dropdown */}
+                  <div ref={plusMenuRef} className="relative">
+                    <button
+                      onClick={() => setShowPlusMenu(!showPlusMenu)}
+                      className="w-10 h-10 rounded-full border border-[#e0ddd8] text-[#888] flex items-center justify-center hover:bg-[#f0ede8] hover:border-[#cb6f4d] hover:text-[#cb6f4d] transition-all"
+                      title="More options"
+                    >
+                      <Plus size={20} />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showPlusMenu && (
+                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white border border-[#e0ddd8] rounded-xl shadow-xl z-50 overflow-hidden animate-fadeIn">
+                        {/* Attach File Option */}
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#faf9f7] transition-colors text-left group"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center group-hover:bg-[#cb6f4d] transition-colors">
+                            <Paperclip size={18} className="text-[#888] group-hover:text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-[#1a1a1a]">Attach File</p>
+                            <p className="text-xs text-[#888]">Send images or PDFs</p>
+                          </div>
+                        </button>
+
+                        {/* Make an Offer Option */}
+                        <button
+                          onClick={handleMakeOffer}
+                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#faf9f7] transition-colors text-left border-t border-[#f0ede8] group"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center group-hover:bg-[#cb6f4d] transition-colors">
+                            <Tag size={18} className="text-[#888] group-hover:text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-[#1a1a1a]">Make an Offer</p>
+                            <p className="text-xs text-[#888]">Propose your price</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Hidden File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+
+                  {/* Message Input */}
                   <input
                     type="text"
                     value={inputValue}
@@ -429,12 +743,18 @@ export default function MessagesClient() {
                     placeholder="Write a message..."
                     className="flex-1 border border-[#e0ddd8] rounded-full px-5 py-3 text-sm text-[#333] placeholder:text-[#bbb] focus:outline-none focus:border-[#cb6f4d] focus:ring-1 focus:ring-[#cb6f4d]/30 transition-all"
                   />
+
+                  {/* Send Button */}
                   <button
                     onClick={handleSend}
-                    disabled={!inputValue.trim()}
+                    disabled={(!inputValue.trim() && selectedFiles.length === 0) || isUploading}
                     className="w-11 h-11 rounded-full bg-[#cb6f4d] text-white flex items-center justify-center hover:bg-[#b85f3d] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                   >
-                    <Send size={20} />
+                    {isUploading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={20} />
+                    )}
                   </button>
                 </div>
                 {error && (
@@ -447,6 +767,193 @@ export default function MessagesClient() {
           )}
         </main>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {imageModal && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          onClick={() => setImageModal(null)}
+        >
+          <button
+            onClick={() => setImageModal(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <X size={24} className="text-white" />
+          </button>
+          <div className="max-w-5xl max-h-[90vh] flex flex-col items-center gap-4">
+            <img
+              src={imageModal.url}
+              alt={imageModal.name}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="flex gap-3">
+              <a
+                href={imageModal.url}
+                download={imageModal.name}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+                Download
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {pdfModal && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#e0ddd8]">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-2xl">📄</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#1a1a1a] truncate">{pdfModal.name}</p>
+                  <p className="text-xs text-[#888]">PDF Document</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={pdfModal.url}
+                  download={pdfModal.name}
+                  className="px-4 py-2 bg-[#cb6f4d] hover:bg-[#b85f3d] text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                  </svg>
+                  Download
+                </a>
+                <button
+                  onClick={() => setPdfModal(null)}
+                  className="w-10 h-10 rounded-lg hover:bg-[#f0ede8] flex items-center justify-center transition-colors"
+                >
+                  <X size={20} className="text-[#888]" />
+                </button>
+              </div>
+            </div>
+            {/* PDF Viewer */}
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={pdfModal.url}
+                className="w-full h-full border-0"
+                title={pdfModal.name}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Make an Offer Modal */}
+      {showOfferModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-[#cb6f4d]/10 flex items-center justify-center">
+                  <Tag size={24} className="text-[#cb6f4d]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#1a1a1a]">Make an Offer</h3>
+                  <p className="text-xs text-[#888]">Propose your price</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowOfferModal(false);
+                  setOfferAmount("");
+                  setError(null);
+                }}
+                className="w-8 h-8 rounded-full hover:bg-[#f0ede8] flex items-center justify-center transition-colors"
+              >
+                <X size={20} className="text-[#888]" />
+              </button>
+            </div>
+
+            {/* Product Info */}
+            {activeConversation?.product && (
+              <div className="mb-6 p-4 bg-[#faf9f7] rounded-xl border border-[#e0ddd8]">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-[#e0ddd8]">
+                    {activeConversation.product.images && getFirstImageUrl(activeConversation.product.images) ? (
+                      <img
+                        src={getFirstImageUrl(activeConversation.product.images) || ""}
+                        alt={activeConversation.product.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="text-[#ccc]" size={24} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#1a1a1a] truncate">
+                      {activeConversation.product.title}
+                    </p>
+                    {activeConversation.product.price && (
+                      <p className="text-xs text-[#888] mt-1">
+                        Listed price: <span className="font-semibold text-[#cb6f4d]">{activeConversation.product.price}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Offer Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-[#1a1a1a] mb-2">
+                Your Offer Amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888] font-semibold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full border border-[#e0ddd8] rounded-xl pl-8 pr-4 py-3 text-lg font-semibold text-[#1a1a1a] focus:outline-none focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/20 transition-all"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-[#888] mt-2">
+                💡 Tip: Make a reasonable offer to increase your chances
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowOfferModal(false);
+                  setOfferAmount("");
+                  setError(null);
+                }}
+                className="flex-1 px-4 py-3 border border-[#e0ddd8] text-[#888] rounded-xl font-semibold hover:bg-[#f0ede8] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendOffer}
+                disabled={!offerAmount || parseFloat(offerAmount) <= 0}
+                className="flex-1 px-4 py-3 bg-[#cb6f4d] text-white rounded-xl font-semibold hover:bg-[#b85f3d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+              >
+                Send Offer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

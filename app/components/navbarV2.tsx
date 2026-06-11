@@ -21,8 +21,9 @@ import {
   useCallback,
   type FormEvent,
   type MouseEvent as ReactMouseEvent,
+  useMemo,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import SignUpLogin from "./signUp-login";
 import { SubMenus } from "./SubMenus";
 import Link from "next/link";
@@ -30,6 +31,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import Image from "next/image";
 import type { RootState } from "@/lib/store";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
+import { fetchConversations } from "@/lib/features/messagesSlice";
 import { mapTreeToSubCategories } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -78,6 +80,7 @@ async function getImageTitle(file: File): Promise<string> {
 export default function NavbarV2() {
   const { isAndroid, isReady } = useAndroidNative();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductCardItem[]>([]);
@@ -158,6 +161,20 @@ export default function NavbarV2() {
   const { user, logout, requireLogin } = useAuth();
   const { notifications, unreadCount, markRead, markAllRead } =
     useNotifications();
+
+  // Messages State
+  const conversations = useAppSelector((state: RootState) => state.messages.conversations);
+  const unreadMessagesCount = useMemo(() => {
+    console.log('Conversations data:', conversations);
+    const count = conversations.reduce((acc, conv) => {
+      const unread = conv.unreadCount || 0;
+      console.log(`Conversation ${conv.id} unreadCount:`, unread);
+      return acc + unread;
+    }, 0);
+    console.log('Total unread messages:', count);
+    return count;
+  }, [conversations]);
+
   const [loggedInUser, setLoggedInUser] = useState<{
     avatar?: { url?: string };
     googlePicture?: string;
@@ -269,6 +286,13 @@ export default function NavbarV2() {
       dispatch(fetchCatalogTree());
     }
   }, [categoriesStatus, dispatch, isAndroid]);
+
+  // Fetch conversations globally to update the unread count in the navbar
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchConversations());
+    }
+  }, [user?.id, dispatch, pathname]);
 
   if (!isReady) return null;
   if (isAndroid) return <AndroidChrome />;
@@ -499,8 +523,13 @@ export default function NavbarV2() {
             <div className="ml-auto flex items-center gap-0 sm:gap-3 md:gap-4 lg:gap-2">
               {user && (
                 <Link href={`/Messages`}>
-                  <button className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
+                  <button className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer">
                     <Mail className="w-6 h-6 text-gray-600" />
+                    {unreadMessagesCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] bg-[#cb6f4d] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 border-2 border-white">
+                        {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                      </span>
+                    )}
                   </button>
                 </Link>
               )}

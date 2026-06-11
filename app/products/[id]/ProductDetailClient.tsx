@@ -37,6 +37,7 @@ import {
   Truck,
   RotateCcw,
   Tag,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -121,6 +122,7 @@ export default function ProductDetailPage() {
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [isAskingSeller, setIsAskingSeller] = useState(false);
   const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
   const [liveRatingAvg, setLiveRatingAvg] = useState<number | null>(null);
 
@@ -375,6 +377,7 @@ export default function ProductDetailPage() {
       return;
     }
 
+    setIsAskingSeller(true);
     try {
       const conversation = await createConversationForProduct({
         productId: Number(product.id),
@@ -385,9 +388,11 @@ export default function ProductDetailPage() {
         router.push(`/Messages?conversationId=${conversation.id}`);
       } else {
         toast.error("Unable to start conversation. Please try again.");
+        setIsAskingSeller(false);
       }
     } catch {
       toast.error("Failed to start conversation. Please try again.");
+      setIsAskingSeller(false);
     }
   };
 
@@ -971,11 +976,15 @@ export default function ProductDetailPage() {
 
                     handleAskSeller();
                   }}
-                  disabled={!!isOwnProduct}
+                  disabled={!!isOwnProduct || isAskingSeller}
                   className="pdp-btn-secondary"
                 >
-                  <MessageCircle size={14} />
-                  {isOwnProduct ? "Your product" : "Ask seller"}
+                  {isAskingSeller ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <MessageCircle size={14} />
+                  )}
+                  {isOwnProduct ? "Your product" : isAskingSeller ? "Starting chat..." : "Ask seller"}
                 </button>
 
                 {!isOwnProduct && product?.user?.id && (

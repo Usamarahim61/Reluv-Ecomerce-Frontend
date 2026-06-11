@@ -16,6 +16,18 @@ export const getChatSocket = (): Socket => {
     },
   });
 
+  socket.on('connect', () => {
+    console.log('[Socket] Connected to server');
+  });
+
+  socket.on('disconnect', () => {
+    console.log('[Socket] Disconnected from server');
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('[Socket] Connection error:', error.message);
+  });
+
   return socket;
 };
 
