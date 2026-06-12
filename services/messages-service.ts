@@ -8,6 +8,9 @@ export type ConversationUser = {
 
 export type ConversationProduct = {
   id: number;
+  documentId?: string;
+  size: string;
+  brand: string;
   title: string;
   price?: string;
   images?: { url?: string }[];
@@ -39,6 +42,35 @@ export type MessageItem = {
   createdAt?: string;
   sender: ConversationUser | null;
   attachments?: MessageAttachment[];
+  metadata?: {
+    type?: string;
+    offerId?: number;
+    amount?: number;
+    status?: string;
+  };
+  offer?: {
+    id: number;
+    offerPrice: number;
+    originalPrice: number;
+    status: 'pending' | 'accepted' | 'declined' | 'expired' | 'completed';
+    message?: string;
+    expiresAt?: string;
+    buyer?: number;
+    seller?: number;
+    // Added for consistent checkout URL generation
+    productTitle?: string;
+    productImage?: string; // Absolute URL or relative path
+    product?: {
+      id?: number | string;
+      documentId?: string;
+      title?: string;
+      brand?: string;
+      size?: string;
+    };
+    currency?: string; // e.g., "TBH"
+    buyerProtectionFee?: number;
+    shippingFee?: number;
+  };
 };
 
 export async function fetchMyConversations(): Promise<ConversationItem[]> {

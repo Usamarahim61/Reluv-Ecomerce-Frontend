@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Info, CheckCircle2, Send, Image as ImageIcon, Clock, MapPin, Heart, MessageCircle, Search, X, Phone, Globe, Plus, Paperclip, Tag } from "lucide-react";
+import { Info, CheckCircle2, Send, Image as ImageIcon, Clock, MapPin, Heart, MessageCircle, Search, X, Phone, Globe, Plus, Paperclip, Tag, CheckCircle, XCircle, DollarSign, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ConversationItem, MessageItem, uploadFiles } from "@/services/messages-service";
+import { respondToOffer } from "@/services/offers-service";
 import { getChatSocket, disconnectChatSocket } from "@/lib/chat-socket";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
@@ -79,7 +81,10 @@ export default function MessagesClient() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
+  const [offerMessage, setOfferMessage] = useState("");
+  const [offerError, setOfferError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [respondingToOfferId, setRespondingToOfferId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageModal, setImageModal] = useState<{ url: string; name: string } | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; name: string } | null>(null);
@@ -291,6 +296,56 @@ export default function MessagesClient() {
     }
   };
 
+  const handleOfferResponse = async (offerId: number, action: 'accepted' | 'declined') => {
+    if (!user?.id || !selectedId) return;
+    
+    try {
+      setRespondingToOfferId(offerId);
+      const response = await respondToOffer(offerId, {
+        action,
+        sellerId: user.id,
+        conversationId: selectedId,
+      });
+      
+      // Refresh messages to show the response message created by backend
+      dispatch(fetchMessages(selectedId));
+      toast.success(`Offer ${action}!`);
+    } catch (err: any) {
+      console.error('Failed to respond to offer:', err);
+      setError(err.message || 'Failed to respond to offer');
+      toast.error(err.message || 'Failed to respond to offer');
+    } finally {
+      setRespondingToOfferId(null);
+    }
+  };
+
+  const handleBuyWithOffer = (offer: any) => {
+    if (!offer || !activeConversation) return;
+
+    // msg.offer might be incomplete depending on backend population, 
+    // use activeConversation as a reliable source of truth for product/seller context.
+    const product = activeConversation.product;
+    const seller = activeConversation.seller;
+    const imageUrl = offer.productImage || (product?.images ? getFirstImageUrl(product.images) || "" : "");
+
+    router.push(
+      `/CheckOut?${new URLSearchParams({
+        productId: String(product?.id || ""),
+        documentId: String(product?.documentId || ""),
+        title: offer.productTitle || product?.title || "Product",
+        brand: product?.brand || "Reluv",
+        size: product?.size || "One Size",
+        price: String(offer.offerPrice),
+        currency: "TBH",
+        imageUrl: imageUrl,
+        buyerProtectionFee: "100",
+        shippingFee: "100",
+        sellerId: String(seller?.id || ""),
+        offerId: String(offer.id),
+      }).toString()}`,
+    );
+  };
+
   const removeFile = (index: number) => {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
@@ -302,46 +357,92 @@ export default function MessagesClient() {
     return '📎';
   };
 
+  const productPrice = activeConversation?.product?.price ? parseFloat(String(activeConversation.product.price)) : 0;
+  const minOffer = productPrice * 0.5;
+  const maxOffer = productPrice * 1.5;
+
   const handleMakeOffer = () => {
     setShowPlusMenu(false);
     setShowOfferModal(true);
+    setOfferAmount("");
+    setOfferMessage("");
+    setOfferError(null);
   };
 
-  const handleSendOffer = () => {
+  const handleQuickOffer = (percentage: number) => {
+    const amount = (productPrice * percentage).toFixed(2);
+    setOfferAmount(amount);
+  };
+
+  const handleSendOffer = async () => {
     const amount = parseFloat(offerAmount);
-    if (!amount || amount <= 0 || !selectedId) {
-      setError("Please enter a valid offer amount");
+    setOfferError(null);
+
+    if (!amount || amount <= 0 || !selectedId || !activeConversation) {
+      const msg = "Please enter a valid offer amount";
+      setOfferError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (amount < minOffer) {
+      const msg = `Offer is too low. Minimum offer is $${minOffer.toFixed(2)}.`;
+      setOfferError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (amount > maxOffer) {
+      const msg = `Offer is too high. Maximum offer is $${maxOffer.toFixed(2)}.`;
+      setOfferError(msg);
+      toast.error(msg);
       return;
     }
     
-    const socket = getChatSocket();
-    const clientMessageId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const offerText = `💰 Made an offer: $${amount.toFixed(2)}`;
-    const optimisticMessage: MessageItem = {
-      id: `temp-${clientMessageId}`,
-      content: offerText,
-      createdAt: new Date().toISOString(),
-      sender: user ? { id: user.id, username: user.username } : null,
-    };
-    
-    dispatch(addOptimisticMessage({ conversationId: selectedId, message: optimisticMessage }));
-    dispatch(
-      updateConversationPreview({
-        conversationId: selectedId,
-        lastMessagePreview: offerText,
-        lastMessageAt: optimisticMessage.createdAt,
-      })
-    );
-    
-    socket.emit("message:send", { 
-      conversationId: selectedId, 
-      content: offerText, 
-      clientMessageId 
-    });
-    
-    setShowOfferModal(false);
-    setOfferAmount("");
-    setError(null);
+    try {
+      const product = activeConversation.product;
+      if (!product) {
+        setOfferError("Product not found");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/offers/make`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          buyerId: user?.id,
+          sellerId: peerUser?.id,
+          offerPrice: amount,
+          message: offerMessage || undefined,
+          conversationId: selectedId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to make offer');
+      }
+
+      const { data: offer } = await response.json();
+      
+      // Refresh messages to show the offer message created by backend
+      dispatch(fetchMessages(selectedId));
+      
+      setShowOfferModal(false);
+      setOfferAmount("");
+      setOfferMessage("");
+      setOfferError(null);
+      setError(null);
+      toast.success('Offer sent successfully!');
+    } catch (err: any) {
+      console.error('Failed to make offer:', err);
+      const msg = err.message || 'Failed to send offer';
+      setOfferError(msg);
+      toast.error(msg);
+    }
   };
 
   if (!user) {
@@ -552,7 +653,16 @@ export default function MessagesClient() {
                   </div>
                 ) : (
                   activeMessages.map((msg, idx) => {
-                    const isMine = msg.sender?.id === user.id;
+                    const isMine = Number(msg.sender?.id) === Number(user?.id);
+
+                    // Unified offer data extraction
+                    const isOffer = msg.metadata?.type === "offer" || msg.metadata?.type === "offer_response" || !!msg.offer;
+                    const offerId = msg.offer?.id || msg.metadata?.offerId;
+                    const offerAmount = msg.offer?.offerPrice ?? msg.metadata?.amount
+                    const offerStatus = msg.offer?.status || msg.metadata?.status;
+                    const originalPrice = msg.offer?.originalPrice || 
+                      (activeConversation?.product?.price ? parseFloat(String(activeConversation.product.price)) : 0);
+
                     console.log('Rendering message:', msg.id, 'Has attachments:', msg.attachments?.length || 0, msg.attachments);
                     return (
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
@@ -565,6 +675,96 @@ export default function MessagesClient() {
                             }`}
                           >
                             {msg.content && <p className="wrap-break-word mb-1">{msg.content}</p>}
+                            
+                            {/* Offer Card */}
+                            {isOffer && offerId && (
+                              <div className={`mt-2 p-3 rounded-xl ${
+                                isMine ? 'bg-white/10' : 'bg-[#faf9f7]'
+                              }`}>
+                                <div className="flex items-start gap-3">
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                    isMine ? 'bg-white/20' : 'bg-[#cb6f4d]/10'
+                                  }`}>
+                                    <DollarSign size={20} className={isMine ? 'text-white' : 'text-[#cb6f4d]'} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`text-xs font-bold ${
+                                        isMine ? 'text-white' : 'text-[#1a1a1a]'
+                                      }`}>
+                                        Offer: ${typeof offerAmount === 'number' ? offerAmount.toFixed(2) : offerAmount}
+                                      </span>
+                                      {offerStatus === 'pending' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">
+                                          Pending
+                                        </span>
+                                      )}
+                                      {offerStatus === 'accepted' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
+                                          Accepted
+                                        </span>
+                                      )}
+                                      {offerStatus === 'declined' && (
+                                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-semibold">
+                                          Declined
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className={`text-xs ${isMine ? 'text-white/70' : 'text-[#888]'}`}>
+                                      Original Price: ${originalPrice}
+                                    </p>
+                                    
+                                    {/* Offer Actions - Only show to seller when pending */}
+                                    {!isMine && offerStatus === 'pending' && Number(activeConversation?.seller?.id) === Number(user?.id) && (
+                                      <div className="flex flex-wrap gap-2 mt-3">
+                                        <button
+                                          onClick={() => handleOfferResponse(Number(offerId), 'accepted')}
+                                          disabled={respondingToOfferId === Number(offerId)}
+                                          className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                                        >
+                                          {respondingToOfferId === Number(offerId) ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                          ) : (
+                                            <><CheckCircle size={14} /> Accept</>
+                                          )}
+                                        </button>
+                                        <button
+                                          onClick={() => handleOfferResponse(Number(offerId), 'declined')}
+                                          disabled={respondingToOfferId === Number(offerId)}
+                                          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                                        >
+                                          {respondingToOfferId === Number(offerId) ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                          ) : (
+                                            <><XCircle size={14} /> Decline</>
+                                          )}
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setOfferAmount(String(offerAmount));
+                                            setShowOfferModal(true);
+                                          }}
+                                          className="w-full px-3 py-2 bg-white border border-[#cb6f4d] text-[#cb6f4d] hover:bg-orange-50 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                                        >
+                                          <Tag size={14} />
+                                          Counter Offer
+                                        </button>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Checkout button for accepted offers */}
+                                    {offerStatus === 'accepted' && Number(activeConversation?.buyer?.id) === Number(user?.id) && (
+                                      <button
+                                        onClick={() => handleBuyWithOffer(msg.offer)}
+                                        className="block w-full mt-3 px-3 py-2 bg-[#cb6f4d] hover:bg-[#b85f3d] text-white rounded-lg text-xs font-semibold transition-colors text-center cursor-pointer"
+                                      >
+                                        Proceed to Checkout
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Display Attachments */}
                             {msg.attachments && msg.attachments.length > 0 && (
@@ -909,7 +1109,7 @@ export default function MessagesClient() {
             )}
 
             {/* Offer Input */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm font-semibold text-[#1a1a1a] mb-2">
                 Your Offer Amount
               </label>
@@ -926,9 +1126,30 @@ export default function MessagesClient() {
                   autoFocus
                 />
               </div>
-              <p className="text-xs text-[#888] mt-2">
-                💡 Tip: Make a reasonable offer to increase your chances
-              </p>
+              {offerError && (
+                <p className="text-xs text-red-500 mt-2 font-medium">
+                  {offerError}
+                </p>
+              )}
+              {activeConversation?.product?.price && (
+                <p className="text-xs text-[#888] mt-2">
+                  💡 Tip: Listed price is ${activeConversation.product.price}. Range: ${minOffer.toFixed(2)} - ${maxOffer.toFixed(2)}.
+                </p>
+              )}
+            </div>
+
+            {/* Optional Message */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-[#1a1a1a] mb-2">
+                Message (Optional)
+              </label>
+              <textarea
+                value={offerMessage}
+                onChange={(e) => setOfferMessage(e.target.value)}
+                placeholder="Add a note to your offer..."
+                rows={3}
+                className="w-full border border-[#e0ddd8] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] placeholder:text-[#bbb] focus:outline-none focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/20 transition-all resize-none"
+              />
             </div>
 
             {/* Action Buttons */}

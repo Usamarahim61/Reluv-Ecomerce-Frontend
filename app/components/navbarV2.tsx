@@ -250,7 +250,7 @@ export default function NavbarV2() {
     const fetchData = async () => {
       if (!user?.id) return;
       try {
-        const fetchedUser = await getUserAvatr(Number(user.id));
+        const fetchedUser = await getUserAvatr(user.documentId ? user.documentId : Number(user.id));
         setLoggedInUser(fetchedUser);
       } catch {
         console.log("Failed to load profile data.");

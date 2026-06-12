@@ -49,6 +49,30 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Main app: allow it to communicate with same-origin popups
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+      {
+        // Callback page: must NOT isolate from opener so window.opener is available
+        source: '/auth/callback/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'unsafe-none',
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

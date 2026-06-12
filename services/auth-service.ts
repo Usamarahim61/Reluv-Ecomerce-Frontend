@@ -50,40 +50,40 @@ export function forgotPasswordReset(email: string, otp: string, password: string
     body: JSON.stringify({ email, otp, password }),
   });
 }
-export function getUser(id: number) {
+export function getUser(id: any) {
   return apiRequest(
     `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*`,
     { method: "GET" }
   );
 }
-export function getUserAddress(id: number) {
+export function getUserAddress(id: any) {
   return apiRequest(
-    `/users/${id}?populate[city][populate]=*&populate[country][populate]=*`,
+    `/users/${id}`,
     {
       method: "GET",
     }
   );
 }
-export function getUserAvatr(id: number) {
+export function getUserAvatr(id: any) {
   return apiRequest(
-    `/users/${id}?populate[avatar][populate]=*`,
+    `/users/me?populate[avatar][populate]=*`,
      { method: "GET",
     }
   );
 }
-export function getUserFav_Products(id: number) {
+export function getUserFav_Products(id: any) {
   return apiRequest(
     `/users/${id}?populate[fav_products][populate]=*`,
      { method: "GET",
     }
   );
 }
-export function AccountUpdate(id: number, data: any) {
+export function AccountUpdate(id: any, data: any) {
   return apiRequest(`/users/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json", // Tells the server you're sending JSON
-        Authorization: `Bearer ${localStorage.get("jwt")}`,
+        // Authorization: `Bearer ${localStorage.get("jwt")}`,
     },
     body: JSON.stringify(data), // Converts your object to a JSON string
   });
@@ -120,7 +120,14 @@ export async function loginWithGoogle(token: string) {
     }
     throw new Error(message);
   }
-  return res.json();
+  const data = await res.json();
+  console.log("✅ Google login response:", { 
+    hasJwt: !!data.jwt, 
+    hasUser: !!data.user,
+    userId: data.user?.id,
+    jwtPreview: data.jwt?.substring(0, 30) + "..."
+  });
+  return data;
 }
 export async function loginWithFacebook(accessToken: string) {
   const res = await fetch(`${API_BASE_URL}/auth/facebook`, {
