@@ -98,13 +98,19 @@ export default function ProductCardV3({
           data: { likeCount: isLiked ? likesCount - 1 : likesCount + 1 },
         }),
       });
-      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+       const userRes = await fetch(
+      `${API_BASE_URL}/api/products/users/${user?.id}/favorites`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fav_products: { id: Number(productId) },
+          fav_products:  { connect: [Number(id)]  }
+          // nowLiked
+          //   ? { connect: [Number(id)] }
+          //   : { disconnect: [Number(id)] },
         }),
-      });
+      }
+    );
     } catch (error) {
       console.error(error);
       setIsLiked(!isLiked);

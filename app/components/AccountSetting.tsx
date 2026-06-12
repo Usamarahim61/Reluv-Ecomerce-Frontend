@@ -14,17 +14,58 @@ import { BACKEND_URL, NEXT_PUBLIC_GOOGLE_CLIENT_ID } from "@/constants";
 
 const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const API = BACKEND_URL ?? "";
+
 function openPopup(url: string, title: string) {
-  const w = 500,
-    h = 600;
+  const w = 500, h = 600;
   const left = window.screenX + (window.outerWidth - w) / 2;
   const top = window.screenY + (window.outerHeight - h) / 2;
-  return window.open(
-    url,
-    title,
-    `width=${w},height=${h},left=${left},top=${top}`,
-  );
+  return window.open(url, title, `width=${w},height=${h},left=${left},top=${top}`);
 }
+
+/* ── Birthday helpers ─────────────────────────────────────────── */
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+function getDaysInMonth(month: number, year: number) {
+  if (!month) return 31;
+  return new Date(year || 2000, month, 0).getDate();
+}
+
+function buildDateString(day: string, month: string, year: string) {
+  if (!day || !month || !year) return "";
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseDateString(dateStr: string) {
+  if (!dateStr) return { day: "", month: "", year: "" };
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return { day: "", month: "", year: "" };
+  return {
+    year: parts[0],
+    month: String(parseInt(parts[1], 10)), // strip leading zero for select value
+    day: String(parseInt(parts[2], 10)),
+  };
+}
+
+/* ── Select style shared across dropdowns ─────────────────────── */
+const selectStyle: React.CSSProperties = {
+  height: "44px",
+  border: "1.5px solid #cb6f4d",
+  borderRadius: "8px",
+  padding: "0 10px",
+  fontSize: "14px",
+  color: "#374151",
+  background: "#fff",
+  outline: "none",
+  cursor: "pointer",
+  appearance: "none",
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%23cb6f4d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 10px center",
+  paddingRight: "28px",
+};
 
 /* ─────────────────────── Main Component ─────────────────────── */
 export default function AccountSetting() {
@@ -38,9 +79,15 @@ export default function AccountSetting() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
+  // Birthday broken into three parts
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+
   const [errors, setErrors] = useState<{
     phoneNumber?: string;
-    fullName?: string;
+    firstName?: string;
+    lastName?: string;
     gender?: string;
     birthday?: string;
   }>({});
@@ -48,9 +95,10 @@ export default function AccountSetting() {
   const [formData, setFormData] = useState({
     email: "",
     phoneNumber: "",
-    fullName: "",
+    firstName: "",   // maps to "First Name" in Strapi
+    lastName: "",    // maps to "Last Name" in Strapi
+    nickname: "",    // maps to "Nickname" in Strapi
     gender: "",
-    birthday: "",
     holidayMode: false,
     facebookLinked: false,
     googleLinked: false,
@@ -63,12 +111,20 @@ export default function AccountSetting() {
       try {
         setLoading(true);
         const data: any = await getUser(Number(user.id));
+
+        // Parse the stored YYYY-MM-DD birthday into separate parts
+        const { day, month, year } = parseDateString(data.birthday || "");
+        setBirthDay(day);
+        setBirthMonth(month);
+        setBirthYear(year);
+
         setFormData({
           email: data.email || "",
           phoneNumber: data.phoneNumber || "",
-          fullName: data.fullName || "",
+          firstName: data.firstName || "",   // ← exact Strapi field name
+          lastName: data.lastName || "",      // ← exact Strapi field name
+          nickname: data.nickname || "",       // ← exact Strapi field name
           gender: data.gender || "",
-          birthday: data.birthday || "",
           holidayMode: data.holidayMode || false,
           facebookLinked: data.facebookLinked || false,
           googleLinked: data.googleLinked || false,
@@ -90,15 +146,16 @@ export default function AccountSetting() {
 
   const validateForm = () => {
     const nextErrors: typeof errors = {};
-    if (!formData.fullName.trim())
-      nextErrors.fullName = "Full name is required.";
+    if (!formData.firstName.trim()) nextErrors.firstName = "First name is required.";
+    if (!formData.lastName.trim()) nextErrors.lastName = "Last name is required.";
     if (!formData.phoneNumber.trim()) {
       nextErrors.phoneNumber = "Phone number is required.";
     } else if (!/^\+\d{7,15}$/.test(formData.phoneNumber)) {
       nextErrors.phoneNumber = "Please enter a valid phone number.";
     }
     if (!formData.gender) nextErrors.gender = "Gender is required.";
-    if (!formData.birthday) nextErrors.birthday = "Birthday is required.";
+    if (!birthDay || !birthMonth || !birthYear)
+      nextErrors.birthday = "Please select a complete date of birth.";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -110,11 +167,17 @@ export default function AccountSetting() {
     const toastId = toast.loading("Saving changes…");
     setIsSubmitting(true);
     try {
+      // Build YYYY-MM-DD from the three dropdowns
+      const birthday = buildDateString(birthDay, birthMonth, birthYear);
+
+      // Payload keys must match Strapi schema field names exactly
       await AccountUpdate(Number(user.id), {
         phoneNumber: formData.phoneNumber,
-        fullName: formData.fullName,
+        firstName: formData.firstName,   // ← Strapi: "First Name"
+        lastName: formData.lastName,      // ← Strapi: "Last Name"
+        nickname: formData.nickname,       // ← Strapi: "Nickname"
         gender: formData.gender,
-        birthday: formData.birthday,
+        birthday,
         holidayMode: formData.holidayMode,
       });
       toast.update(toastId, {
@@ -145,9 +208,6 @@ export default function AccountSetting() {
   };
 
   // ── Link Google ───────────────────────────────────────────────
-  // Opens the same popup as SignUpLogin. The /api/auth/google controller
-  // matches by email → finds the existing user → sets googleLinked=true.
-  // No separate "link" endpoint needed.
   const handleLinkGoogle = useCallback(() => {
     if (!user?.id) return;
     setIsLinkingGoogle(true);
@@ -166,9 +226,7 @@ export default function AccountSetting() {
     );
 
     if (!popup) {
-      toast.error(
-        "Popup blocked. Please allow popups for this site and try again.",
-      );
+      toast.error("Popup blocked. Please allow popups for this site and try again.");
       setIsLinkingGoogle(false);
       return;
     }
@@ -181,8 +239,6 @@ export default function AccountSetting() {
       window.removeEventListener("message", handler);
       clearInterval(poll);
       try {
-        // POST /api/auth/google with the access token.
-        // Controller finds user by email → updates googleLinked=true + google fields.
         await loginWithGoogle(event.data.token);
         handleChange("googleLinked", true);
         popup.close();
@@ -210,7 +266,6 @@ export default function AccountSetting() {
 
     window.addEventListener("message", handler);
 
-    // If user closes the popup manually
     const poll = setInterval(() => {
       if (popup.closed) {
         clearInterval(poll);
@@ -270,6 +325,14 @@ export default function AccountSetting() {
     }
   };
 
+  // ── Birthday dropdown data ─────────────────────────────────────
+  const daysInSelectedMonth = getDaysInMonth(
+    parseInt(birthMonth) || 0,
+    parseInt(birthYear) || 2000,
+  );
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+
   if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
@@ -294,7 +357,7 @@ export default function AccountSetting() {
               autoClose: 3000,
               closeOnClick: true,
             });
-            await doUnlinkGoogle(newPassword); // ← pass password through
+            await doUnlinkGoogle(newPassword);
           }}
           onError={() =>
             toast.error("Password change failed. Try again.", {
@@ -320,17 +383,13 @@ export default function AccountSetting() {
         />
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-4xl mx-auto space-y-6 animate-fadeIn"
-      >
-        {/* Email & Phone */}
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+
+        {/* ── Email & Phone ──────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 space-y-6 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <p className="font-semibold text-gray-900 text-lg">
-                {formData.email}
-              </p>
+              <p className="font-semibold text-gray-900 text-lg">{formData.email}</p>
               <p className="text-xs text-[#cb6f4d] font-medium flex items-center gap-1 mt-1">
                 Verified Account <span className="p-0.5">✓</span>
               </p>
@@ -349,9 +408,7 @@ export default function AccountSetting() {
             <div className="flex flex-col gap-1">
               <span className="font-semibold text-gray-700">Phone number</span>
               {errors.phoneNumber && (
-                <span className="text-sm text-red-500">
-                  {errors.phoneNumber}
-                </span>
+                <span className="text-sm text-red-500">{errors.phoneNumber}</span>
               )}
             </div>
             <div className="w-full sm:max-w-[280px]">
@@ -364,28 +421,66 @@ export default function AccountSetting() {
           </div>
         </div>
 
-        {/* Personal Info */}
+        {/* ── Identity Details ───────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 space-y-6 shadow-sm">
           <h3 className="text-[#cb6f4d] text-xs font-bold uppercase tracking-wider">
             Identity Details
           </h3>
 
+          {/* First Name */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
             <div className="flex flex-col gap-1">
-              <label className="font-semibold text-gray-700">Full name</label>
-              {errors.fullName && (
-                <span className="text-sm text-red-500">{errors.fullName}</span>
+              <label className="font-semibold text-gray-700">First name</label>
+              {errors.firstName && (
+                <span className="text-sm text-red-500">{errors.firstName}</span>
               )}
             </div>
             <input
               type="text"
-              value={formData.fullName}
-              onChange={(e) => handleChange("fullName", e.target.value)}
-              placeholder="Your full name"
-              className={`w-full sm:max-w-[300px] border p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium ${errors.fullName ? "border-red-500" : "border-[#cb6f4d]"}`}
+              value={formData.firstName}
+              onChange={(e) => handleChange("firstName", e.target.value)}
+              placeholder="Your first name"
+              className={`w-full sm:max-w-[300px] border p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium ${
+                errors.firstName ? "border-red-500" : "border-[#cb6f4d]"
+              }`}
             />
           </div>
 
+          {/* Last Name */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-gray-700">Last name</label>
+              {errors.lastName && (
+                <span className="text-sm text-red-500">{errors.lastName}</span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => handleChange("lastName", e.target.value)}
+              placeholder="Your last name"
+              className={`w-full sm:max-w-[300px] border p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium ${
+                errors.lastName ? "border-red-500" : "border-[#cb6f4d]"
+              }`}
+            />
+          </div>
+
+          {/* Nickname */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-semibold text-gray-700">Nickname</label>
+              <span className="text-xs text-gray-400">Optional</span>
+            </div>
+            <input
+              type="text"
+              value={formData.nickname}
+              onChange={(e) => handleChange("nickname", e.target.value)}
+              placeholder="Your nickname"
+              className="w-full sm:max-w-[300px] border border-[#cb6f4d] p-3 rounded-lg focus:outline-[#cb6f4d] text-gray-600 font-medium"
+            />
+          </div>
+
+          {/* Gender */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 pb-6 gap-2">
             <div className="flex flex-col gap-1">
               <label className="font-semibold text-gray-700">Gender</label>
@@ -405,50 +500,100 @@ export default function AccountSetting() {
             </select>
           </div>
 
+          {/* Birthday — Day / Month / Year dropdowns */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
             <div className="flex flex-col gap-1">
-              <label className="font-semibold text-gray-700">Birthday</label>
+              <label className="font-semibold text-gray-700">Date of birth</label>
               {errors.birthday && (
                 <span className="text-sm text-red-500">{errors.birthday}</span>
               )}
             </div>
-            <input
-              type="date"
-              value={formData.birthday}
-              onChange={(e) => handleChange("birthday", e.target.value)}
-              className={`w-full sm:w-auto text-gray-600 sm:bg-transparent p-3 sm:p-0 rounded-lg focus:outline-[#cb6f4d] font-medium sm:text-right ${errors.birthday ? "border border-red-500" : ""}`}
-            />
+
+            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+              {/* Day */}
+              <select
+                value={birthDay}
+                onChange={(e) => {
+                  setBirthDay(e.target.value);
+                  setErrors((p) => ({ ...p, birthday: undefined }));
+                }}
+                style={{ ...selectStyle, width: "80px" }}
+              >
+                <option value="">Day</option>
+                {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={String(d)}>
+                    {String(d).padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
+
+              {/* Month */}
+              <select
+                value={birthMonth}
+                onChange={(e) => {
+                  setBirthMonth(e.target.value);
+                  // Reset day if it exceeds new month's max days
+                  const newMax = getDaysInMonth(
+                    parseInt(e.target.value),
+                    parseInt(birthYear) || 2000,
+                  );
+                  if (parseInt(birthDay) > newMax) setBirthDay("");
+                  setErrors((p) => ({ ...p, birthday: undefined }));
+                }}
+                style={{ ...selectStyle, width: "130px" }}
+              >
+                <option value="">Month</option>
+                {MONTHS.map((name, idx) => (
+                  <option key={idx + 1} value={String(idx + 1)}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Year */}
+              <select
+                value={birthYear}
+                onChange={(e) => {
+                  setBirthYear(e.target.value);
+                  setErrors((p) => ({ ...p, birthday: undefined }));
+                }}
+                style={{ ...selectStyle, width: "100px" }}
+              >
+                <option value="">Year</option>
+                {years.map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Holiday Mode */}
+        {/* ── Holiday Mode ───────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 flex justify-between items-center shadow-sm">
           <div>
             <span className="font-semibold text-gray-900">Holiday mode</span>
-            <p className="text-xs text-gray-400">
-              Hide your items while you're away.
-            </p>
+            <p className="text-xs text-gray-400">Hide your items while you're away.</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={formData.holidayMode}
-              onChange={() =>
-                handleChange("holidayMode", !formData.holidayMode)
-              }
+              onChange={() => handleChange("holidayMode", !formData.holidayMode)}
               className="sr-only peer"
             />
             <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#cb6f4d] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
           </label>
         </div>
 
-        {/* Social Links */}
+        {/* ── Social Links ───────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 space-y-6 shadow-sm">
           <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider">
             Social Links
           </h3>
 
-          {/* Facebook */}
+          {/* Facebook — commented out until implemented
           <div className="flex justify-between items-center border-b border-gray-50 pb-6">
             <span className="font-semibold text-gray-900">Facebook</span>
             <button
@@ -458,15 +603,14 @@ export default function AccountSetting() {
               {formData.facebookLinked ? "Linked" : "Link"}
             </button>
           </div>
+          */}
 
           {/* Google */}
           <div className="flex justify-between items-center">
             <div>
               <span className="font-semibold text-gray-900">Google</span>
               {formData.googleLinked ? (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Unlink to use email & password only
-                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Unlink to use email & password only</p>
               ) : (
                 <p className="text-xs text-gray-400 mt-0.5">
                   Link your Google account for faster sign-in
@@ -495,11 +639,9 @@ export default function AccountSetting() {
           </div>
         </div>
 
-        {/* Security */}
+        {/* ── Password & Security ────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
-          <span className="font-semibold text-gray-900">
-            Password & Security
-          </span>
+          <span className="font-semibold text-gray-900">Password & Security</span>
           <button
             type="button"
             onClick={() => setShowPasswordModal(true)}
@@ -509,7 +651,7 @@ export default function AccountSetting() {
           </button>
         </div>
 
-        {/* Save */}
+        {/* ── Save ──────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-6 gap-4">
           <p className="text-xs text-gray-400 italic order-2 sm:order-1">
             Remember to save your changes before leaving.

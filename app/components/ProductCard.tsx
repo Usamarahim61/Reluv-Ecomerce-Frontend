@@ -105,15 +105,19 @@ export default function ProductCard({
       if (!res.ok) throw new Error("Failed to update product likes");
 
       // 2. Update user fav_products using connect/disconnect (Strapi v4/v5)
-      const userRes = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const userRes = await fetch(
+      `${API_BASE_URL}/api/products/${user?.id}/favorites`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fav_products: nowLiked
             ? { connect: [Number(id)] }
             : { disconnect: [Number(id)] },
+          productId: Number(id),
         }),
-      });
+      }
+    );
 
       if (!userRes.ok) throw new Error("Failed to update user fav products");
     } catch (error) {

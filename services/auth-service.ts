@@ -53,8 +53,7 @@ export function forgotPasswordReset(email: string, otp: string, password: string
 export function getUser(id: number) {
   return apiRequest(
     `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*`,
-     { method: "GET"
-    }
+    { method: "GET" }
   );
 }
 export function getUserAddress(id: number) {
@@ -84,6 +83,7 @@ export function AccountUpdate(id: number, data: any) {
     method: "PUT",
     headers: {
       "Content-Type": "application/json", // Tells the server you're sending JSON
+        Authorization: `Bearer ${localStorage.get("jwt")}`,
     },
     body: JSON.stringify(data), // Converts your object to a JSON string
   });

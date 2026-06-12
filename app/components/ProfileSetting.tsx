@@ -61,7 +61,7 @@ export default function ProfileSetting() {
   const [error, setError]                     = useState<string | null>(null);
   const [isOpen, setIsOpen]                   = useState(false); // Custom dropdown state
 
- const baseCountries = ["Thailand", "Cambodia", "Laos", "Vietnam", "Pakistan", "Myanmar"];
+ const baseCountries = ["Thailand"];
   const countries =
     formData.country && !baseCountries.includes(formData.country)
       ? [...baseCountries, formData.country]
@@ -77,50 +77,7 @@ export default function ProfileSetting() {
       "Hat Yai", 
       "Khon Kaen", 
       "Nakhon Ratchasima"
-    ],
-    Cambodia: [
-      "Phnom Penh", 
-      "Siem Reap", 
-      "Battambang", 
-      "Sihanoukville", 
-      "Poipet", 
-      "Kampong Cham"
-    ],
-    Laos: [
-      "Vientiane", 
-      "Luang Prabang", 
-      "Savannakhet", 
-      "Pakse", 
-      "Vang Vieng", 
-      "Thakhek"
-    ],
-    Vietnam: [
-      "Hanoi", 
-      "Ho Chi Minh City", 
-      "Da Nang", 
-      "Haiphong", 
-      "Nha Trang", 
-      "Can Tho", 
-      "Hue"
-    ],
-    Pakistan: [
-      "Islamabad", 
-      "Karachi", 
-      "Lahore", 
-      "Faisalabad", 
-      "Rawalpindi", 
-      "Multan", 
-      "Peshawar", 
-      "Quetta"
-    ],
-    Myanmar: [
-      "Naypyidaw", 
-      "Yangon", 
-      "Mandalay", 
-      "Taunggyi", 
-      "Bago", 
-      "Mawlamyine"
-    ],
+    ]
   };
 
   const baseCities = formData.country ? cityByCountry[formData.country] || [] : [];
