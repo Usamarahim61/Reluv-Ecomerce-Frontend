@@ -442,19 +442,6 @@ export default function SignUpLogin({
                   isDisabled={isBusy && loadingProvider !== "google"}
                   onClick={handleGoogleLogin}
                 />
-                <SocialButton
-                  icon="https://www.svgrepo.com/show/475647/facebook-color.svg"
-                  text="Continue with Facebook"
-                  isLoading={loadingProvider === "facebook"}
-                  isDisabled={isBusy && loadingProvider !== "facebook"}
-                  onClick={handleFacebookLogin}
-                />
-                <SocialButton
-                  icon="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/apple.svg"
-                  text="Continue with Apple"
-                  isDisabled={isBusy}
-                  onClick={() => {}}
-                />
               </div>
               <div className="flex items-center my-6">
                 <div className="flex-1 h-px bg-gray-200" />

@@ -21,7 +21,7 @@ import { API_BASE_URL } from "../constants/api";
 import PickupPointModal from "./PickupPointModal";
 
 interface AddressForm {
-  country: string;
+  // country: string;
   addressLine1: string;
   addressLine2: string;
   postcode: string;
@@ -92,14 +92,14 @@ const defaultShippingSections: ShippingSection[] = [
         carrier: "InPost",
         enabled: true,
       },
-      {
-        id: "dropoff-locker",
-        label: "Smart Locker",
-        description: "24/7 locker drop-off available",
-        price: "£2.99",
-        carrier: "Amazon Locker",
-        enabled: false,
-      },
+      // {
+      //   id: "dropoff-locker",
+      //   label: "Smart Locker",
+      //   description: "24/7 locker drop-off available",
+      //   price: "£2.99",
+      //   carrier: "Amazon Locker",
+      //   enabled: false,
+      // },
     ],
   },
 ];
@@ -109,14 +109,14 @@ export default function Postage() {
   const hasFetched = useRef(false);
 
   const [savedAddress, setSavedAddress] = useState<AddressForm>({
-    country: "",
+    // country: "",
     addressLine1: "",
     addressLine2: "",
     postcode: "",
     city: "",
   });
   const [tempAddressForm, setTempAddressForm] = useState<AddressForm>({
-    country: "",
+    // country: "",
     addressLine1: "",
     addressLine2: "",
     postcode: "",
@@ -149,7 +149,7 @@ export default function Postage() {
         const userData = await getUserAddress(Number(user.id));
 
         const fetchedAddress: AddressForm = {
-          country: userData.country ?? "",
+          // country: userData.country ?? "",
           addressLine1: userData.addressLine1 ?? "",
           addressLine2: userData.addressLine2 ?? "",
           postcode: userData.postcode ?? "",
@@ -245,7 +245,7 @@ export default function Postage() {
       });
 
       const finalPayload = {
-        country: savedAddress.country,
+        // country: savedAddress.country,
         addressLine1: savedAddress.addressLine1,
         addressLine2: savedAddress.addressLine2,
         postcode: savedAddress.postcode,
@@ -292,7 +292,7 @@ export default function Postage() {
       savedAddress.addressLine2,
       savedAddress.city,
       savedAddress.postcode,
-      savedAddress.country,
+      // savedAddress.country,
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : "No address on file";
   };
@@ -492,7 +492,7 @@ export default function Postage() {
             <form onSubmit={handleModalSubmit} className="space-y-4">
               {(
                 [
-                  { label: "Country", key: "country" },
+                  // { label: "Country", key: "country" },
                   { label: "Address line 1", key: "addressLine1" },
                   { label: "Address line 2 (optional)", key: "addressLine2" },
                   { label: "Postcode", key: "postcode" },
@@ -553,7 +553,7 @@ export default function Postage() {
 async function updateUserSettingsAndPostage(
   userId: number,
   payload: {
-    country: string;
+    // country: string;
     addressLine1: string;
     addressLine2: string;
     postcode: string;
