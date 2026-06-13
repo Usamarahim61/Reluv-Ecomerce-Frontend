@@ -1,5 +1,13 @@
 @import "tailwindcss";
 /* globals.css */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 1s ease-out;
+}
 .tear-divider {
   position: absolute;
   bottom: -9px; /* Prevents a tiny gap */

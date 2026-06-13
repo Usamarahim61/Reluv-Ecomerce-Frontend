@@ -14,6 +14,7 @@ export type ConversationProduct = {
   title: string;
   price?: string;
   images?: { url?: string }[];
+  hasUnread: boolean
 };
 
 export type ConversationItem = {
@@ -25,6 +26,7 @@ export type ConversationItem = {
   lastMessageAt?: string | null;
   updatedAt?: string | null;
   unreadCount?: number;
+  hasUnread: boolean
 };
 
 export type MessageAttachment = {

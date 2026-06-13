@@ -656,7 +656,7 @@ export default function ProductDetailPage() {
                       key={index}
                       className={`relative overflow-hidden bg-[#ede8e2] ${getGalleryItemClass(index)}`}
                       style={{
-                        minHeight: index === 0 && imageCount >= 2 ? 480 : 200,
+                        minHeight: index === 0 && imageCount >= 2 ? 400 : 200,
                       }}
                     >
                       {index === lastVisibleIndex &&

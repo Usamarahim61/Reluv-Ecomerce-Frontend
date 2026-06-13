@@ -164,16 +164,9 @@ export default function NavbarV2() {
 
   // Messages State
   const conversations = useAppSelector((state: RootState) => state.messages.conversations);
-  const unreadMessagesCount = useMemo(() => {
-    console.log('Conversations data:', conversations);
-    const count = conversations.reduce((acc, conv) => {
-      const unread = conv.unreadCount || 0;
-      console.log(`Conversation ${conv.id} unreadCount:`, unread);
-      return acc + unread;
-    }, 0);
-    console.log('Total unread messages:', count);
-    return count;
-  }, [conversations]);
+const unreadMessagesCount = useMemo(() => {
+  return conversations.filter((conv) => conv.hasUnread).length;
+}, [conversations]);
 
   const [loggedInUser, setLoggedInUser] = useState<{
     avatar?: { url?: string };
