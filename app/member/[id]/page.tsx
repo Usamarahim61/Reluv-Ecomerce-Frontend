@@ -131,8 +131,7 @@ const ProfilePage = () => {
   const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const profileAvatarUrl =
     getUserAvatarUrl(loggedInUser) ||
-    getUserAvatarUrl(user) ||
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop";
+    getUserAvatarUrl(user)
   const timeAgo = (dateString: string | undefined) => {
     if (!dateString) return "recently";
     const seconds = Math.floor(
