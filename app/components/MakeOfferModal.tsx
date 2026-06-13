@@ -13,6 +13,7 @@ interface MakeOfferModalProps {
   currency: string;
   sellerId: number;
   buyerId: number;
+  conversationId?: number;
 }
 
 const MIN_RATIO = 0.5;
@@ -27,6 +28,7 @@ export default function MakeOfferModal({
   currency,
   sellerId,
   buyerId,
+  conversationId,
 }: MakeOfferModalProps) {
   const [offerPrice, setOfferPrice] = useState("");
   const [message, setMessage] = useState("");
@@ -45,15 +47,20 @@ export default function MakeOfferModal({
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem("jwt");
       const res = await fetch(`${API_BASE_URL}/api/offers/make`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           productId,
           buyerId,
           sellerId,
           offerPrice: numericOffer,
           message: message.trim() || null,
+          conversationId,
         }),
       });
       const data = await res.json();

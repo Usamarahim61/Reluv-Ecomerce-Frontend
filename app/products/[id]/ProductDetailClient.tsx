@@ -122,7 +122,9 @@ export default function ProductDetailPage() {
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [isAskingSeller, setIsAskingSeller] = useState(false);
+  const [isFetchingConvForOffer, setIsFetchingConvForOffer] = useState(false);
   const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
   const [liveRatingAvg, setLiveRatingAvg] = useState<number | null>(null);
 
@@ -394,6 +396,28 @@ export default function ProductDetailPage() {
       toast.error("Failed to start conversation. Please try again.");
       setIsAskingSeller(false);
     }
+  };
+
+  const handleOpenOfferModal = async () => {
+    if (!user?.id) {
+      requireLogin("Please log in to make an offer.");
+      return;
+    }
+    if (!product?.id || !product.user?.id) return;
+
+    setIsFetchingConvForOffer(true);
+    try {
+      const conversation = await createConversationForProduct({
+        productId: Number(product.id),
+        otherUserId: Number(product.user.id),
+      });
+      if (conversation?.id) {
+        setActiveConversationId(conversation.id);
+      }
+    } catch (err) {
+      console.error("Failed to pre-fetch conversation for offer", err);
+    }
+    setShowOfferModal(true);
   };
 
   // ── wishlist handler for main product heart button ─────────────────────────
@@ -990,18 +1014,16 @@ export default function ProductDetailPage() {
                 {!isOwnProduct && product?.user?.id && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!user?.id) {
-                        requireLogin("Please log in to make an offer.");
-                        return;
-                      }
-
-                      setShowOfferModal(true);
-                    }}
-                    className="pdp-btn-secondary"
+                    onClick={handleOpenOfferModal}
+                    disabled={isFetchingConvForOffer}
+                    className="pdp-btn-secondary relative"
                   >
-                    <Tag size={14} />
-                    Make an Offer
+                    {isFetchingConvForOffer ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Tag size={14} />
+                    )}
+                    {isFetchingConvForOffer ? "Preparing..." : "Make an Offer"}
                   </button>
                 )}
               </div>
@@ -1144,6 +1166,7 @@ export default function ProductDetailPage() {
           currency={getCurrencyCode(price) || "TBH"}
           sellerId={Number(product.user?.id)}
           buyerId={Number(user.id)}
+          conversationId={activeConversationId || undefined}
         />
       )}
       <PriceBreakdownDialog

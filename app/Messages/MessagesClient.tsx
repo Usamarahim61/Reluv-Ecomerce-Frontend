@@ -21,6 +21,7 @@ import {
   XCircle,
   DollarSign,
   Loader2,
+  Coins,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "@/context/AuthContext";
@@ -127,6 +128,7 @@ export default function MessagesClient() {
   const [respondingToOfferId, setRespondingToOfferId] = useState<number | null>(
     null,
   );
+  const [isSendingOffer, setIsSendingOffer] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [imageModal, setImageModal] = useState<{
     url: string;
@@ -139,6 +141,7 @@ export default function MessagesClient() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const plusMenuRef = useRef<HTMLDivElement | null>(null);
+  const lastParamIdRef = useRef<number | null>(null);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === selectedId) || null,
@@ -160,13 +163,26 @@ export default function MessagesClient() {
   }, [dispatch, user?.id]);
 
   useEffect(() => {
-    const paramId = Number(searchParams.get("conversationId"));
-    if (Number.isInteger(paramId) && paramId > 0) {
-      dispatch(setSelectedConversationId(paramId));
-    } else if (conversations.length > 0 && !selectedId) {
-      dispatch(setSelectedConversationId(conversations[0].id));
+    const paramIdStr = searchParams.get("conversationId");
+    const paramId = paramIdStr ? Number(paramIdStr) : null;
+
+    // Only sync URL to State if the URL parameter has actually changed.
+    // This prevents the effect from re-opening a chat we just manually closed.
+    if (paramId !== lastParamIdRef.current) {
+      lastParamIdRef.current = paramId;
+
+      if (paramId && Number.isInteger(paramId) && paramId > 0) {
+        if (selectedId !== paramId) {
+          dispatch(setSelectedConversationId(paramId));
+          setViewMessage(true);
+        }
+      } else if (selectedId !== null) {
+        // Parameter was removed from URL (e.g. back button or manual navigation)
+        dispatch(setSelectedConversationId(null));
+        setViewMessage(false);
+      }
     }
-  }, [conversations, dispatch, searchParams, selectedId]);
+  }, [dispatch, searchParams, selectedId]);
 
   useEffect(() => {
     if (!selectedId || !user?.id) return;
@@ -351,8 +367,9 @@ export default function MessagesClient() {
   );
 
   useEffect(() => {
+    if (!selectedId) return; // Prevent scrolling jump when closing the chat
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeMessages]);
+  }, [activeMessages, selectedId]);
 
   useEffect(() => {
     return () => {
@@ -552,18 +569,19 @@ export default function MessagesClient() {
     }
 
     if (amount < minOffer) {
-      const msg = `Offer is too low. Minimum offer is $${minOffer.toFixed(2)}.`;
+      const msg = `Offer is too low. Minimum offer is TBH${minOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
     if (amount > maxOffer) {
-      const msg = `Offer is too high. Maximum offer is $${maxOffer.toFixed(2)}.`;
+      const msg = `Offer is too high. Maximum offer is TBH${maxOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
 
+    setIsSendingOffer(true);
     try {
       const product = activeConversation.product;
       if (!product) {
@@ -608,6 +626,8 @@ export default function MessagesClient() {
       const msg = err.message || "Failed to send offer";
       setOfferError(msg);
       toast.error(msg);
+    } finally {
+      setIsSendingOffer(false);
     }
   };
 
@@ -762,6 +782,8 @@ export default function MessagesClient() {
                     onClick={() => {
                       dispatch(setSelectedConversationId(c.id));
                       setViewMessage(true);
+                      // Sync URL with the selection to prevent the parameter listener from reverting the change
+                      router.replace(`/Messages?conversationId=${c.id}`, { scroll: false });
                     }}
                     className={`px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${
                       isSelected
@@ -896,18 +918,21 @@ export default function MessagesClient() {
                   </div>
 
                   {/* Right Actions */}
-                  <button
-                    onClick={() => {
-                      setShowDetailsPanel((prev) => !prev);
-                      setBlockConfirmPending(false);
-                      setDeleteConfirmPending(false);
-                    }}
-                    className={`p-2 hover:bg-[#f0ede8] rounded-lg transition-colors ${
-                      showDetailsPanel ? "text-[#cb6f4d]" : "text-[#888]"
-                    }`}
-                  >
-                    <Info size={20} />
-                  </button>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <button
+                      onClick={() => {
+                        setShowDetailsPanel((prev) => !prev);
+                        setBlockConfirmPending(false);
+                        setDeleteConfirmPending(false);
+                      }}
+                      className={`p-2 hover:bg-[#f0ede8] rounded-lg transition-colors ${
+                        showDetailsPanel ? "text-[#cb6f4d]" : "text-[#888]"
+                      }`}
+                      title="Details"
+                    >
+                      <Info size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
               {/* Details Panel */}
@@ -965,6 +990,24 @@ export default function MessagesClient() {
                           />
                         </svg>
                       </Link>
+
+                      {/* Close Chat */}
+                      <button
+                      onClick={() => {
+                        dispatch(setSelectedConversationId(null));
+                        setViewMessage(false);
+                        setShowDetailsPanel(false);
+                        router.replace("/Messages", { scroll: false });
+                      }}
+                        className="flex items-center gap-3 px-6 py-4 hover:bg-[#faf9f7] transition-colors text-left group border-b border-[#f0ede8]"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-[#f0ede8] group-hover:bg-[#e0ddd8] flex items-center justify-center shrink-0 transition-colors">
+                          <X size={18} className="text-[#888]" />
+                        </div>
+                        <span className="text-sm font-medium text-[#1a1a1a]">
+                          Close chat
+                        </span>
+                      </button>
 
                       {/* Delete Conversation */}
 
@@ -1211,7 +1254,7 @@ export default function MessagesClient() {
                                       isMine ? "bg-white/20" : "bg-[#cb6f4d]/10"
                                     }`}
                                   >
-                                    <DollarSign
+                                    <Coins
                                       size={20}
                                       className={
                                         isMine ? "text-white" : "text-[#cb6f4d]"
@@ -1227,7 +1270,7 @@ export default function MessagesClient() {
                                             : "text-[#1a1a1a]"
                                         }`}
                                       >
-                                        Offer: $
+                                        Offer: TBH
                                         {typeof offerAmount === "number"
                                           ? offerAmount.toFixed(2)
                                           : offerAmount}
@@ -1251,7 +1294,7 @@ export default function MessagesClient() {
                                     <p
                                       className={`text-xs ${isMine ? "text-white/70" : "text-[#888]"}`}
                                     >
-                                      Original Price: ${originalPrice}
+                                      Original Price: TBH{originalPrice}
                                     </p>
 
                                     {/* Offer Actions - Show to the person who should respond */}
@@ -1808,7 +1851,7 @@ export default function MessagesClient() {
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888] font-semibold">
-                  $
+                  TBH
                 </span>
                 <input
                   type="number"
@@ -1828,8 +1871,8 @@ export default function MessagesClient() {
               )}
               {activeConversation?.product?.price && (
                 <p className="text-xs text-[#888] mt-2">
-                  💡 Tip: Listed price is ${activeConversation.product.price}.
-                  Range: ${minOffer.toFixed(2)} - ${maxOffer.toFixed(2)}.
+                  💡 Tip: Listed price is TBH{activeConversation.product.price}.
+                  Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
                 </p>
               )}
             </div>
@@ -1862,10 +1905,11 @@ export default function MessagesClient() {
               </button>
               <button
                 onClick={handleSendOffer}
-                disabled={!offerAmount || parseFloat(offerAmount) <= 0}
-                className="flex-1 px-4 py-3 bg-[#cb6f4d] text-white rounded-xl font-semibold hover:bg-[#b85f3d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+                disabled={!offerAmount || parseFloat(offerAmount) <= 0 || isSendingOffer}
+                className="flex-1 px-4 py-3 bg-[#cb6f4d] text-white rounded-xl font-semibold hover:bg-[#b85f3d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md flex items-center justify-center gap-2"
               >
-                Send Offer
+                {isSendingOffer && <Loader2 size={18} className="animate-spin" />}
+                {isSendingOffer ? "Sending..." : "Send Offer"}
               </button>
             </div>
           </div>
