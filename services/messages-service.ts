@@ -57,8 +57,8 @@ export type MessageItem = {
     status: 'pending' | 'accepted' | 'declined' | 'expired' | 'completed';
     message?: string;
     expiresAt?: string;
-    buyer?: number;
-    seller?: number;
+    buyer?: ConversationUser | number;
+    seller?: ConversationUser | number;
     // Added for consistent checkout URL generation
     productTitle?: string;
     productImage?: string; // Absolute URL or relative path

@@ -1165,6 +1165,16 @@ export default function MessagesClient() {
                     console.log(
                       "Rendering message:",
                       msg.id,
+                      "Offer data:",
+                      {
+                        hasOffer: !!msg.offer,
+                        offerId: msg.offer?.id,
+                        offerSeller: msg.offer?.seller,
+                        offerBuyer: msg.offer?.buyer,
+                        offerStatus: msg.offer?.status,
+                        isMine,
+                        userId: user?.id,
+                      },
                       "Has attachments:",
                       msg.attachments?.length || 0,
                       msg.attachments,
@@ -1244,11 +1254,40 @@ export default function MessagesClient() {
                                       Original Price: ${originalPrice}
                                     </p>
 
-                                    {/* Offer Actions - Only show to seller when pending */}
+                                    {/* Offer Actions - Show to the person who should respond */}
                                     {!isMine &&
-                                      offerStatus === "pending" &&
-                                      Number(activeConversation?.seller?.id) ===
-                                        Number(user?.id) && (
+                                      offerStatus === "pending" && (() => {
+                                        // Check if current user is the offer seller
+                                        // (who should respond to the offer)
+                                        const offerSellerId = typeof msg.offer?.seller === 'number' ? msg.offer.seller : msg.offer?.seller?.id;
+                                        const offerBuyerId = typeof msg.offer?.buyer === 'number' ? msg.offer.buyer : msg.offer?.buyer?.id;
+                                        const isOfferSeller = offerSellerId && Number(offerSellerId) === Number(user?.id);
+                                        const isOfferBuyer = offerBuyerId && Number(offerBuyerId) === Number(user?.id);
+                                        
+                                        // If offer has full data, use it directly
+                                        if (offerSellerId) {
+                                          return isOfferSeller;
+                                        }
+                                        
+                                        // Fallback: The offer message is sent by the person making the offer
+                                        // If I receive it (!isMine), then I should respond
+                                        // This works for both initial offers and counter-offers
+                                        const shouldShowButtons = !isMine;
+                                        
+                                        console.log('Offer button logic:', {
+                                          offerId,
+                                          offerSellerId,
+                                          offerBuyerId,
+                                          isOfferSeller,
+                                          isOfferBuyer,
+                                          isMine,
+                                          shouldShowButtons,
+                                          userId: user?.id,
+                                          messageSenderId: msg.sender?.id
+                                        });
+                                        
+                                        return shouldShowButtons;
+                                      })() && (
                                         <div className="flex flex-wrap gap-2 mt-3">
                                           <button
                                             onClick={() =>
