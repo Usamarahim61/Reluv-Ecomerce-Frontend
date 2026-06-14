@@ -24,20 +24,24 @@ import {
   ArrowLeft,
   ChevronRight,
   Clock,
+  Edit3,
+  Eye,
+  EyeOff,
   Flag,
   Heart,
   Info,
+  Loader2,
   MapPin,
   MessageCircle,
   PlusSquare,
+  RotateCcw,
   Share2,
   ShieldCheck,
   ShoppingBag,
   Star,
-  Truck,
-  RotateCcw,
   Tag,
-  Loader2,
+  Trash2,
+  Truck,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -109,6 +113,7 @@ export default function ProductDetailPage() {
 
   const idParam = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const id = String(idParam ?? "").trim();
+
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [product, setProduct] = useState<ProductDetailItem | null>(null);
   const [memberItems, setMemberItems] = useState<ProductCardItem[]>([]);
@@ -122,11 +127,91 @@ export default function ProductDetailPage() {
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<
+    number | null
+  >(null);
   const [isAskingSeller, setIsAskingSeller] = useState(false);
   const [isFetchingConvForOffer, setIsFetchingConvForOffer] = useState(false);
   const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
   const [liveRatingAvg, setLiveRatingAvg] = useState<number | null>(null);
+
+  // ── owner actions state ────────────────────────────────────────────────────
+  const [isHidingProduct, setIsHidingProduct] = useState(false);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
+  // derived from product state — always in sync
+  const isHidden = product?.isHidden ?? false;
+
+  // ── Toggle hide/unhide ─────────────────────────────────────────────────────
+  const handleToggleHide = async () => {
+    const productId = product?.id;
+    if (!productId) return;
+
+    try {
+      setIsHidingProduct(true);
+      const nextHideState = !isHidden;
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/products/${productId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+          body: JSON.stringify({
+            data: { isHidden: nextHideState },
+          }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to update product visibility.");
+
+      // null-safe optimistic update
+      setProduct((prev) =>
+        prev ? { ...prev, isHidden: nextHideState } : prev,
+      );
+
+      toast.success(
+        `Listing ${nextHideState ? "hidden" : "unhidden"} successfully.`,
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong updating visibility.");
+    } finally {
+      setIsHidingProduct(false);
+    }
+  };
+
+  // ── Delete product ─────────────────────────────────────────────────────────
+  const handleDeleteProduct = async () => {
+    const productId = product?.id;
+    if (!productId) return;
+    try {
+      setIsDeletingProduct(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/products/${productId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to delete product.");
+
+      toast.success("Product deleted successfully.");
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not delete product listing.");
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
 
   const handleReviewsLoaded = (count: number, avg: number) => {
     setLiveReviewCount(count);
@@ -245,7 +330,6 @@ export default function ProductDetailPage() {
           const others = feed.items.filter(
             (item) => String(item.id) !== String(product.id),
           );
-          // memberMatches = others.slice(0, 20);
           similarMatches = others.slice(0, 20);
         } else if (!memberMatches.length) {
           memberMatches = similarMatches.slice(0, 20);
@@ -321,7 +405,6 @@ export default function ProductDetailPage() {
 
   const name = toText(product?.title, "Product title");
   const brand = toText(product?.brand, "No brand");
-  // const size = toText(product?.size, "One size");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
   const description = toText(
@@ -359,7 +442,6 @@ export default function ProductDetailPage() {
     documentId: product?.documentId,
     title: name,
     brand,
-    // size,
     price: getPriceValue(price) || 0,
     currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
@@ -418,6 +500,7 @@ export default function ProductDetailPage() {
       console.error("Failed to pre-fetch conversation for offer", err);
     }
     setShowOfferModal(true);
+    setIsFetchingConvForOffer(false);
   };
 
   // ── wishlist handler for main product heart button ─────────────────────────
@@ -451,8 +534,10 @@ export default function ProductDetailPage() {
         onRetry={() => window.location.reload()}
       />
     );
+
   const priceNum = parseFloat(price.replace(/[^\d.]/g, "")) || 0;
   const currency = getCurrencyCode(price) || "TBH";
+
   /* ─── MAIN RENDER ── */
   return (
     <>
@@ -525,6 +610,34 @@ export default function ProductDetailPage() {
           transform: translateY(-1px);
         }
         .pdp-btn-secondary:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          transform: none;
+        }
+           .pdp-btn-secondary2 {
+          width: 100%;
+          padding: 12px 20px;
+          border-radius: 999px;
+          background: #ce7b5a;
+          color: #333;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: system-ui, sans-serif;
+          border: 1.5px solid #ccc;
+          cursor: pointer;
+          transition: border-color 0.18s, background 0.18s, transform 0.1s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          letter-spacing: 0.01em;
+        }
+        .pdp-btn-secondary2:hover {
+          border-color: #ce7b5a;
+          background: #e78b67;
+          transform: translateY(-1px);
+        }
+        .pdp-btn-secondary2:disabled {
           opacity: 0.45;
           cursor: not-allowed;
           transform: none;
@@ -622,6 +735,59 @@ export default function ProductDetailPage() {
           transition: transform 0.4s ease;
         }
         .pdp-image-main:hover { transform: scale(1.02); }
+        .pdp-owner-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+        .pdp-owner-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 12px 8px;
+          border-radius: 14px;
+          font-size: 11px;
+          font-weight: 600;
+          font-family: system-ui, sans-serif;
+          border: 1.5px solid #e0dbd5;
+          background: #fff;
+          color: #333;
+          cursor: pointer;
+          transition: border-color 0.15s, background 0.15s, transform 0.1s;
+          letter-spacing: 0.01em;
+        }
+        .pdp-owner-btn:hover:not(:disabled) {
+          border-color: #aaa;
+          background: #f5f2ee;
+          transform: translateY(-1px);
+        }
+        .pdp-owner-btn:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .pdp-owner-btn.danger {
+          color: #dc2626;
+          border-color: #fecaca;
+        }
+        .pdp-owner-btn.danger:hover:not(:disabled) {
+          background: #fff5f5;
+          border-color: #f87171;
+        }
+        .pdp-owner-label {
+          width: 100%;
+          padding: 10px 14px;
+          text-align: center;
+          font-size: 12px;
+          font-weight: 500;
+          color: #71717a;
+          background: #f4f4f5;
+          border-radius: 12px;
+          font-family: system-ui, sans-serif;
+          letter-spacing: 0.01em;
+        }
       `}</style>
 
       <main className="pdp-root pb-16 pt-0">
@@ -831,28 +997,38 @@ export default function ProductDetailPage() {
                     </h1>
                   </div>
 
-                  {/* ── Main product wishlist button ── */}
-                  <button
-                    className="pdp-wishlist-btn mt-1"
-                    onClick={handleWishlist}
-                    aria-label="Add to wishlist"
-                  >
-                    <Heart
-                      size={16}
-                      className={
-                        isWishlisted
-                          ? "fill-[#c0613a] text-[#c0613a]"
-                          : "text-[#aaa]"
-                      }
-                    />
-                  </button>
+                  {/* Only show wishlist button for non-owners */}
+                  {!isOwnProduct && (
+                    <button
+                      className="pdp-wishlist-btn mt-1"
+                      onClick={handleWishlist}
+                      aria-label="Add to wishlist"
+                    >
+                      <Heart
+                        size={16}
+                        className={
+                          isWishlisted
+                            ? "fill-[#c0613a] text-[#c0613a]"
+                            : "text-[#aaa]"
+                        }
+                      />
+                    </button>
+                  )}
                 </div>
+
                 {/* Attribute pills */}
-                <div className="flex flex-wrap gap-2">
-                  <span>{condition}</span>/<span>{color}</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span className="text-[13px] text-[#666] font-sans">
+                    {condition}
+                  </span>
+                  <span className="text-[13px] text-[#ccc]">/</span>
+                  <span className="text-[13px] text-[#666] font-sans">
+                    {color}
+                  </span>
                 </div>
+
                 {/* Price */}
-                <div className=" flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 mt-2">
                   <span
                     className="text-[18px] font-bold text-[#c0613a]"
                     style={{ fontFamily: "Georgia, serif" }}
@@ -860,18 +1036,23 @@ export default function ProductDetailPage() {
                     {price}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPriceBreakdown(true)}
-                  className="mt-1 flex items-center gap-1.5 text-[12px] text-[#c0613a] font-sans hover:underline transition-all cursor-pointer bg-transparent border-none p-0"
-                >
-                  <ShieldCheck size={13} className="text-[#c0613a]" />
-                  {currency}{" "}
-                  {(priceNum + productInfo.buyerProtectionFee).toFixed(2)} ·
-                  Includes Buyer Protection
-                  <Info size={11} className="text-[#c0613a] opacity-70" />
-                </button>
+
+                {/* Buyer protection — only for non-owners */}
+                {!isOwnProduct && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPriceBreakdown(true)}
+                    className="mt-1 flex items-center gap-1.5 text-[12px] text-[#c0613a] font-sans hover:underline transition-all cursor-pointer bg-transparent border-none p-0"
+                  >
+                    <ShieldCheck size={13} className="text-[#dd9376]" />
+                    {currency}{" "}
+                    {(priceNum + productInfo.buyerProtectionFee).toFixed(2)} ·
+                    Includes Buyer Protection
+                    <Info size={11} className="text-[#c0613a] opacity-70" />
+                  </button>
+                )}
               </div>
+
               {/* Description */}
               <p className="text-[13px] leading-relaxed text-[#666] font-sans">
                 {description}
@@ -902,6 +1083,11 @@ export default function ProductDetailPage() {
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold text-[#1a1a1a] truncate font-sans">
                         {toText(seller?.username, "Seller")}
+                        {isOwnProduct && (
+                          <span className="ml-2 text-[10px] font-normal text-[#c0613a] bg-[#fdf0ea] px-2 py-0.5 rounded-full">
+                            it's Your profile
+                          </span>
+                        )}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <div className="flex text-[#f0a500]">
@@ -958,77 +1144,132 @@ export default function ProductDetailPage() {
                 />
               </div>
 
-              {/* CTA Buttons */}
+              {/* ── CTA Buttons ── */}
               <div className="space-y-2.5">
                 {isOwnProduct ? (
-                  <div className="w-full p-3 text-center text-[13px] text-[#aaa] bg-[#f0ece8] rounded-2xl font-sans">
-                    You cannot buy your own product.
+                  /* ── OWNER ACTIONS ── */
+                  <div className="space-y-2">
+                    {/* Status badge */}
+                    <div className="w-full p-3 text-center text-[13px] text-[#aaa] bg-[#f0ece8] rounded-2xl font-sans">
+                      {"You cannot buy your own product."}
+                    </div>
+
+                    {/* Action grid: Edit · Hide/Unhide · Delete */}
+                    
+                      {/* Edit */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(`/EditItem?id=${product?.id}`)
+                        }
+                       className="pdp-btn-secondary2"
+                      >
+                        <Edit3 className="text-white" size={16} />
+                        <span className="text-white">Edit</span>
+                      </button>
+
+                      {/* Hide / Unhide */}
+                      <button
+                        type="button"
+                        disabled={isHidingProduct}
+                        onClick={handleToggleHide}
+                        className="pdp-btn-secondary"
+                      >
+                        {isHidingProduct ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : isHidden ? (
+                          <Eye className="text-[#c0613a]"size={16} />
+                        ) : (
+                          <EyeOff className="text-[#c0613a]" size={16} />
+                        )}
+                        <span className="text-[#c0613a]"s>{isHidden ? "Unhide" : "Hide"}</span>
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        className="pdp-btn-secondary"
+                        disabled={isDeletingProduct}
+                        onClick={handleDeleteProduct}
+                      >
+                        {isDeletingProduct ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 className="text-red-500" size={16} />
+                        )}
+                        <span className="text-red-500">Delete</span>
+                      </button>
+                 
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="pdp-btn-primary"
-                    onClick={() => {
-                      if (!user?.id) {
-                        requireLogin("Please log in to buy.");
-                        return;
-                      }
+                  /* ── BUYER ACTIONS ── */
+                  <>
+                    {/* Buy Now */}
+                    <button
+                      type="button"
+                      className="pdp-btn-primary"
+                      onClick={() => {
+                        if (!user?.id) {
+                          requireLogin("Please log in to buy.");
+                          return;
+                        }
+                        router.push(
+                          `/CheckOut?${new URLSearchParams(
+                            Object.entries(productInfo).reduce<
+                              Record<string, string>
+                            >((acc, [k, v]) => {
+                              acc[k] = String(v ?? "");
+                              return acc;
+                            }, {}),
+                          )}`,
+                        );
+                      }}
+                    >
+                      Buy Now
+                    </button>
 
-                      router.push(
-                        `/CheckOut?${new URLSearchParams(
-                          Object.entries(productInfo).reduce<
-                            Record<string, string>
-                          >((acc, [k, v]) => {
-                            acc[k] = String(v ?? "");
-                            return acc;
-                          }, {}),
-                        )}`,
-                      );
-                    }}
-                  >
-                    Buy Now
-                  </button>
-                )}
+                    {/* Ask Seller */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user?.id) {
+                          requireLogin("Please log in to ask seller.");
+                          return;
+                        }
+                        handleAskSeller();
+                      }}
+                      disabled={isAskingSeller}
+                      className="pdp-btn-secondary"
+                    >
+                      {isAskingSeller ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <MessageCircle size={14} />
+                      )}
+                      {isAskingSeller ? "Starting chat..." : "Ask seller"}
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user?.id) {
-                      requireLogin("Please log in to ask seller.");
-                      return;
-                    }
-
-                    handleAskSeller();
-                  }}
-                  disabled={!!isOwnProduct || isAskingSeller}
-                  className="pdp-btn-secondary"
-                >
-                  {isAskingSeller ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <MessageCircle size={14} />
-                  )}
-                  {isOwnProduct ? "Your product" : isAskingSeller ? "Starting chat..." : "Ask seller"}
-                </button>
-
-                {!isOwnProduct && product?.user?.id && (
-                  <button
-                    type="button"
-                    onClick={handleOpenOfferModal}
-                    disabled={isFetchingConvForOffer}
-                    className="pdp-btn-secondary relative"
-                  >
-                    {isFetchingConvForOffer ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Tag size={14} />
+                    {/* Make an Offer */}
+                    {product?.user?.id && (
+                      <button
+                        type="button"
+                        onClick={handleOpenOfferModal}
+                        disabled={isFetchingConvForOffer}
+                        className="pdp-btn-secondary"
+                      >
+                        {isFetchingConvForOffer ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Tag size={14} />
+                        )}
+                        {isFetchingConvForOffer ? "Preparing..." : "Make an Offer"}
+                      </button>
                     )}
-                    {isFetchingConvForOffer ? "Preparing..." : "Make an Offer"}
-                  </button>
+                  </>
                 )}
               </div>
 
-              {/* Trust badges */}
+              {/* Trust badges — shown to everyone */}
               <div className="flex items-center justify-around py-3 border-t border-b border-[#ede8e3]">
                 <div className="pdp-trust-item">
                   <div className="pdp-trust-icon">
@@ -1062,10 +1303,6 @@ export default function ProductDetailPage() {
                     <span className="text-[#888]">Brand</span>
                     <span className="font-medium text-[#333]">{brand}</span>
                   </div>
-                  {/* <div className="pdp-detail-row">
-                    <span className="text-[#888]">Size</span>
-                    <span className="font-medium text-[#333]">{size}</span>
-                  </div> */}
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Condition</span>
                     <span className="font-medium text-[#333]">{condition}</span>
@@ -1112,16 +1349,30 @@ export default function ProductDetailPage() {
                       {uploadedAt}
                     </span>
                   </div>
+
+                  {/* Visibility status for owner */}
+                  {isOwnProduct && (
+                    <div className="pdp-detail-row">
+                      <span className="text-[#888]">Visibility</span>
+                      <span
+                        className={`font-medium ${isHidden ? "text-amber-600" : "text-emerald-600"}`}
+                      >
+                        {isHidden ? "Hidden" : "Visible"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Demand signal */}
-              <div className="flex items-center gap-2.5 rounded-2xl bg-[#fdf5f0] border border-[#f0ddd3] px-4 py-3">
-                <div className="w-2 h-2 rounded-full bg-[#c0613a] animate-pulse flex-shrink-0" />
-                <p className="text-[12px] text-[#a04828] font-sans font-medium">
-                  In demand — 3 buyers recently sent offers
-                </p>
-              </div>
+              {/* Demand signal — only for non-owners */}
+              {!isOwnProduct && (
+                <div className="flex items-center gap-2.5 rounded-2xl bg-[#fdf5f0] border border-[#f0ddd3] px-4 py-3">
+                  <div className="w-2 h-2 rounded-full bg-[#c0613a] animate-pulse flex-shrink-0" />
+                  <p className="text-[12px] text-[#a04828] font-sans font-medium">
+                    In demand — 3 buyers recently sent offers
+                  </p>
+                </div>
+              )}
 
               {/* Seller badge */}
               <div className="flex gap-3 rounded-2xl border border-[#e8e2db] bg-white p-4">
@@ -1169,6 +1420,7 @@ export default function ProductDetailPage() {
           conversationId={activeConversationId || undefined}
         />
       )}
+
       <PriceBreakdownDialog
         isOpen={showPriceBreakdown}
         onClose={() => setShowPriceBreakdown(false)}

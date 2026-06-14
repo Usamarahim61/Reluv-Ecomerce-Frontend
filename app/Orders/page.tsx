@@ -98,6 +98,31 @@ const CATEGORY_ICONS: Record<Category, React.ElementType> = {
   Disputes_Raised: Shield,
 };
 
+// ── Brand spinner ─────────────────────────────────────────────────────────────
+function BrandSpinner({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={`animate-spin text-[#cb6f4d] ${className}`}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+}
+
+// ── Sidebar category loading dot ──────────────────────────────────────────────
+function SidebarLoader() {
+  return (
+    <span className="flex items-center justify-center h-5 w-5">
+      <BrandSpinner size={14} />
+    </span>
+  );
+}
+
 // ── Dispute Modal ─────────────────────────────────────────────────────────────
 interface DisputeModalProps {
   order: any;
@@ -280,22 +305,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
                 >
                   {submitting ? (
                     <>
-                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8z"
-                        />
-                      </svg>
+                      <BrandSpinner size={16} className="text-white" />
                       Submitting…
                     </>
                   ) : (
@@ -608,12 +618,17 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  const getAuthHeaders = () => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+  });
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/disputes/update-dispute-status`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ data: { disputeId: card?.disputeId, status: selected, resolution: adminNote } }),
       });
       if (res.ok) {
@@ -636,10 +651,10 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
         className="relative w-full max-w-lg rounded-3xl bg-white shadow-[0_24px_64px_rgba(0,0,0,0.18)] overflow-hidden"
         style={{ maxHeight: "90vh", overflowY: "auto" }}
       >
-        <div className="h-1.5 bg-gradient-to-r from-[#3b5bdb] via-[#5c7cfa] to-[#748ffc]" />
+        <div className="h-1.5 bg-gradient-to-r from-[#cb6f4d] via-[#d4805e] to-[#e8956e]" />
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#f5f0eb] text-[#888] transition-all hover:bg-[#fdf2f2] hover:text-[#b33333]"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#f5f0eb] text-[#888] transition-all hover:bg-[#fdf2f2] hover:text-[#cb6f4d]"
         >
           <X size={15} />
         </button>
@@ -657,7 +672,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
               </p>
               <button
                 onClick={onClose}
-                className="mt-6 rounded-full bg-[#3b5bdb] px-8 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#2f4abf]"
+                className="mt-6 rounded-full bg-[#cb6f4d] px-8 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#b85a38]"
               >
                 Done
               </button>
@@ -666,7 +681,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
             <>
               <div className="mb-5 flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#eef2ff] to-[#e0e7ff] border border-[#c5d0fa]">
-                  <Shield size={20} className="text-[#3b5bdb]" />
+                  <Shield size={20} className="text-[#cb6f4d]" />
                 </div>
                 <div>
                   <h2 className="font-serif text-[22px] font-normal text-[#1a1a1a]">Manage Dispute</h2>
@@ -745,7 +760,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
                   rows={3}
                   maxLength={500}
                   placeholder="Add a message for the buyer about this dispute…"
-                  className="w-full resize-none rounded-2xl border border-[#ece9e4] bg-[#fdfbf9] px-4 py-3 text-sm text-[#333] placeholder:text-[#ccc] focus:border-[#3b5bdb] focus:outline-none focus:ring-2 focus:ring-[#3b5bdb]/15 transition-all"
+                  className="w-full resize-none rounded-2xl border border-[#ece9e4] bg-[#fdfbf9] px-4 py-3 text-sm text-[#333] placeholder:text-[#ccc] focus:border-[#cb6f4d] focus:outline-none focus:ring-2 focus:ring-[#cb6f4d]/15 transition-all"
                 />
                 <p className="mt-1 text-right text-[10px] text-[#ccc]">{adminNote.length}/500</p>
               </div>
@@ -753,21 +768,18 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
               <div className="flex gap-2">
                 <button
                   onClick={onClose}
-                  className="flex flex-1 items-center justify-center rounded-full border border-[#ddd] bg-white px-4 py-2.5 text-sm font-semibold text-[#555] transition-all hover:border-[#888] hover:text-[#333]"
+                  className="flex flex-1 items-center justify-center rounded-full border border-[#cb6f4d] bg-white px-4 py-2.5 text-sm font-semibold text-[#555] transition-all hover:border-[#888] hover:text-[#333]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#3b5bdb] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#2f4abf] disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#cb6f4d] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#b85a38] disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
                 >
                   {saving ? (
                     <>
-                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
+                      <BrandSpinner size={16} className="text-white" />
                       Saving…
                     </>
                   ) : (
@@ -878,7 +890,7 @@ function DisputeReceivedCard({
           {showManageButton && (
             <button
               onClick={() => setShowManage(true)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#c5d0fa] bg-[#f0f4ff] px-4 py-2 text-sm font-semibold text-[#3b5bdb] transition-all hover:bg-[#e8edff] hover:border-[#3b5bdb]"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[#cb6f4d] bg-[#cb6f4d] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#d37f61] hover:border-[#cb6f4d]"
             >
               <Shield size={13} />
               Manage Dispute
@@ -898,6 +910,27 @@ function isWithin48Hours(completedAt: string | undefined | null): boolean {
   return diff <= 48 * 60 * 60 * 1000;
 }
 
+// ── Loading Skeleton ──────────────────────────────────────────────────────────
+function OrdersSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1,2].map((i) => (
+        <div
+          key={i}
+          className="animate-pulse flex gap-4 rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-4"
+        >
+          <div className="h-20 w-20 shrink-0 rounded-xl bg-[#f0ebe4]" />
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-3 w-3/4 rounded-full bg-[#f0ebe4]" />
+            <div className="h-3 w-1/2 rounded-full bg-[#f0ebe4]" />
+            <div className="h-3 w-1/4 rounded-full bg-[#f0ebe4]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function Orders() {
   return (
@@ -912,10 +945,23 @@ function OrdersInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // ── Auth helper ─────────────────────────────────────────────────────────────
+  const getAuthHeaders = () => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+  });
+
+  // ── State ───────────────────────────────────────────────────────────────────
   const [ordersData, setOrdersData] = useState<any[]>([]);
   const [offersData, setOffersData] = useState<any[]>([]);
   const [disputesData, setDisputesData] = useState<any[]>([]);
   const [disputesReceivedData, setDisputesReceivedData] = useState<any[]>([]);
+
+  // Per-section loading states
+  const [loading, setLoading] = useState(true);
+  const [offersLoading, setOffersLoading] = useState(true);
+  const [disputesRaisedLoading, setDisputesRaisedLoading] = useState(true);
+  const [disputesReceivedLoading, setDisputesReceivedLoading] = useState(true);
 
   const [activeCategory, setActiveCategory] = useState<Category>("Sold");
   const [activeStatus, setActiveStatus] = useState<Status>("All");
@@ -941,9 +987,27 @@ function OrdersInner() {
     if (tab === "offers") setActiveCategory("Offers");
   }, [searchParams]);
 
+  // ── Offer timer — suppressed when a matching order exists ──────────────────
   useEffect(() => {
-    const acceptedOffers = offersData.filter((o) => o.status === "accepted" && o.expiresAt);
-    if (acceptedOffers.length === 0) return;
+    // Only track accepted offers that don't already have a placed order
+    const acceptedOffers = offersData.filter((o) => {
+      if (o.status !== "accepted" || !o.expiresAt) return false;
+      // Hide timer if buyer already placed an order for this product
+      const alreadyOrdered = ordersData.some(
+        (ord) =>
+          ord.buyer?.id === o.buyer?.id &&
+          (ord.product?.id === o.product?.id ||
+            ord.product?.documentId === o.product?.documentId) &&
+          ord.orderStatus !== "cancelled",
+      );
+      return !alreadyOrdered;
+    });
+
+    if (acceptedOffers.length === 0) {
+      setTimeLeft({});
+      return;
+    }
+
     const interval = setInterval(() => {
       const newTimeLeft: Record<number, string> = {};
       acceptedOffers.forEach((offer) => {
@@ -960,21 +1024,25 @@ function OrdersInner() {
       setTimeLeft(newTimeLeft);
     }, 1000);
     return () => clearInterval(interval);
-  }, [offersData]);
+  }, [offersData, ordersData]);
 
+  // ── Fetches ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) return;
+      setLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/api/orders/fetch-orders-by-user`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ userId: Number(user.id) }),
         });
         if (!res.ok) return;
         const data = await res.json();
         setOrdersData(Array.isArray(data) ? data : data?.data || []);
-      } catch { /* silent */ }
+      } catch { /* silent */ } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, [user?.id]);
@@ -982,10 +1050,12 @@ function OrdersInner() {
   useEffect(() => {
     const fetchOffers = async () => {
       if (!user?.id) return;
+      setOffersLoading(true);
       try {
+        const opts = { headers: getAuthHeaders() };
         const [sellerRes, buyerRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/offers/seller/${user.id}`),
-          fetch(`${API_BASE_URL}/api/offers/buyer/${user.id}`),
+          fetch(`${API_BASE_URL}/api/offers/seller/${user.id}`, opts),
+          fetch(`${API_BASE_URL}/api/offers/buyer/${user.id}`, opts),
         ]);
         const sellerData = sellerRes.ok ? await sellerRes.json() : { data: [] };
         const buyerData = buyerRes.ok ? await buyerRes.json() : { data: [] };
@@ -993,33 +1063,43 @@ function OrdersInner() {
           ...(sellerData.data || []).map((o: any) => ({ ...o, role: "seller" })),
           ...(buyerData.data || []).map((o: any) => ({ ...o, role: "buyer" })),
         ]);
-      } catch { /* silent */ }
+      } catch { /* silent */ } finally {
+        setOffersLoading(false);
+      }
     };
     fetchOffers();
   }, [user?.id]);
 
   const fetchDisputesRaised = async () => {
     if (!user?.id) return;
+    setDisputesRaisedLoading(true);
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/disputes?filters[raisedBy][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id`,
+        { headers: getAuthHeaders() },
       );
       if (!res.ok) return;
       const data = await res.json();
       setDisputesData(Array.isArray(data) ? data : data?.data || []);
-    } catch { /* silent */ }
+    } catch { /* silent */ } finally {
+      setDisputesRaisedLoading(false);
+    }
   };
 
   const fetchDisputesReceived = async () => {
     if (!user?.id) return;
+    setDisputesReceivedLoading(true);
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/disputes?filters[order][seller][id][$eq]=${user.id}&populate[order][populate][product]=true&populate[order][populate][buyer]=true&populate[order][populate][seller]=true&populate[raisedBy][fields][0]=id&populate[raisedBy][fields][1]=username`,
+        { headers: getAuthHeaders() },
       );
       if (!res.ok) return;
       const data = await res.json();
       setDisputesReceivedData(Array.isArray(data) ? data : data?.data || []);
-    } catch { /* silent */ }
+    } catch { /* silent */ } finally {
+      setDisputesReceivedLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -1027,13 +1107,14 @@ function OrdersInner() {
     fetchDisputesReceived();
   }, [user?.id]);
 
+  // ── Mutation handlers ────────────────────────────────────────────────────────
   const handleRespondToOffer = async (offerId: number, action: "accepted" | "declined") => {
     if (!user?.id) return;
     setRespondingTo(offerId);
     try {
       const res = await fetch(`${API_BASE_URL}/api/offers/${offerId}/respond`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action, sellerId: Number(user.id) }),
       });
       if (res.ok)
@@ -1049,7 +1130,7 @@ function OrdersInner() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ data: { orderStatus: "in progress", seller: Number(user.id) } }),
       });
       if (res.ok) {
@@ -1070,7 +1151,7 @@ function OrdersInner() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ data: { orderStatus: "cancelled", seller: Number(user.id) } }),
       });
       if (res.ok) {
@@ -1111,7 +1192,7 @@ function OrdersInner() {
       const sellerID = ordersData.find((o) => o.id === order.id)?.seller?.id;
       const res = await fetch(`${API_BASE_URL}/api/disputes/file-dispute`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           data: {
             order: order?.id,
@@ -1228,6 +1309,17 @@ function OrdersInner() {
       },
     });
 
+  // ── Helper: is this offer's product already ordered by the buyer? ───────────
+  const offerHasOrder = (offer: any): boolean => {
+    return ordersData.some(
+      (ord) =>
+        ord.buyer?.id === offer.buyer?.id &&
+        (ord.product?.id === offer.product?.id ||
+          ord.product?.documentId === offer.product?.documentId) &&
+        ord.orderStatus !== "cancelled",
+    );
+  };
+
   // ── Render tabs ───────────────────────────────────────────────────────────────
   const renderStatusTabs = () => {
     if (activeCategory === "Offers") {
@@ -1295,6 +1387,11 @@ function OrdersInner() {
 
   // ── Render list ───────────────────────────────────────────────────────────────
   const renderList = () => {
+    if (loading && (activeCategory === "Sold" || activeCategory === "Bought")) return <OrdersSkeleton />;
+    if (offersLoading && activeCategory === "Offers") return <OrdersSkeleton />;
+    if (disputesRaisedLoading && activeCategory === "Disputes_Raised") return <OrdersSkeleton />;
+    if (disputesReceivedLoading && activeCategory === "Disputes_Recieved") return <OrdersSkeleton />;
+
     if (activeCategory === "Disputes_Raised") {
       if (filteredDisputesRaised.length === 0)
         return renderEmptyState(
@@ -1356,6 +1453,10 @@ function OrdersInner() {
           {filteredOffers.map((offer) => {
             const isSeller = offer.role === "seller";
             const isPending = offer.status === "pending";
+            const isResponding = respondingTo === offer.id;
+            // For buyer: hide timer/buy if order already placed for this product
+            const hasOrderedAlready = !isSeller && offerHasOrder(offer);
+
             const statusColor =
               offer.status === "accepted"
                 ? "bg-[#edf7f0] text-[#2e7d4f] border-[#b8e0c8]"
@@ -1404,42 +1505,54 @@ function OrdersInner() {
                   </div>
                 )}
 
+                {/* Seller: Accept / Decline buttons in brand colors */}
                 {isSeller && isPending && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRespondToOffer(offer.id, "accepted")}
-                      disabled={respondingTo === offer.id}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#2e7d4f] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#256a42] disabled:opacity-50"
+                      disabled={isResponding}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#cb6f4d] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#b85a38] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-[#cb6f4d]/25"
                     >
-                      <Check size={14} /> Accept
+                      {isResponding ? (
+                        <BrandSpinner size={16} className="text-white" />
+                      ) : (
+                        <Check size={14} />
+                      )}
+                      Accept
                     </button>
                     <button
                       onClick={() => handleRespondToOffer(offer.id, "declined")}
-                      disabled={respondingTo === offer.id}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#ddd] bg-white px-4 py-2 text-sm font-semibold text-[#555] transition-all hover:border-[#b33333] hover:text-[#b33333] disabled:opacity-50"
+                      disabled={isResponding}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8c4b0] bg-white px-4 py-2.5 text-sm font-semibold text-[#cb6f4d] transition-all hover:border-[#cb6f4d] hover:bg-[#fff7f4] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <X size={14} /> Decline
+                      {isResponding ? (
+                        <BrandSpinner size={16} />
+                      ) : (
+                        <X size={14} />
+                      )}
+                      Decline
                     </button>
                   </div>
                 )}
 
-                {!isSeller && offer.status === "accepted" && (
+                {/* Buyer: timer + buy button — hidden once order placed */}
+                {!isSeller && offer.status === "accepted" && !hasOrderedAlready && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between bg-[#fff8f5] border border-[#f0ddd3] rounded-xl px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-[#c0613a]" />
-                        <span className="text-xs text-[#a04828] font-semibold">
+                        <Clock size={14} className="text-[#cb6f4d]" />
+                        <span className="text-xs text-[#cb6f4d] font-semibold">
                           {timeLeft[offer.id] === "Expired" ? "Offer Expired" : "Time remaining:"}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-[#c0613a]">
+                      <span className="text-sm font-bold text-[#cb6f4d]">
                         {timeLeft[offer.id] || "Calculating..."}
                       </span>
                     </div>
                     {timeLeft[offer.id] !== "Expired" && (
                       <button
                         onClick={() => handleBuyWithOffer(offer)}
-                        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#c0613a] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#a8502e]"
+                        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#cb6f4d] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#b85a38] active:scale-95 shadow-sm shadow-[#cb6f4d]/20"
                       >
                         <ShoppingCart size={14} />
                         Buy Now with Offer Price
@@ -1450,6 +1563,14 @@ function OrdersInner() {
                         This offer has expired. The product is now available again.
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Buyer: order already placed against this offer's product */}
+                {!isSeller && offer.status === "accepted" && hasOrderedAlready && (
+                  <div className="flex items-center justify-center gap-2 rounded-full bg-[#edf7f0] border border-[#b8e0c8] px-4 py-2 text-xs font-semibold text-[#2e7d4f]">
+                    <Check size={13} strokeWidth={2.5} />
+                    Order placed — offer fulfilled
                   </div>
                 )}
               </div>
@@ -1528,14 +1649,11 @@ function OrdersInner() {
                   <button
                     onClick={() => handleConfirmOrder(order?.documentId)}
                     disabled={confirmingOrder === order.id}
-                    className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full bg-[#cb6f4d] px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-[#cc8970] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                    className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full bg-[#cb6f4d] px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-[#b85a38] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-[#cb6f4d]/20"
                   >
                     {confirmingOrder === order.id ? (
                       <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                        </svg>
+                        <BrandSpinner size={16} className="text-white" />
                         Confirming...
                       </>
                     ) : (
@@ -1545,7 +1663,7 @@ function OrdersInner() {
                   <button
                     onClick={() => handleRejectOrder(order?.documentId)}
                     disabled={rejectOrder === order.id}
-                    className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-[#b33333] transition-all hover:border-[#b33333] hover:bg-[#fdf2f2] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                    className="flex w-full sm:flex-1 items-center justify-center gap-2 rounded-full border border-[#e8c4b0] bg-white px-4 py-3 text-sm font-semibold text-[#b33333] transition-all hover:border-[#b33333] hover:bg-[#fdf2f2] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {rejectOrder === order.id ? (
                       <>
@@ -1606,11 +1724,26 @@ function OrdersInner() {
     </div>
   );
 
+  // ── Per-category loading state for sidebar counts ──────────────────────────
+  const getCategoryCountDisplay = (cat: Category) => {
+    if ((cat === "Sold" || cat === "Bought") && loading) return <SidebarLoader />;
+    if (cat === "Offers" && offersLoading) return <SidebarLoader />;
+    if (cat === "Disputes_Raised" && disputesRaisedLoading) return <SidebarLoader />;
+    if (cat === "Disputes_Recieved" && disputesReceivedLoading) return <SidebarLoader />;
+
+    const count = getCategoryCount(cat);
+    return (
+      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#cb6f4d]/10 px-1.5 text-[10px] font-bold text-[#cb6f4d]">
+        {count}
+      </span>
+    );
+  };
+
   const headerStats = [
-    { label: "Sold", count: soldCount, Icon: Tag },
-    { label: "Bought", count: boughtCount, Icon: ShoppingBag },
-    { label: "Offers", count: offersCount, Icon: DollarSign },
-    { label: "Disputes", count: disputesRaisedCount + disputesReceivedCount, Icon: AlertTriangle },
+    { label: "Sold", count: soldCount, Icon: Tag, isLoading: loading },
+    { label: "Bought", count: boughtCount, Icon: ShoppingBag, isLoading: loading },
+    { label: "Offers", count: offersCount, Icon: DollarSign, isLoading: offersLoading },
+    { label: "Disputes", count: disputesRaisedCount + disputesReceivedCount, Icon: AlertTriangle, isLoading: disputesRaisedLoading || disputesReceivedLoading },
   ] as const;
 
   const getCategoryLabel = (cat: Category) => {
@@ -1679,16 +1812,22 @@ function OrdersInner() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 lg:mb-1">
-              {headerStats.map(({ label, count, Icon }, index) => (
+              {headerStats.map(({ label, count, Icon, isLoading }, index) => (
                 <div
                   key={label}
                   className={`flex items-center justify-center gap-2 rounded-xl bg-white/15 px-3 py-3 backdrop-blur-sm border border-white/20 sm:rounded-2xl sm:px-4 sm:py-2.5 ${index === 3 ? "col-span-2 sm:col-span-1" : ""}`}
                 >
                   <Icon size={14} className="text-white/80 shrink-0" />
                   <span className="text-xs sm:text-sm text-white/80 font-medium">{label}</span>
-                  <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-[10px] sm:text-xs font-black text-[#cb6f4d]">
-                    {count}
-                  </span>
+                  {isLoading ? (
+                    <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+                      <BrandSpinner size={10} className="text-white" />
+                    </span>
+                  ) : (
+                    <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-[10px] sm:text-xs font-black text-[#cb6f4d]">
+                      {count}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -1704,6 +1843,11 @@ function OrdersInner() {
               {categories.map((cat) => {
                 const Icon = CATEGORY_ICONS[cat];
                 const active = activeCategory === cat;
+                const isLoading =
+                  (cat === "Sold" || cat === "Bought") ? loading :
+                  cat === "Offers" ? offersLoading :
+                  cat === "Disputes_Raised" ? disputesRaisedLoading :
+                  disputesReceivedLoading;
                 return (
                   <button
                     key={cat}
@@ -1714,7 +1858,7 @@ function OrdersInner() {
                         : "border-[#d4d4d4] bg-white text-[#555] hover:border-[#cb6f4d] hover:text-[#cb6f4d]"
                       }`}
                   >
-                    <Icon size={14} />
+                    {isLoading ? <BrandSpinner size={14} className={active ? "text-white" : ""} /> : <Icon size={14} />}
                     {getCategoryLabel(cat)}
                   </button>
                 );
@@ -1730,7 +1874,11 @@ function OrdersInner() {
                 {categories.map((cat) => {
                   const Icon = CATEGORY_ICONS[cat];
                   const active = activeCategory === cat;
-                  const count = getCategoryCount(cat);
+                  const isLoading =
+                    (cat === "Sold" || cat === "Bought") ? loading :
+                    cat === "Offers" ? offersLoading :
+                    cat === "Disputes_Raised" ? disputesRaisedLoading :
+                    disputesReceivedLoading;
                   return (
                     <button
                       key={cat}
@@ -1743,14 +1891,23 @@ function OrdersInner() {
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all
                           ${active ? "bg-[#cb6f4d] shadow-md shadow-[#cb6f4d]/30" : "bg-[#f5f0eb] group-hover:bg-[#fde8de]"}`}
                         >
-                          <Icon size={16} className={active ? "text-white" : "text-[#cb6f4d]"} />
+                          {isLoading
+                            ? <BrandSpinner size={16} className={active ? "text-white" : ""} />
+                            : <Icon size={16} className={active ? "text-white" : "text-[#cb6f4d]"} />
+                          }
                         </div>
                         <div className="text-left">
                           <span className={`block text-sm font-semibold ${active ? "text-[#cb6f4d]" : "text-[#444] group-hover:text-[#cb6f4d]"}`}>
                             {getCategoryLabel(cat)}
                           </span>
                           <span className="text-xs text-[#bbb]">
-                            {count} {cat === "Offers" ? "offers" : cat.startsWith("Disputes") ? "disputes" : "orders"}
+                            {isLoading ? (
+                              <span className="inline-flex items-center gap-1">
+                                <BrandSpinner size={10} /> loading…
+                              </span>
+                            ) : (
+                              `${getCategoryCount(cat)} ${cat === "Offers" ? "offers" : cat.startsWith("Disputes") ? "disputes" : "orders"}`
+                            )}
                           </span>
                         </div>
                       </div>

@@ -129,15 +129,15 @@ export async function loginWithGoogle(token: string) {
   });
   return data;
 }
-export async function loginWithFacebook(accessToken: string) {
-  const res = await fetch(`${API_BASE_URL}/auth/facebook`, {
+export async function loginWithLine(accessToken: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/line`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ access_token: accessToken }),
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.message || "Facebook login failed");
+    throw new Error(err.message || "Line login failed");
   }
   return res.json(); // expects { jwt, user }
 }

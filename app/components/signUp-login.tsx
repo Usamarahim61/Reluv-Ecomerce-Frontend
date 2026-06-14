@@ -19,14 +19,13 @@ import {
   forgotPasswordVerifyOtp,
   forgotPasswordReset,
   loginWithGoogle,
-  loginWithFacebook,
+  loginWithLine, // Added Line service
 } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
-import { BACKEND_URL, NEXT_PUBLIC_FACEBOOK_APP_ID, NEXT_PUBLIC_GOOGLE_CLIENT_ID } from "@/constants";
-
-const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""
+import { BACKEND_URL,  NEXT_PUBLIC_GOOGLE_CLIENT_ID, NEXT_PUBLIC_LINE_CHANNEL_ID } from "@/constants";
+const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const API = BACKEND_URL ?? "";
-const FACEBOOK_APP_ID = NEXT_PUBLIC_FACEBOOK_APP_ID ?? "";
+const LINE_CHANNEL_ID = NEXT_PUBLIC_LINE_CHANNEL_ID ?? ""; // Added Line Channel ID
 
 type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
 interface AuthError {
@@ -154,7 +153,7 @@ export default function SignUpLogin({
   const [newPassword, setNewPassword] = useState("");
 
   const [loadingProvider, setLoadingProvider] = useState<
-    "email" | "google" | "facebook" | null
+    "email" | "google" | "facebook" | "line" | null
   >(null);
   const isBusy = loadingProvider !== null;
 
@@ -176,10 +175,10 @@ export default function SignUpLogin({
 
   useEffect(() => {
     dismissError();
-  }, [view]);
+  }, [view, dismissError]);
   useEffect(() => {
     if (authError) dismissError();
-  }, [email, password, username]);
+  }, [email, password, username, dismissError]);
   useEffect(
     () => () => {
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
@@ -232,64 +231,61 @@ export default function SignUpLogin({
       if (popup.closed) {
         clearInterval(poll);
         window.removeEventListener("message", handler);
-        setLoadingProvider((prev) => {
-          if (prev === "google") {
-          }
-          return null;
-        });
+        setLoadingProvider(() => null);
       }
     }, 500);
   }, [setAuthLogin, onClose, showError, dismissError]);
 
-  // ── Facebook Login ────────────────────────────────────────────────────────
-  const handleFacebookLogin = useCallback(() => {
-    setLoadingProvider("facebook");
+  // ── Line Login ───────────────────────────────────────────────────────────
+  const handleLineLogin = useCallback(() => {
+    setLoadingProvider("line");
     dismissError();
-    const initFB = () => {
-      (window as any).FB.login(
-        (response: any) => {
-          if (response.authResponse) {
-            loginWithFacebook(response.authResponse.accessToken)
-              .then((data) => {
-                setAuthLogin(data.jwt, data.user);
-                onClose();
-              })
-              .catch((err: any) => showError(classifyError(err)))
-              .finally(() => setLoadingProvider(null));
-          } else {
-            setLoadingProvider(null);
-          }
-        },
-        { scope: "email,public_profile" },
-      );
-    };
-    if ((window as any).FB) {
-      initFB();
-    } else {
-      const script = document.createElement("script");
-      script.src = "https://connect.facebook.net/en_US/sdk.js";
-      script.async = true;
-      script.onload = () => {
-        (window as any).FB.init({
-          appId: FACEBOOK_APP_ID,
-          cookie: true,
-          xfbml: false,
-          version: "v19.0",
-        });
-        initFB();
-      };
-      script.onerror = () => {
-        showError({
-          kind: "network",
-          message:
-            "Failed to load Facebook. Check your connection and try again.",
-        });
-        setLoadingProvider(null);
-      };
-      document.body.appendChild(script);
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: LINE_CHANNEL_ID,
+      redirect_uri: `${window.location.origin}/auth/callback/line`,
+      state: "line_auth_state", 
+      scope: "openid profile email",
+    });
+    const popup = openPopup(
+      `https://access.line.me/oauth2/v2.1/authorize?${params}`,
+      "Line Sign-In",
+    );
+    if (!popup) {
+      showError({
+        kind: "unknown",
+        message:
+          "Popup was blocked. Please allow popups for this site and try again.",
+      });
+      setLoadingProvider(null);
+      return;
     }
+    const handler = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "LINE_AUTH_SUCCESS") return;
+      window.removeEventListener("message", handler);
+      clearInterval(poll);
+      try {
+        // Calls your backend/Strapi endpoint using the retrieved OAuth code
+        const data = await loginWithLine(event.data.code);
+        setAuthLogin(data.jwt, data.user);
+        popup.close();
+        onClose();
+      } catch (err: any) {
+        showError(classifyError(err));
+      } finally {
+        setLoadingProvider(null);
+      }
+    };
+    window.addEventListener("message", handler);
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll);
+        window.removeEventListener("message", handler);
+        setLoadingProvider(() => null);
+      }
+    }, 500);
   }, [setAuthLogin, onClose, showError, dismissError]);
-
   // ── Email Login ───────────────────────────────────────────────────────────
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -441,6 +437,14 @@ export default function SignUpLogin({
                   isLoading={loadingProvider === "google"}
                   isDisabled={isBusy && loadingProvider !== "google"}
                   onClick={handleGoogleLogin}
+                />
+                {/* Added Line Social Button */}
+                <SocialButton
+                  icon="https://www.svgrepo.com/show/354012/line.svg"
+                  text="Continue with Line"
+                  isLoading={loadingProvider === "line"}
+                  isDisabled={isBusy && loadingProvider !== "line"}
+                  onClick={handleLineLogin}
                 />
               </div>
               <div className="flex items-center my-6">

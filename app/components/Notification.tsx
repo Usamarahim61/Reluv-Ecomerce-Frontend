@@ -11,9 +11,8 @@ interface NotificationSettings {
   favourited: boolean;
   newItems: boolean;
   email: boolean;
+  Order: boolean;
 }
-
-type DailyLimitType = "limit_2" | "limit_5" | "unlimited";
 
 interface NotificationRowProps {
   title: string;
@@ -38,10 +37,8 @@ export default function Notification(): React.ReactElement {
     favourited: true,
     newItems: true,
     email: true,
+    Order: true
   });
-
-  // State for daily limits dropdown
-  const [dailyLimit, setDailyLimit] = useState<DailyLimitType>("unlimited");
 
   // UX Status States
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -73,9 +70,6 @@ export default function Notification(): React.ReactElement {
         // Hydrate state if properties exist in your Strapi DB
         if (data?.notificationSettings) {
           setSettings(data.notificationSettings);
-        }
-        if (data?.notificationDailyLimit) {
-          setDailyLimit(data.notificationDailyLimit as DailyLimitType);
         }
       } catch (error) {
         setToast({
@@ -119,8 +113,7 @@ export default function Notification(): React.ReactElement {
          Authorization: `Bearer ${token}` 
         },
         body: JSON.stringify({
-          notificationSettings: settings,
-          notificationDailyLimit: dailyLimit,
+          notificationSettings: settings
         }),
       });
 
@@ -248,40 +241,11 @@ export default function Notification(): React.ReactElement {
             active={settings.newItems}
             onToggle={() => toggle("newItems")}
           />
-
-          {/* Limit Selector */}
-          <div className="p-4 border-b border-gray-100 bg-white">
-            <p className="text-xs text-gray-400 mb-1">
-              Set a daily limit for each notification type
-            </p>
-            <div className="relative">
-              <select
-                value={dailyLimit}
-                onChange={(e) =>
-                  setDailyLimit(e.target.value as DailyLimitType)
-                }
-                className="w-full text-sm text-gray-700 bg-transparent appearance-none focus:outline-none cursor-pointer"
-              >
-                <option value="limit_2">Up to 2 notifications</option>
-                <option value="limit_5">Up to 5 notifications</option>
-                <option value="unlimited">Unlimited</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
+           <NotificationRow
+            title="Orders"
+            active={settings.Order}
+            onToggle={() => toggle("Order")}
+          />
           <NotificationRow
             title="Enable email notifications"
             active={settings.email}

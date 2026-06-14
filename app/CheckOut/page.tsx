@@ -55,7 +55,6 @@ const CheckOutContent: React.FC = () => {
   const [openBuyerProtectionModal, setOpenBuyerProtectionModal] =
     useState(false);
   const [tempAddressForm, setTempAddressForm] = useState({
-    country: "",
     addressLine1: "",
     addressLine2: "",
     postcode: "",
@@ -64,7 +63,7 @@ const CheckOutContent: React.FC = () => {
 
   const handleSaveAddress = (e: React.FormEvent) => {
     e.preventDefault();
-    const full = `${tempAddressForm.addressLine1}, ${tempAddressForm.city}, ${tempAddressForm.country}`;
+    const full = `${tempAddressForm.addressLine1}, ${tempAddressForm.city}, ${user?.country}`;
     setUserAddress(full);
     setOpenAddressModal(false);
   };
@@ -82,7 +81,8 @@ const CheckOutContent: React.FC = () => {
     shippingFee: Number(searchParams.get("shippingFee")) || 0,
   };
 
-  const totalToPay = data.price + data.buyerProtectionFee + data.shippingFee;
+  const shippingCost = deliveryMethod === "home" ? 16.25 : (data?.shippingFee ?? 0);
+const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
   const toastConfig = {
     position: "top-right" as const,
@@ -108,8 +108,6 @@ const CheckOutContent: React.FC = () => {
         setUserAddress(address);
         setTempAddressForm((prev) => ({
           ...prev,
-          country:
-            prev.country || userData.country || googleAddress?.country || "",
           addressLine1:
             prev.addressLine1 ||
             googleAddress?.street_address ||
@@ -169,7 +167,7 @@ const CheckOutContent: React.FC = () => {
         phoneNumber: deliveryMethod === "home" ? phoneNumber : null,
         SameNumberForFutureOrders,
         buyerProtectionFee: data.buyerProtectionFee,
-        shippingFee: data.shippingFee,
+        shippingFee: deliveryMethod === "home" ? 16.25 : data.shippingFee,
         OrderStatus: "placed",
         currencyCode: data.currency,
         total: totalToPay,
@@ -507,7 +505,13 @@ const CheckOutContent: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
-                  <span>TBH {data.shippingFee.toFixed(2)}</span>
+                  <span>
+                    {deliveryMethod === "home"
+                      ? "16.25"
+                      : data?.shippingFee !== undefined
+                        ? data.shippingFee.toFixed(2)
+                        : "0.00"}
+                  </span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-4 border-t">
                   <span>Total to pay</span>
@@ -574,7 +578,6 @@ const CheckOutContent: React.FC = () => {
               className="p-6 overflow-y-auto space-y-5"
             >
               {[
-                { label: "Country", key: "country", required: true },
                 {
                   label: "Address line 1",
                   key: "addressLine1",

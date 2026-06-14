@@ -82,6 +82,7 @@ export type ProductDetailItem = {
   attributeValues?: Record<string, string>;
   attributes?: Array<{ id?: number | string; code?: string; name?: string; value?: string }>;
   rating: number;
+  isHidden: boolean
 };
 
 
