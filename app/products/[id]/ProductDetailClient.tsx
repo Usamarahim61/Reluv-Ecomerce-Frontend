@@ -245,8 +245,8 @@ export default function ProductDetailPage() {
           const others = feed.items.filter(
             (item) => String(item.id) !== String(product.id),
           );
-          memberMatches = others.slice(0, 20);
-          similarMatches = others.slice(20, 40);
+          // memberMatches = others.slice(0, 20);
+          similarMatches = others.slice(0, 20);
         } else if (!memberMatches.length) {
           memberMatches = similarMatches.slice(0, 20);
         } else if (!similarMatches.length) {
