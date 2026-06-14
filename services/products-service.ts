@@ -226,6 +226,7 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
   return {
     id: product.id,
     title: product.title ?? "",
+    isHidden: product.isHidden,
     description: product.description ?? "",
     brand: product.brand ?? getAttributeValue(product, "brand") ?? "",
     category: product.category ?? product.categoryId ?? getAttributeValue(product, "category") ?? "",

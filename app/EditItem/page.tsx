@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX } from "react";
+import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX, Suspense } from "react";
 import {
   Plus,
   Camera,
@@ -89,7 +89,7 @@ const getLeafCategoryEntries = (
    Route expected: /items/[id]/edit
    Fetches existing product, pre-fills the form, then PATCHes on save.
 ================================================================ */
-export default function EditItem(): JSX.Element {
+function EditItemInner(): JSX.Element {
   const { user, authReady, requireLogin } = useAuth();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -1164,5 +1164,12 @@ export default function EditItem(): JSX.Element {
         </div>
       </div>
     </div>
+  );
+}
+export default function EditItem(): JSX.Element {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EditItemInner />
+    </Suspense>
   );
 }

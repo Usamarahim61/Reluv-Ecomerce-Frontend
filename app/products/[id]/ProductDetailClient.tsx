@@ -184,34 +184,40 @@ export default function ProductDetailPage() {
   };
 
   // ── Delete product ─────────────────────────────────────────────────────────
-  const handleDeleteProduct = async () => {
-    const productId = product?.id;
-    if (!productId) return;
-    try {
-      setIsDeletingProduct(true);
+ const handleDeleteProduct = async () => {
+  const productId = product?.id;
+  
+  // ✅ Guard: stop early if no ID
+  if (!productId) {
+    toast.error("Product ID not found.");
+    return;
+  }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/products/${productId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-          },
-        },
-      );
+  try {
+    setIsDeletingProduct(true);
+    const res = await fetch(`${API_BASE_URL}/api/products/:${productId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+      },
+    });
 
-      if (!response.ok) throw new Error("Failed to delete product.");
-
+    // ✅ Check response status before showing success
+    if (res.ok) {
       toast.success("Product deleted successfully.");
       router.push("/");
-    } catch (error) {
-      console.error(error);
-      toast.error("Could not delete product listing.");
-    } finally {
-      setIsDeletingProduct(false);
+    } else {
+      const errorData = await res.json().catch(() => null);
+      toast.error(errorData?.error?.message || "Failed to delete product.");
     }
-  };
+  } catch (error) {
+    console.error(error);
+    toast.error("Could not delete product listing.");
+  } finally {
+    setIsDeletingProduct(false);
+  }
+};
 
   const handleReviewsLoaded = (count: number, avg: number) => {
     setLiveReviewCount(count);
@@ -1182,7 +1188,7 @@ export default function ProductDetailPage() {
                         ) : (
                           <EyeOff className="text-[#c0613a]" size={16} />
                         )}
-                        <span className="text-[#c0613a]"s>{isHidden ? "Unhide" : "Hide"}</span>
+                        <span className="text-[#c0613a]">{isHidden ? "Unhide" : "Hide"}</span>
                       </button>
 
                       {/* Delete */}
