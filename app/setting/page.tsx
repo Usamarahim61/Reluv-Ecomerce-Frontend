@@ -54,7 +54,7 @@ export default function SettingsComp() {
     <div className="min-h-screen bg-linear-to-br from-[#faf9f7] via-white to-[#f0ede8]">
       
       {/* Header */}
-      <div className="border-b border-[#e0ddd8] bg-white/50 backdrop-blur-sm sticky top-0 z-20">
+      <div className="border-b border-[#e0ddd8] bg-white/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#1a1a1a]">Settings</h1>
           <p className="text-[#888] text-sm mt-1">Manage your account and preferences</p>
