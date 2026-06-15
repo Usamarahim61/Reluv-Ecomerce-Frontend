@@ -195,7 +195,7 @@ export default function ProductDetailPage() {
 
   try {
     setIsDeletingProduct(true);
-    const res = await fetch(`${API_BASE_URL}/api/products/:${productId}`, {
+    const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -1276,7 +1276,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Trust badges — shown to everyone */}
-              <div className="flex items-center justify-around py-3 border-t border-b border-[#ede8e3]">
+              {/* <div className="flex items-center justify-around py-3 border-t border-b border-[#ede8e3]">
                 <div className="pdp-trust-item">
                   <div className="pdp-trust-icon">
                     <ShieldCheck size={15} className="text-[#c0613a]" />
@@ -1295,7 +1295,7 @@ export default function ProductDetailPage() {
                   </div>
                   <span>Easy Returns</span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Product details table */}
               <div className="rounded-2xl border border-[#e8e2db] bg-white overflow-hidden">
@@ -1381,7 +1381,7 @@ export default function ProductDetailPage() {
               )}
 
               {/* Seller badge */}
-              <div className="flex gap-3 rounded-2xl border border-[#e8e2db] bg-white p-4">
+              {/* <div className="flex gap-3 rounded-2xl border border-[#e8e2db] bg-white p-4">
                 <div className="rounded-xl bg-[#fdf0ea] p-2 self-start">
                   <PlusSquare className="text-[#c0613a]" size={16} />
                 </div>
@@ -1393,7 +1393,7 @@ export default function ProductDetailPage() {
                     Regularly lists 5 or more items here.
                   </p>
                 </div>
-              </div>
+              </div> */}
             </aside>
           </div>
         </div>
