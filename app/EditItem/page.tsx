@@ -207,7 +207,7 @@ function EditItemInner(): JSX.Element {
         const imgs: ExistingImage[] = (data.images ?? [])
           .map((img: any) => ({
             id: Number(img.id),
-            url: toAbsoluteImageUrl(img.url ?? ""),
+            url: toAbsoluteImageUrl(img.url ?? img.attributes?.url ?? ""),
           }))
           .filter((img: ExistingImage) => img.id && img.url);
 
@@ -589,6 +589,11 @@ function EditItemInner(): JSX.Element {
       return;
     }
 
+    if (totalImageCount === 0) {
+      setSubmitError("Please add at least one photo.");
+      return;
+    }
+
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       setSubmitError("Please enter a valid price.");
@@ -601,14 +606,14 @@ function EditItemInner(): JSX.Element {
       // 1. Upload any new images first
       let newImageIds: number[] = [];
       if (newImages.length > 0) {
-        const uploadForm = new FormData();
+        const formData = new FormData();
         for (const img of newImages) {
-          uploadForm.append("files", renameFile(img.file));
+          formData.append("files", renameFile(img.file));
         }
 
         const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
           method: "POST",
-          body: uploadForm,
+          body: formData,
         });
 
         const uploadPayload = await uploadRes.json();
@@ -629,7 +634,14 @@ function EditItemInner(): JSX.Element {
       // 2. Build final image id list:
       //    kept existing ids  +  newly uploaded ids
       const keptExistingIds = existingImages.map((img) => img.id);
-      const finalImageIds = [...keptExistingIds, ...newImageIds];
+      
+      // Clean and combine the IDs for the payload
+      const validNewIds = Array.isArray(newImageIds) ? newImageIds.filter(id => id && !isNaN(id)) : [];
+      const finalImageIds = [...keptExistingIds, ...validNewIds];
+
+      if (finalImageIds.length === 0) {
+        throw new Error("Product must have at least one image.");
+      }
 
       // 3. Clean dynamic field values
       const cleanedDynamicValues = Object.fromEntries(

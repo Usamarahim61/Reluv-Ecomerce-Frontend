@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/app/constants/api";
 import { apiRequest } from "./api";
 
 export type ConversationUser = {
@@ -121,7 +122,7 @@ export async function uploadFiles(files: File[]): Promise<number[]> {
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:1337'}/api/upload`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || API_BASE_URL}/api/upload`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwt}`,
