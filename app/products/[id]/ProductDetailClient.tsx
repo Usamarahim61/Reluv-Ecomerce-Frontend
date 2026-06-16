@@ -411,7 +411,7 @@ export default function ProductDetailPage() {
   const lastVisibleIndex = Math.max(0, visibleImages.length - 1);
 
   const name = toText(product?.title, "Product title");
-  const brand = toText(product?.brand, "No brand");
+  const brand = toText(product?.brand || product?.attributes?.find(item=> item?.code?.startsWith("brand_"))?.value, "No brand");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
   const description = toText(
@@ -1333,7 +1333,7 @@ export default function ProductDetailPage() {
                       return (
                         attr.name &&
                         attr.value &&
-                        !skipCodes.has(attr.code?.toLowerCase() ?? "")
+                        !skipCodes.has(attr.code?.toLowerCase() ?? "") && !attr.code?.startsWith("brand_") 
                       );
                     })
                     .map((attr, index) => (

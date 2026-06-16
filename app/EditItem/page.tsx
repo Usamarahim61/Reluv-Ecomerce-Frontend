@@ -35,6 +35,7 @@ type DynamicFieldOption = {
 
 type DynamicField = {
   key: string;
+  originalKey: string;
   label: string;
   type: "select" | "text" | "number";
   required: boolean;
@@ -222,6 +223,9 @@ function EditItemInner(): JSX.Element {
               : (data.category?.name ?? ""),
           );
         }
+        if(data.categoryId){
+          setPendingCategoryId(data.categoryId);
+        }
 
         // Pre-fill dynamic field values (attributes array from Strapi)
         if (Array.isArray(data.attributes)) {
@@ -251,6 +255,10 @@ function EditItemInner(): JSX.Element {
 
   /* ── pending category name (resolved once tree is ready) ── */
   const [pendingCategoryName, setPendingCategoryName] = useState<string>("");
+  const [pendingCategoryId, setPendingCategoryId] = useState(null);
+
+  
+  let apiAttributes
 
   useEffect(() => {
     if (!pendingCategoryName || categoryLoading || categoryTree.length === 0)
@@ -258,7 +266,7 @@ function EditItemInner(): JSX.Element {
 
     const findNode = (nodes: CategoryNode[]): CategoryNode | null => {
       for (const node of nodes) {
-        if (node.name.toLowerCase() === pendingCategoryName.toLowerCase())
+        if (node.name.toLowerCase() === pendingCategoryName.toLowerCase() && node.id === pendingCategoryId)
           return node;
         const found = findNode(node.categories || []);
         if (found) return found;
@@ -270,6 +278,7 @@ function EditItemInner(): JSX.Element {
     if (match) {
       setSelectedCategory(match);
       setPendingCategoryName(""); // resolved — clear
+      setPendingCategoryId(null)
     }
   }, [pendingCategoryName, categoryTree, categoryLoading]);
 
@@ -299,7 +308,7 @@ function EditItemInner(): JSX.Element {
           throw new Error(`Failed to load fields: ${response.status}`);
 
         const payload = await response.json();
-        const apiAttributes = payload.attributes || [];
+        apiAttributes = payload.attributes || [];
 
         const uniqueAttrMap = new Map<string, any>();
         for (const attr of apiAttributes) {
@@ -345,6 +354,7 @@ function EditItemInner(): JSX.Element {
 
           return {
             key: attr.code ? attr.code.startsWith("brand_") ? "brand" : attr.code.includes("size") ? "size" : attr.code : String(attr.id),
+            originalKey: attr.code || String(attr.id),
             label: config.title || attr.code || "Field",
             type: fieldType,
             required: config.required || false,
@@ -682,7 +692,7 @@ function EditItemInner(): JSX.Element {
       }
 
       toast.success("Listing updated successfully!");
-      router.push(`/items/${productId}`);
+      router.push(`/products/${productId}`);
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "Failed to save changes.",
@@ -1084,7 +1094,7 @@ function EditItemInner(): JSX.Element {
               dynamicFields.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {dynamicFields.map((field) => (
-                    <div key={field.key}>
+                    <div key={field.originalKey}>
                       <label className="block font-semibold text-[#1a1816] mb-2 font-sans">
                         {field.label}
                         {field.required ? " *" : ""}
@@ -1092,12 +1102,12 @@ function EditItemInner(): JSX.Element {
                       {field.type === "select" ? (
                         <div className="relative">
                           <select
-                            name={field.key}
-                            value={dynamicFieldValues[field.key] || ""}
+                            name={field.originalKey}
+                            value={dynamicFieldValues[field.originalKey] || ""}
                             onChange={(e) =>
                               setDynamicFieldValues((prev) => ({
                                 ...prev,
-                                [field.key]: e.target.value,
+                                [field.originalKey]: e.target.value,
                               }))
                             }
                             className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl appearance-none focus:outline-none text-gray-800 font-sans"
@@ -1118,12 +1128,12 @@ function EditItemInner(): JSX.Element {
                         <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
                           <input
                             type={field.type === "number" ? "number" : "text"}
-                            name={field.key}
-                            value={dynamicFieldValues[field.key] || ""}
+                            name={field.originalKey}
+                            value={dynamicFieldValues[field.originalKey] || ""}
                             onChange={(e) =>
                               setDynamicFieldValues((prev) => ({
                                 ...prev,
-                                [field.key]: e.target.value,
+                                [field.originalKey]: e.target.value,
                               }))
                             }
                             placeholder={
