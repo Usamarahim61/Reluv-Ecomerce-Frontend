@@ -5,11 +5,12 @@ import { fetchProducts } from "@/lib/features/productsSlice";
 import Footer from "../components/Footer";
 import ProductFeed from "../components/ProductFeed";
 import FooterV2 from "../components/FooterV2";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BrowseProductsPage() {
   const dispatch = useAppDispatch();
   const pageSize = 20;
-
+     const { user, requireLogin } = useAuth();
   const products = useAppSelector((state) => state.products.items);
   const status = useAppSelector((state) => state.products.status);
   const error = useAppSelector((state) => state.products.error);
@@ -20,12 +21,20 @@ export default function BrowseProductsPage() {
   const isLoadingMore = status === "loading" && products.length > 0;
 
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, pageSize }));
+      const timer = setTimeout(() => {
+    dispatch(fetchProducts({ page: 1, pageSize, userId: user?.id }));
+  }, 1000);
+  return () => clearTimeout(timer);
   }, [dispatch]);
 
   const handleLoadMore = () => {
     if (isLoadingMore || !hasMore) return;
-    dispatch(fetchProducts({ page: page + 1, pageSize }));
+      const timer = setTimeout(() => {
+    dispatch(fetchProducts({ page: page + 1, pageSize, userId: user?.id }));
+  }, 1000);
+
+  return () => clearTimeout(timer);
+
   };
 
   return (

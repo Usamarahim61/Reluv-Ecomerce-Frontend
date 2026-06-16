@@ -254,11 +254,12 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
 
 export async function fetchProductsForHome(
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  userId?: any
 ): Promise<ProductsPage> {
   const offset = Math.max(0, (page - 1) * pageSize);
   const payload = await apiRequest(
-    `/products/getProducts?offset=${offset}`
+    `/products/getProducts?offset=${offset}&userId=${userId}`
   );
   const data = Array.isArray(payload?.products)
     ? (payload.products as any[])

@@ -54,9 +54,10 @@ import { getUserFav_Products } from "@/services/auth-service";
 import SellerReviewSection from "@/app/components/SellerReviewSection";
 import { toast } from "react-toastify";
 import PriceBreakdownDialog from "@/app/components/PriceBreakdownDialog";
+import { BACKEND_URL } from "@/constants";
 
 type BreadcrumbItem = { label: string; slug: string };
-
+const APIURL = BACKEND_URL;
 const toText = (value: unknown, fallback = ""): string => {
   if (typeof value === "string") return value.trim() || fallback;
   if (typeof value === "number") return String(value);
@@ -151,19 +152,17 @@ export default function ProductDetailPage() {
       setIsHidingProduct(true);
       const nextHideState = !isHidden;
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/products/${productId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-          },
-          body: JSON.stringify({
-            data: { isHidden: nextHideState },
-          }),
+      const response = await fetch(`${APIURL}/api/products/hide-unhide`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },
-      );
+        body: JSON.stringify({
+          id: productId, // 👈 Added the product ID here
+          data: { isHidden: nextHideState },
+        }),
+      });
 
       if (!response.ok) throw new Error("Failed to update product visibility.");
 
@@ -184,40 +183,42 @@ export default function ProductDetailPage() {
   };
 
   // ── Delete product ─────────────────────────────────────────────────────────
- const handleDeleteProduct = async () => {
-  const productId = product?.id;
-  
-  // ✅ Guard: stop early if no ID
-  if (!productId) {
-    toast.error("Product ID not found.");
-    return;
-  }
+  const handleDeleteProduct = async () => {
+    const productId = product?.id;
 
-  try {
-    setIsDeletingProduct(true);
-    const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-      },
-    });
-
-    // ✅ Check response status before showing success
-    if (res.ok) {
-      toast.success("Product deleted successfully.");
-      router.push("/");
-    } else {
-      const errorData = await res.json().catch(() => null);
-      toast.error(errorData?.error?.message || "Failed to delete product.");
+    // ✅ Guard: stop early if no ID
+    if (!productId) {
+      toast.error("Product ID not found.");
+      return;
     }
-  } catch (error) {
-    console.error(error);
-    toast.error("Could not delete product listing.");
-  } finally {
-    setIsDeletingProduct(false);
-  }
-};
+
+    try {
+      setIsDeletingProduct(true);
+      const res = await fetch(`${APIURL}/api/products/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+        },
+        // Send the product ID in the request body
+        body: JSON.stringify({ id: productId }),
+      });
+
+      // ✅ Check response status before showing success
+      if (res.ok) {
+        toast.success("Product deleted successfully.");
+        router.push("/");
+      } else {
+        const errorData = await res.json().catch(() => null);
+        toast.error(errorData?.error?.message || "Failed to delete product.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not delete product listing.");
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
 
   const handleReviewsLoaded = (count: number, avg: number) => {
     setLiveReviewCount(count);
@@ -331,7 +332,7 @@ export default function ProductDetailPage() {
         }
 
         if (!memberMatches.length && !similarMatches.length) {
-          const feed = await fetchProductsForHome(1, 40);
+          const feed = await fetchProductsForHome(1, 40,Number(product.user?.id));
           if (!isMounted) return;
           const others = feed.items.filter(
             (item) => String(item.id) !== String(product.id),
@@ -1161,51 +1162,50 @@ export default function ProductDetailPage() {
                     </div>
 
                     {/* Action grid: Edit · Hide/Unhide · Delete */}
-                    
-                      {/* Edit */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(`/EditItem?id=${product?.id}`)
-                        }
-                       className="pdp-btn-secondary2"
-                      >
-                        <Edit3 className="text-white" size={16} />
-                        <span className="text-white">Edit</span>
-                      </button>
 
-                      {/* Hide / Unhide */}
-                      <button
-                        type="button"
-                        disabled={isHidingProduct}
-                        onClick={handleToggleHide}
-                        className="pdp-btn-secondary"
-                      >
-                        {isHidingProduct ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : isHidden ? (
-                          <Eye className="text-[#c0613a]"size={16} />
-                        ) : (
-                          <EyeOff className="text-[#c0613a]" size={16} />
-                        )}
-                        <span className="text-[#c0613a]">{isHidden ? "Unhide" : "Hide"}</span>
-                      </button>
+                    {/* Edit */}
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/EditItem?id=${product?.id}`)}
+                      className="pdp-btn-secondary2"
+                    >
+                      <Edit3 className="text-white" size={16} />
+                      <span className="text-white">Edit</span>
+                    </button>
 
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        className="pdp-btn-secondary"
-                        disabled={isDeletingProduct}
-                        onClick={handleDeleteProduct}
-                      >
-                        {isDeletingProduct ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <Trash2 className="text-red-500" size={16} />
-                        )}
-                        <span className="text-red-500">Delete</span>
-                      </button>
-                 
+                    {/* Hide / Unhide */}
+                    <button
+                      type="button"
+                      disabled={isHidingProduct}
+                      onClick={handleToggleHide}
+                      className="pdp-btn-secondary"
+                    >
+                      {isHidingProduct ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : isHidden ? (
+                        <Eye className="text-[#c0613a]" size={16} />
+                      ) : (
+                        <EyeOff className="text-[#c0613a]" size={16} />
+                      )}
+                      <span className="text-[#c0613a]">
+                        {isHidden ? "Unhide" : "Hide"}
+                      </span>
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      type="button"
+                      className="pdp-btn-secondary"
+                      disabled={isDeletingProduct}
+                      onClick={handleDeleteProduct}
+                    >
+                      {isDeletingProduct ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 className="text-red-500" size={16} />
+                      )}
+                      <span className="text-red-500">Delete</span>
+                    </button>
                   </div>
                 ) : (
                   /* ── BUYER ACTIONS ── */
@@ -1268,7 +1268,9 @@ export default function ProductDetailPage() {
                         ) : (
                           <Tag size={14} />
                         )}
-                        {isFetchingConvForOffer ? "Preparing..." : "Make an Offer"}
+                        {isFetchingConvForOffer
+                          ? "Preparing..."
+                          : "Make an Offer"}
                       </button>
                     )}
                   </>

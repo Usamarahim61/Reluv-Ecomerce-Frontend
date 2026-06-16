@@ -43,14 +43,22 @@ export default function Home() {
   const isLoading = status === "loading";
   const isLoadingMore = status === "loading" && products.length > 0;
 
-  useEffect(() => {
-    dispatch(fetchProducts({ page: 1, pageSize }));
-  }, [dispatch]);
+ useEffect(() => {
+  const timer = setTimeout(() => {
+    dispatch(fetchProducts({ page: 1, pageSize, userId: user?.id }));
+  }, 1000);
+
+  return () => clearTimeout(timer); // ✅ cleanup on unmount or re-run
+}, [dispatch, user?.id]);
 
   const handleLoadMore = () => {
     if (isLoadingMore || !hasMore) return;
     const nextPage = page + 1;
-    dispatch(fetchProducts({ page: nextPage, pageSize }));
+      const timer = setTimeout(() => {
+    dispatch(fetchProducts({ page: nextPage, pageSize, userId: user?.id }));
+  }, 1000);
+
+  return () => clearTimeout(timer);
   };
   const handleSellNowClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (user) return;

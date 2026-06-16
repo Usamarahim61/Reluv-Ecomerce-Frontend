@@ -28,9 +28,9 @@ const initialState: ProductsState = {
 // Async thunk for fetching products with pagination
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",
-  async ({ page, pageSize }: { page: number; pageSize: number }, { rejectWithValue }) => {
+  async ({ page, pageSize, userId}: { page: number; pageSize: number ,userId?: string | number}, { rejectWithValue }) => {
     try {
-      const result = await fetchProductsForHome(page, pageSize);
+      const result = await fetchProductsForHome(page, pageSize,userId);
       return result;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch products");
