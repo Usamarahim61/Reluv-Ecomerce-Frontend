@@ -344,7 +344,7 @@ function EditItemInner(): JSX.Element {
           }
 
           return {
-            key: attr.code || String(attr.id),
+            key: attr.code ? attr.code.startsWith("brand_") ? "brand" : attr.code.includes("size") ? "size" : attr.code : String(attr.id),
             label: config.title || attr.code || "Field",
             type: fieldType,
             required: config.required || false,
