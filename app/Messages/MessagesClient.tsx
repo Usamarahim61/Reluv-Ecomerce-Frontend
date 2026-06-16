@@ -186,12 +186,18 @@ export default function MessagesClient() {
 
   useEffect(() => {
     if (!selectedId || !user?.id) return;
-    fetch(`${API_BASE_URL}/api/blocks/status/${peerUser?.id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setBlockStatus(data))
-      .catch(() => {});
+    const peerId = peerUser?.id;
+    if (peerId) {
+      fetch(`${API_BASE_URL}/api/blocks/status/${peerId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setBlockStatus(data))
+        .catch(() => {});
+    } else {
+      setBlockStatus({ iBlockedThem: false, theyBlockedMe: false });
+    }
+
     dispatch(fetchMessages(selectedId)).then((result: any) => {
       if (result.payload?.messages) {
         console.log(
@@ -216,7 +222,7 @@ export default function MessagesClient() {
     return () => {
       dispatch(fetchConversations());
     };
-  }, [dispatch, selectedId, user?.id]);
+  }, [dispatch, selectedId, user?.id, peerUser?.id]);
 
   const isBlocked = blockStatus.iBlockedThem || blockStatus.theyBlockedMe;
 
