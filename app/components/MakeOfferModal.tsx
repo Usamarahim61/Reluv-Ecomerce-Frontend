@@ -42,15 +42,29 @@ export default function MakeOfferModal({
   const isValid =
     !isNaN(numericOffer) && numericOffer >= minOffer && numericOffer <= maxOffer;
 
+  const containsEmail = (value: string) => {
+    const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+    return emailRegex.test(value);
+  };
+
   const handleSubmit = async () => {
     if (!isValid) return;
+
+    const trimmedMessage = message.trim();
+
+    // Security: prevent sending email addresses in offer message
+    if (trimmedMessage && containsEmail(trimmedMessage)) {
+      setError("For security, email addresses can’t be shared in chat.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("jwt");
       const res = await fetch(`${API_BASE_URL}/api/offers/make`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -59,7 +73,7 @@ export default function MakeOfferModal({
           buyerId,
           sellerId,
           offerPrice: numericOffer,
-          message: message.trim() || null,
+          message: trimmedMessage || null,
           conversationId,
         }),
       });

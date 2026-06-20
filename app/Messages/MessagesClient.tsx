@@ -397,14 +397,30 @@ export default function MessagesClient() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const containsEmail = (value: string) => {
+    const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+    return emailRegex.test(value);
+  };
+
+  const getEmailRejection = () =>
+    "For security, email addresses can’t be shared in chat.";
+
   const handleSend = async () => {
     const text = inputValue.trim();
     if ((!text && selectedFiles.length === 0) || !selectedId) return;
+
+    // Security: prevent sending email addresses in chat
+    if (text && containsEmail(text)) {
+      setError("For security, email addresses can’t be shared in chat.");
+      toast.error("For security, email addresses can’t be shared in chat.");
+      return;
+    }
 
     try {
       setIsUploading(true);
       setError(null);
       let attachmentIds: number[] = [];
+
 
       if (selectedFiles.length > 0) {
         attachmentIds = await uploadFiles(selectedFiles);
@@ -567,7 +583,16 @@ export default function MessagesClient() {
     const amount = parseFloat(offerAmount);
     setOfferError(null);
 
+    // Security: prevent sending email addresses in offer message
+    if (offerMessage && containsEmail(offerMessage.trim())) {
+      const rejection = getEmailRejection();
+      setOfferError(rejection);
+      toast.error(rejection);
+      return;
+    }
+
     if (!amount || amount <= 0 || !selectedId || !activeConversation) {
+
       const msg = "Please enter a valid offer amount";
       setOfferError(msg);
       toast.error(msg);
@@ -1866,7 +1891,7 @@ export default function MessagesClient() {
                   value={offerAmount}
                   onChange={(e) => setOfferAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-[#e0ddd8] rounded-xl pl-8 pr-4 py-3 text-lg font-semibold text-[#1a1a1a] focus:outline-none focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/20 transition-all"
+                  className="w-full border border-[#e0ddd8] rounded-xl pl-15 pr-4 py-3 text-lg font-semibold text-[#1a1a1a] focus:outline-none focus:border-[#cb6f4d] focus:ring-2 focus:ring-[#cb6f4d]/20 transition-all"
                   autoFocus
                 />
               </div>
