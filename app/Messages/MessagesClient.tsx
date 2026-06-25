@@ -34,6 +34,7 @@ import {
 } from "@/services/messages-service";
 import { respondToOffer } from "@/services/offers-service";
 import { getChatSocket, disconnectChatSocket } from "@/lib/chat-socket";
+import { getChatContentRejection } from "@/lib/chat-content-validation";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { useAndroidNative } from "@/app/components/useAndroidNative";
@@ -335,13 +336,64 @@ export default function MessagesClient() {
       dispatch(fetchConversations());
     };
 
+    const handleBlockChanged = (event: {
+      blockerId: number;
+      blockedId: number;
+      blocked: boolean;
+    }) => {
+      if (!peerUser?.id || !user?.id) return;
+
+      const affectsActiveChat =
+        (event.blockerId === user.id && event.blockedId === peerUser.id) ||
+        (event.blockerId === peerUser.id && event.blockedId === user.id);
+      if (!affectsActiveChat) return;
+
+      if (event.blockerId === user.id && event.blockedId === peerUser.id) {
+        setBlockStatus((prev) => ({
+          ...prev,
+          iBlockedThem: event.blocked,
+        }));
+      }
+
+      if (event.blockerId === peerUser.id && event.blockedId === user.id) {
+        setBlockStatus((prev) => ({
+          ...prev,
+          theyBlockedMe: event.blocked,
+        }));
+      }
+
+      if (event.blocked) {
+        setInputValue("");
+        setSelectedFiles([]);
+        setShowPlusMenu(false);
+        setShowOfferModal(false);
+        setOfferError(null);
+      }
+    };
+
+    const handleMessageError = (event: {
+      conversationId?: number;
+      message?: string;
+    }) => {
+      if (event.conversationId && event.conversationId !== selectedId) return;
+      const message = event.message || "Failed to send message.";
+      setError(message);
+      toast.error(message);
+      dispatch(fetchMessages(selectedId));
+      dispatch(fetchConversations());
+    };
+
     socket.on("message:new", handleNewMessage);
     socket.on("messages:read", handleMessagesRead);
+    socket.on("block:changed", handleBlockChanged);
+    socket.on("message:error", handleMessageError);
     return () => {
       socket.off("message:new", handleNewMessage);
       socket.off("messages:read", handleMessagesRead);
+      socket.off("block:changed", handleBlockChanged);
+      socket.off("message:error", handleMessageError);
     };
-  }, [selectedId, user?.id, dispatch]);
+  }, [selectedId, user?.id, peerUser?.id, dispatch]);
 
   const activeMessages = selectedId
     ? (messagesByConversation[String(selectedId)] ?? [])
@@ -397,22 +449,15 @@ export default function MessagesClient() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const containsEmail = (value: string) => {
-    const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
-    return emailRegex.test(value);
-  };
-
-  const getEmailRejection = () =>
-    "For security, email addresses can’t be shared in chat.";
-
   const handleSend = async () => {
     const text = inputValue.trim();
     if ((!text && selectedFiles.length === 0) || !selectedId) return;
 
-    // Security: prevent sending email addresses in chat
-    if (text && containsEmail(text)) {
-      setError("For security, email addresses can’t be shared in chat.");
-      toast.error("For security, email addresses can’t be shared in chat.");
+    // Security: prevent sharing direct contact details in chat.
+    const contentRejection = text ? getChatContentRejection(text) : null;
+    if (contentRejection) {
+      setError(contentRejection);
+      toast.error(contentRejection);
       return;
     }
 
@@ -583,9 +628,11 @@ export default function MessagesClient() {
     const amount = parseFloat(offerAmount);
     setOfferError(null);
 
-    // Security: prevent sending email addresses in offer message
-    if (offerMessage && containsEmail(offerMessage.trim())) {
-      const rejection = getEmailRejection();
+    // Security: apply the same contact-detail rules to offer notes.
+    const rejection = offerMessage
+      ? getChatContentRejection(offerMessage.trim())
+      : null;
+    if (rejection) {
       setOfferError(rejection);
       toast.error(rejection);
       return;

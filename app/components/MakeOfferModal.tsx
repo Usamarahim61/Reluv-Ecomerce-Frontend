@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { X, Tag, Info } from "lucide-react";
 import { API_BASE_URL } from "@/app/constants/api";
+import { getChatContentRejection } from "@/lib/chat-content-validation";
 
 interface MakeOfferModalProps {
   isOpen: boolean;
@@ -42,19 +43,17 @@ export default function MakeOfferModal({
   const isValid =
     !isNaN(numericOffer) && numericOffer >= minOffer && numericOffer <= maxOffer;
 
-  const containsEmail = (value: string) => {
-    const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
-    return emailRegex.test(value);
-  };
-
   const handleSubmit = async () => {
     if (!isValid) return;
 
     const trimmedMessage = message.trim();
 
-    // Security: prevent sending email addresses in offer message
-    if (trimmedMessage && containsEmail(trimmedMessage)) {
-      setError("For security, email addresses can’t be shared in chat.");
+    // Security: prevent sharing direct contact details in offer notes.
+    const contentRejection = trimmedMessage
+      ? getChatContentRejection(trimmedMessage)
+      : null;
+    if (contentRejection) {
+      setError(contentRejection);
       return;
     }
 
