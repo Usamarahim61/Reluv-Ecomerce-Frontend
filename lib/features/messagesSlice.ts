@@ -65,6 +65,27 @@ const messagesSlice = createSlice({
     setConversations: (state, action: PayloadAction<ConversationItem[]>) => {
       state.conversations = action.payload;
     },
+    removeConversation: (state, action: PayloadAction<number>) => {
+      const conversationId = action.payload;
+      state.conversations = state.conversations.filter(
+        (conversation) => conversation.id !== conversationId,
+      );
+      delete state.messagesByConversation[String(conversationId)];
+      delete state.messagesStatusByConversation[String(conversationId)];
+      delete state.messagesErrorByConversation[String(conversationId)];
+      if (state.selectedConversationId === conversationId) {
+        state.selectedConversationId = null;
+      }
+    },
+    markConversationRead: (state, action: PayloadAction<number>) => {
+      const conversation = state.conversations.find(
+        (item) => item.id === action.payload,
+      );
+      if (conversation) {
+        conversation.hasUnread = false;
+        conversation.unreadCount = 0;
+      }
+    },
     updateConversationPreview: (
       state,
       action: PayloadAction<{
@@ -164,6 +185,8 @@ const messagesSlice = createSlice({
 export const {
   setSelectedConversationId,
   setConversations,
+  removeConversation,
+  markConversationRead,
   updateConversationPreview,
   setMessagesForConversation,
   addOptimisticMessage,

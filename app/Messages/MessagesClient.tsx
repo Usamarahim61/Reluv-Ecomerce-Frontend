@@ -43,6 +43,8 @@ import {
   addOptimisticMessage,
   fetchConversations,
   fetchMessages,
+  markConversationRead,
+  removeConversation,
   setSelectedConversationId,
   updateConversationPreview,
   upsertMessage,
@@ -187,6 +189,7 @@ export default function MessagesClient() {
 
   useEffect(() => {
     if (!selectedId || !user?.id) return;
+    dispatch(markConversationRead(selectedId));
     const peerId = peerUser?.id;
     if (peerId) {
       fetch(`${API_BASE_URL}/api/blocks/status/${peerId}`, {
@@ -751,10 +754,12 @@ export default function MessagesClient() {
 
       if (!res.ok) throw new Error("Failed to delete conversation");
 
+      const deletedConversationId = selectedId;
       setDeleteConfirmPending(false);
       setShowDetailsPanel(false);
-      dispatch(setSelectedConversationId(null));
+      dispatch(removeConversation(deletedConversationId));
       setViewMessage(false);
+      router.replace("/Messages", { scroll: false });
       dispatch(fetchConversations());
 
       toast.update(loadingToastId, {
@@ -853,11 +858,13 @@ export default function MessagesClient() {
                   c.lastMessagePreview || "Start the conversation";
                 const lastTime = c.lastMessageAt || c.updatedAt;
                 const isSelected = selectedId === c.id;
+                const isUnread = Boolean(c.hasUnread);
 
                 return (
                   <div
                     key={c.id}
                     onClick={() => {
+                      dispatch(markConversationRead(c.id));
                       dispatch(setSelectedConversationId(c.id));
                       setViewMessage(true);
                       // Sync URL with the selection to prevent the parameter listener from reverting the change
@@ -866,7 +873,9 @@ export default function MessagesClient() {
                     className={`px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${
                       isSelected
                         ? "bg-linear-to-r from-[#faf8f5] to-transparent border-l-[#cb6f4d]"
-                        : "border-l-transparent hover:bg-[#fafafa]"
+                        : isUnread
+                          ? "bg-[#fff5f0] border-l-[#cb6f4d] hover:bg-[#ffede5]"
+                          : "border-l-transparent hover:bg-[#fafafa]"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -885,21 +894,43 @@ export default function MessagesClient() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <span
-                            className={`font-semibold text-sm truncate ${isSelected ? "text-[#1a1a1a]" : "text-[#333]"}`}
+                            className={`text-sm truncate ${
+                              isUnread
+                                ? "font-bold text-[#1a1a1a]"
+                                : "font-semibold text-[#333]"
+                            }`}
                           >
                             {otherUser?.username || "User"}
                           </span>
-                          <span
-                            className={`text-xs whitespace-nowrap ml-2 ${isSelected ? "text-[#cb6f4d]" : "text-[#aaa]"}`}
-                          >
-                            {formatTime(lastTime)}
-                          </span>
+                          <div className="flex items-center gap-2 ml-2 shrink-0">
+                            <span
+                              className={`text-xs whitespace-nowrap ${
+                                isSelected || isUnread
+                                  ? "text-[#cb6f4d] font-semibold"
+                                  : "text-[#aaa]"
+                              }`}
+                            >
+                              {formatTime(lastTime)}
+                            </span>
+                            {isUnread && (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full bg-[#cb6f4d] shadow-sm"
+                                aria-label="Unread conversation"
+                              />
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-[#888] truncate mb-1">
                           {productTitle}
                         </p>
                         <p
-                          className={`text-sm truncate ${isSelected ? "text-[#555] font-medium" : "text-[#999]"}`}
+                          className={`text-sm truncate ${
+                            isUnread
+                              ? "text-[#333] font-semibold"
+                              : isSelected
+                                ? "text-[#555] font-medium"
+                                : "text-[#999]"
+                          }`}
                         >
                           {lastText}
                         </p>
@@ -1095,8 +1126,9 @@ export default function MessagesClient() {
                             Delete this conversation?
                           </p>
                           <p className="text-xs text-[#888] mb-4">
-                            All messages and files will be permanently deleted.
-                            This cannot be undone.
+                            This chat will be deleted only from your account.
+                            It is permanently removed after the other person
+                            deletes it too.
                           </p>
                           <div className="flex gap-2">
                             <button
