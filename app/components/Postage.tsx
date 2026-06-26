@@ -2,12 +2,9 @@
 import { useAuth } from "@/context/AuthContext";
 import { getUserAddress } from "@/services/auth-service";
 import {
-  Info,
   Home,
   MapPin,
   Edit2,
-  X,
-  Check,
   Truck,
   Package,
   ToggleLeft,
@@ -19,14 +16,14 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
 import PickupPointModal from "./PickupPointModal";
+import AddressModal, {
+  type ThaiAddress,
+  emptyThaiAddress,
+  formatThaiAddress,
+  hydrateThaiAddress,
+} from "./AddressModal";
 
-interface AddressForm {
-  // country: string;
-  addressLine1: string;
-  addressLine2: string;
-  postcode: string;
-  city: string;
-}
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ShippingOption {
   id: string;
@@ -44,6 +41,8 @@ interface ShippingSection {
   icon: React.ReactNode;
   options: ShippingOption[];
 }
+
+// ── Defaults ───────────────────────────────────────────────────────────────────
 
 const defaultShippingSections: ShippingSection[] = [
   {
@@ -92,53 +91,34 @@ const defaultShippingSections: ShippingSection[] = [
         carrier: "InPost",
         enabled: true,
       },
-      // {
-      //   id: "dropoff-locker",
-      //   label: "Smart Locker",
-      //   description: "24/7 locker drop-off available",
-      //   price: "£2.99",
-      //   carrier: "Amazon Locker",
-      //   enabled: false,
-      // },
     ],
   },
 ];
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function Postage() {
   const { user } = useAuth();
   const hasFetched = useRef(false);
 
-  const [savedAddress, setSavedAddress] = useState<AddressForm>({
-    // country: "",
-    addressLine1: "",
-    addressLine2: "",
-    postcode: "",
-    city: "",
-  });
-  const [tempAddressForm, setTempAddressForm] = useState<AddressForm>({
-    // country: "",
-    addressLine1: "",
-    addressLine2: "",
-    postcode: "",
-    city: "",
-  });
+  const [savedAddress, setSavedAddress] = useState<ThaiAddress>(emptyThaiAddress);
   const [openAddressModal, setOpenAddressModal] = useState(false);
-  const [addressSuccess, setAddressSuccess] = useState(false);
 
   const [openPickupModal, setOpenPickupModal] = useState(false);
   const [pickupAddress, setPickupAddress] = useState<string>("");
+
   const [loading, setLoading] = useState(true);
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   const [shippingSections, setShippingSections] = useState<ShippingSection[]>(
     defaultShippingSections,
   );
-  const [visibleSections, setVisibleSections] = useState<
-    Record<string, boolean>
-  >({ "from-address": true, "drop-off": true });
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>(
+    { "from-address": true, "drop-off": true },
+  );
 
-  const [isSavingAll, setIsSavingAll] = useState(false);
+  // ── Fetch ────────────────────────────────────────────────────────────────────
 
-  // ── Hydrate Preferences on Mount with Toaster Loading ──────────────────────
   useEffect(() => {
     if (!user?.id || hasFetched.current) return;
     hasFetched.current = true;
@@ -148,15 +128,7 @@ export default function Postage() {
       try {
         const userData = await getUserAddress(Number(user.id));
 
-        const fetchedAddress: AddressForm = {
-          // country: userData.country ?? "",
-          addressLine1: userData.addressLine1 ?? "",
-          addressLine2: userData.addressLine2 ?? "",
-          postcode: userData.postcode ?? "",
-          city: userData.city ?? "",
-        };
-        setSavedAddress(fetchedAddress);
-        setTempAddressForm(fetchedAddress);
+        setSavedAddress(hydrateThaiAddress(userData));
 
         if (userData.pickupAddress) {
           setPickupAddress(userData.pickupAddress);
@@ -164,12 +136,9 @@ export default function Postage() {
 
         if (userData.shippingSettings) {
           const settings = userData.shippingSettings;
-          setShippingSections((prevSections) =>
-            prevSections.map((section) => {
-              if (
-                section.id === "from-address" &&
-                settings.fromAddressOptions
-              ) {
+          setShippingSections((prev) =>
+            prev.map((section) => {
+              if (section.id === "from-address" && settings.fromAddressOptions) {
                 return {
                   ...section,
                   options: section.options.map((o) => ({
@@ -191,13 +160,10 @@ export default function Postage() {
             }),
           );
         }
-        setLoading(false);
       } catch (error) {
-        console.error(
-          "Failed to load profile postage components config layer",
-          error,
-        );
+        console.error("Failed to load postage settings", error);
         hasFetched.current = false;
+      } finally {
         setLoading(false);
       }
     };
@@ -205,27 +171,29 @@ export default function Postage() {
     fetchData();
   }, [user?.id]);
 
-  const handleOpenModal = () => {
-    setTempAddressForm({ ...savedAddress });
-    setAddressSuccess(false);
-    setOpenAddressModal(true);
-  };
-
-  const handleModalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedAddress({ ...tempAddressForm });
-    setAddressSuccess(true);
-    setTimeout(() => {
-      setOpenAddressModal(false);
-      setAddressSuccess(false);
-    }, 600);
-  };
+  // ── Helpers ──────────────────────────────────────────────────────────────────
 
   const toggleSectionVisibility = (sectionId: string) => {
     setVisibleSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
-  // ── Save Settings Configuration Processing Layer ───────────────────────────
+  const toggleOption = (sectionId: string, optionId: string) => {
+    setShippingSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              options: section.options.map((opt) =>
+                opt.id === optionId ? { ...opt, enabled: !opt.enabled } : opt,
+              ),
+            }
+          : section,
+      ),
+    );
+  };
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+
   const handleSaveAllSettings = async () => {
     setIsSavingAll(true);
     const saveToastId = toast.loading("Saving changes…");
@@ -235,20 +203,18 @@ export default function Postage() {
       const dropOffSection = shippingSections.find((s) => s.id === "drop-off");
 
       const fromAddressMap: Record<string, boolean> = {};
-      homeSection?.options.forEach((opt) => {
-        fromAddressMap[opt.id] = opt.enabled;
-      });
+      homeSection?.options.forEach((opt) => { fromAddressMap[opt.id] = opt.enabled; });
 
       const dropOffMap: Record<string, boolean> = {};
-      dropOffSection?.options.forEach((opt) => {
-        dropOffMap[opt.id] = opt.enabled;
-      });
+      dropOffSection?.options.forEach((opt) => { dropOffMap[opt.id] = opt.enabled; });
 
       const finalPayload = {
-        // country: savedAddress.country,
         addressLine1: savedAddress.addressLine1,
         addressLine2: savedAddress.addressLine2,
-        postcode: savedAddress.postcode,
+        provinceCode: savedAddress.provinceCode || null,
+        districtCode: savedAddress.districtCode || null,
+        subdistrictCode: savedAddress.subdistrictCode || null,
+        postalCode: savedAddress.postalCode,
         city: savedAddress.city,
         pickupAddress: pickupAddress || null,
         shippingSettings: {
@@ -270,7 +236,7 @@ export default function Postage() {
         draggable: true,
       });
     } catch (error) {
-      console.error("Failed to save configuration profile updates", error);
+      console.error("Failed to save postage settings", error);
       toast.update(saveToastId, {
         render: "Update failed. Please try again.",
         type: "error",
@@ -286,32 +252,9 @@ export default function Postage() {
     }
   };
 
-  const displayAddress = () => {
-    const parts = [
-      savedAddress.addressLine1,
-      savedAddress.addressLine2,
-      savedAddress.city,
-      savedAddress.postcode,
-      // savedAddress.country,
-    ].filter(Boolean);
-    return parts.length > 0 ? parts.join(", ") : "No address on file";
-  };
+  // ── Loading ──────────────────────────────────────────────────────────────────
 
-  const toggleOption = (sectionId: string, optionId: string) => {
-    setShippingSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              options: section.options.map((opt) =>
-                opt.id === optionId ? { ...opt, enabled: !opt.enabled } : opt,
-              ),
-            }
-          : section,
-      ),
-    );
-  };
-    if (loading) {
+  if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[#cb6f4d]" />
@@ -319,33 +262,39 @@ export default function Postage() {
     );
   }
 
+  // ── Render ───────────────────────────────────────────────────────────────────
+
+  const displayedAddress = formatThaiAddress(savedAddress);
+
   return (
     <>
       <div className="max-w-2xl mx-auto space-y-8 bg-white pb-12">
+        {/* FROM ADDRESS */}
         <section>
           <h2 className="text-lg font-semibold mb-2">From Address</h2>
           <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-l-[#cb6f4d] border border-gray-100">
             <div>
               <p className="font-bold text-gray-800">{user?.username}</p>
-              <p className="text-gray-600 text-sm">{displayAddress()}</p>
+              <p className="text-gray-600 text-sm">
+                {displayedAddress || "No address on file"}
+              </p>
             </div>
             <button
               className="text-gray-400 hover:text-gray-600 transition-colors"
-              onClick={handleOpenModal}
+              onClick={() => setOpenAddressModal(true)}
             >
               <Edit2 size={18} />
             </button>
           </div>
         </section>
 
+        {/* DROP-OFF POINT */}
         <section>
-          <h2 className="text-lg font-semibold mb-2">drop off Point</h2>
+          <h2 className="text-lg font-semibold mb-2">Drop Off Point</h2>
           {pickupAddress ? (
             <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-l-[#cb6f4d] border border-gray-100">
               <div>
-                <p className="font-bold text-gray-800">
-                  Selected Pickup Location
-                </p>
+                <p className="font-bold text-gray-800">Selected Pickup Location</p>
                 <p className="text-gray-600 text-sm">{pickupAddress}</p>
               </div>
               <button
@@ -360,7 +309,7 @@ export default function Postage() {
             <button
               type="button"
               onClick={() => setOpenPickupModal(true)}
-              className="w-full flex gap-3 items-center justify-between p-4 bg-blue-50/60 hover:bg-blue-55 border-l-4 border-blue-400 rounded-r-lg group text-left"
+              className="w-full flex gap-3 items-center justify-between p-4 bg-blue-50/60 hover:bg-blue-100/40 border-l-4 border-blue-400 rounded-r-lg group text-left"
             >
               <span className="text-gray-900 text-sm md:text-base font-medium">
                 Choose a pick-up point
@@ -372,28 +321,15 @@ export default function Postage() {
           )}
         </section>
 
-        {/* <div className="flex gap-3 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
-          <div className="mt-0.5 shrink-0">
-            <Info className="w-5 h-5 text-[#cb6f4d]" />
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            Disabling shipping options may reduce sales.{" "}
-            <a href="#" className="text-[#cb6f4d] underline">
-              Learn more.
-            </a>
-          </p>
-        </div> */}
-
+        {/* SHIPPING SECTIONS */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Shipping as a seller
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900">Shipping as a seller</h2>
           {shippingSections.map((section) => {
             const isExpanded = visibleSections[section.id];
             return (
               <div
                 key={section.id}
-                className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-xs"
+                className="border border-gray-200 rounded-lg overflow-hidden bg-white"
               >
                 <div
                   onClick={() => toggleSectionVisibility(section.id)}
@@ -404,20 +340,12 @@ export default function Postage() {
                       {section.icon}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">
-                        {section.title}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {section.subtitle}
-                      </p>
+                      <p className="font-semibold text-gray-900">{section.title}</p>
+                      <p className="text-sm text-gray-500">{section.subtitle}</p>
                     </div>
                   </div>
                   <div className="text-gray-400 pl-2">
-                    {isExpanded ? (
-                      <ChevronUp size={20} />
-                    ) : (
-                      <ChevronDown size={20} />
-                    )}
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </div>
                 </div>
 
@@ -426,7 +354,7 @@ export default function Postage() {
                     {section.options.map((option) => (
                       <div
                         key={option.id}
-                        className="flex items-center justify-between px-4 py-3 hover:bg-gray-55/30"
+                        className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/30"
                       >
                         <div className="flex items-start gap-3">
                           <div className="mt-1">
@@ -437,12 +365,8 @@ export default function Postage() {
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-800">
-                              {option.label}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {option.description}
-                            </p>
+                            <p className="text-sm font-medium text-gray-800">{option.label}</p>
+                            <p className="text-xs text-gray-500">{option.description}</p>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {option.carrier} · {option.price}
                             </p>
@@ -471,73 +395,30 @@ export default function Postage() {
           })}
         </div>
 
+        {/* SAVE */}
         <div className="pt-4 border-t border-gray-100">
           <button
             type="button"
             onClick={handleSaveAllSettings}
             disabled={isSavingAll}
-            className="px-8 bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3 rounded-lg flex items-center gap-2 transition-colors"
+            className="px-8 bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             {isSavingAll ? "Saving Changes…" : "Save Settings"}
           </button>
         </div>
       </div>
 
-      {openAddressModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-[400px] bg-white rounded-2xl p-6 space-y-5">
-            <h2 className="text-lg font-medium text-gray-900 text-center">
-              Edit Address
-            </h2>
-            <form onSubmit={handleModalSubmit} className="space-y-4">
-              {(
-                [
-                  // { label: "Country", key: "country" },
-                  { label: "Address line 1", key: "addressLine1" },
-                  { label: "Address line 2 (optional)", key: "addressLine2" },
-                  { label: "Postcode", key: "postcode" },
-                  { label: "City / Town", key: "city" },
-                ] as const
-              ).map(({ label, key }) => (
-                <div
-                  key={key}
-                  className="border-b border-gray-200 py-1 focus-within:border-[#cb6f4d] transition-colors"
-                >
-                  <label className="block text-xs text-gray-400">{label}</label>
-                  <input
-                    type="text"
-                    value={tempAddressForm[key]}
-                    onChange={(e) =>
-                      setTempAddressForm({
-                        ...tempAddressForm,
-                        [key]: e.target.value,
-                      })
-                    }
-                    className="w-full bg-transparent outline-none mt-0.5 text-gray-800 text-[15px]"
-                    required={key !== "addressLine2"}
-                  />
-                </div>
-              ))}
-              <div className="pt-2 space-y-2">
-                <button
-                  type="submit"
-                  className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] transition-colors text-white py-3 rounded-lg"
-                >
-                  {addressSuccess ? "Done" : "Apply Changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenAddressModal(false)}
-                  className="w-full text-gray-400 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* ── THAI ADDRESS MODAL ────────────────────────────────────────────────── */}
+      <AddressModal
+        isOpen={openAddressModal}
+        onClose={() => setOpenAddressModal(false)}
+        initialAddress={savedAddress}
+        onSave={(addr) => setSavedAddress(addr)}
+        title="Edit Address"
+        submitLabel="Apply Changes"
+      />
 
+      {/* ── PICKUP MODAL ──────────────────────────────────────────────────────── */}
       <PickupPointModal
         isOpen={openPickupModal}
         onClose={() => setOpenPickupModal(false)}
@@ -550,13 +431,17 @@ export default function Postage() {
   );
 }
 
+// ── API helper ─────────────────────────────────────────────────────────────────
+
 async function updateUserSettingsAndPostage(
   userId: number,
   payload: {
-    // country: string;
     addressLine1: string;
     addressLine2: string;
-    postcode: string;
+    provinceCode: number | null;
+    districtCode: number | null;
+    subdistrictCode: number | null;
+    postalCode: string;
     city: string;
     pickupAddress: string | null;
     shippingSettings: {
@@ -576,8 +461,6 @@ async function updateUserSettingsAndPostage(
   });
 
   if (!res.ok) {
-    throw new Error(
-      "Could not sync complete schema elements to backend profile dataset",
-    );
+    throw new Error("Failed to save postage settings");
   }
 }

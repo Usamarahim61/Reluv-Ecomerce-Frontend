@@ -320,6 +320,7 @@ export async function fetchFilteredProducts(
 export async function searchProducts(
   query: string,
   pageSize = 5,
+  userId: any
 ): Promise<ProductsPage> {
   const trimmedQuery = query.trim();
   const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 5));
@@ -337,7 +338,7 @@ export async function searchProducts(
   search.set("q", trimmedQuery);
   search.set("pageSize", String(safePageSize));
 
-  const payload = await apiRequest(`/products/search?${search.toString()}`);
+  const payload = await apiRequest(`/products/userId?${userId}&search?${search.toString()}`);
   const data = Array.isArray(payload?.products) ? payload.products : [];
 
   return {

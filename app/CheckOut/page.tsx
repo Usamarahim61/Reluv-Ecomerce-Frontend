@@ -22,8 +22,16 @@ import { API_BASE_URL } from "../constants/api";
 import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
-import { getUser, getUserAddress } from "@/services/auth-service";
-import { formatUserAddress, getGoogleAddress } from "@/lib/user-profile";
+import { getUserAddress } from "@/services/auth-service";
+import { getGoogleAddress } from "@/lib/user-profile";
+import AddressModal, {
+  type ThaiAddress,
+  emptyThaiAddress,
+  formatThaiAddress,
+  hydrateThaiAddress,
+} from "../components/AddressModal";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ProductData {
   title: string;
@@ -36,37 +44,24 @@ interface ProductData {
   currency: string;
 }
 
+// ── Main content ───────────────────────────────────────────────────────────────
+
 const CheckOutContent: React.FC = () => {
   const { user } = useAuth();
   const hasFetched = useRef(false);
-  const [userAddress, setUserAddress] = useState("");
+
+  const [savedAddress, setSavedAddress] = useState<ThaiAddress>(emptyThaiAddress);
+  const [openAddressModal, setOpenAddressModal] = useState(false);
+
   const [openCardModal, setOpenCardModal] = useState(false);
   const [openPickupModal, setOpenPickupModal] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">(
-    "pickup",
-  );
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">("pickup");
   const [cardDetails, setCardDetails] = useState<any>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [SameNumberForFutureOrders, setSameNumberForFutureOrders] =
-    useState(false);
+  const [SameNumberForFutureOrders, setSameNumberForFutureOrders] = useState(false);
   const [pickupAddress, setPickupAddress] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [openAddressModal, setOpenAddressModal] = useState(false);
-  const [openBuyerProtectionModal, setOpenBuyerProtectionModal] =
-    useState(false);
-  const [tempAddressForm, setTempAddressForm] = useState({
-    addressLine1: "",
-    addressLine2: "",
-    postcode: "",
-    city: "",
-  });
-
-  const handleSaveAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    const full = `${tempAddressForm.addressLine1}, ${tempAddressForm.city}, ${user?.country}`;
-    setUserAddress(full);
-    setOpenAddressModal(false);
-  };
+  const [openBuyerProtectionModal, setOpenBuyerProtectionModal] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -82,7 +77,7 @@ const CheckOutContent: React.FC = () => {
   };
 
   const shippingCost = deliveryMethod === "home" ? 16.25 : (data?.shippingFee ?? 0);
-const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
+  const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
   const toastConfig = {
     position: "top-right" as const,
@@ -93,29 +88,16 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
     draggable: true,
   };
 
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!user?.id || hasFetched.current) return;
-
     hasFetched.current = true;
 
     const fetchData = async () => {
       try {
         const userData = await getUserAddress(Number(user.id));
-
-        const address = formatUserAddress(userData);
-        const googleAddress = getGoogleAddress(userData);
-
-        setUserAddress(address);
-        setTempAddressForm((prev) => ({
-          ...prev,
-          addressLine1:
-            prev.addressLine1 ||
-            googleAddress?.street_address ||
-            googleAddress?.formatted ||
-            "",
-          postcode: prev.postcode || googleAddress?.postal_code || "",
-          city: prev.city || userData.city || googleAddress?.locality || "",
-        }));
+        setSavedAddress(hydrateThaiAddress(userData));
       } catch (error) {
         console.error("Failed to load profile data.", error);
         hasFetched.current = false;
@@ -124,6 +106,8 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
     fetchData();
   }, [user?.id]);
+
+  // ── Place order ────────────────────────────────────────────────────────────
 
   const handlePlaceOrder = async () => {
     try {
@@ -144,9 +128,10 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
         return;
       }
 
-      if (deliveryMethod === "home" && !userAddress) {
+      const formattedAddress = formatThaiAddress(savedAddress);
+      if (deliveryMethod === "home" && !formattedAddress) {
         toast.error(
-          "Your address is missing. Please update your profile.",
+          "Your address is missing. Please update your address.",
           toastConfig,
         );
         return;
@@ -162,7 +147,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
         productPrice: data.price,
         productTitle: searchParams.get("title"),
         deliveryMethod,
-        ...(deliveryMethod === "home" && { address: userAddress }),
+        ...(deliveryMethod === "home" && { address: formattedAddress }),
         ...(deliveryMethod === "pickup" && pickupAddress && { pickupAddress }),
         phoneNumber: deliveryMethod === "home" ? phoneNumber : null,
         SameNumberForFutureOrders,
@@ -200,18 +185,12 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
         await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: result.data.id,
-            buyerId: user?.id,
-          }),
+          body: JSON.stringify({ orderId: result.data.id, buyerId: user?.id }),
         });
       }
 
       toast.success("Order placed successfully!", toastConfig);
-
-      setTimeout(() => {
-        window.location.href = "/Orders";
-      }, 2000);
+      setTimeout(() => { window.location.href = "/Orders"; }, 2000);
     } catch (error) {
       console.error("Order Error:", error);
       toast.error("Something went wrong. Please try again.", toastConfig);
@@ -219,6 +198,12 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
       setIsPlacingOrder(false);
     }
   };
+
+  // ── Derived display ────────────────────────────────────────────────────────
+
+  const displayedAddress = formatThaiAddress(savedAddress);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -240,9 +225,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                 </h1>
                 <p className="text-gray-500 text-sm">{data.brand}</p>
                 <p className="text-gray-500 text-sm">{data.size}</p>
-                <p className="font-semibold mt-1">
-                  TBH {data.price.toFixed(2)}
-                </p>
+                <p className="font-semibold mt-1">TBH {data.price.toFixed(2)}</p>
               </div>
             </div>
 
@@ -253,10 +236,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                 <div>
                   <p className="font-bold text-gray-800">{user?.username}</p>
                   <p className="text-gray-600 text-sm">
-                    {userAddress || "No address on file"}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {tempAddressForm.postcode} {tempAddressForm.city}
+                    {displayedAddress || "No address on file"}
                   </p>
                 </div>
                 <button
@@ -330,9 +310,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
             <section className="mt-6 space-y-6">
               {deliveryMethod === "pickup" ? (
                 <div>
-                  <h2 className="text-lg font-semibold mb-2">
-                    Delivery details
-                  </h2>
+                  <h2 className="text-lg font-semibold mb-2">Delivery details</h2>
                   <div
                     onClick={() => setOpenPickupModal(true)}
                     className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between border border-gray-200 cursor-pointer hover:border-[#cb6f4d] transition-colors"
@@ -356,45 +334,27 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                 <div className="space-y-6">
                   {/* DHL Delivery Details */}
                   <div>
-                    <h2 className="text-lg font-semibold mb-2">
-                      Delivery details
-                    </h2>
+                    <h2 className="text-lg font-semibold mb-2">Delivery details</h2>
                     <div className="bg-white p-4 rounded-sm shadow-sm border border-gray-200">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="bg-[#FFCC00] px-1 rounded-sm flex items-center">
-                          <span className="text-[10px] font-black text-red-600">
-                            DHL
-                          </span>
+                          <span className="text-[10px] font-black text-red-600">DHL</span>
                         </div>
                         <span className="font-medium text-sm">DHL Express</span>
                       </div>
                       <p className="font-semibold text-sm">TBH 16.25</p>
                       <div className="flex items-center gap-2 mt-2 text-gray-500">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="text-xs">
-                          Home delivery, 2 - 4 business days
-                        </p>
+                        <p className="text-xs">Home delivery, 2 - 4 business days</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Contact Details */}
                   <div>
-                    <h2 className="text-lg font-semibold mb-2">
-                      Your contact details
-                    </h2>
+                    <h2 className="text-lg font-semibold mb-2">Your contact details</h2>
                     <div className="bg-white p-4 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between border border-gray-200 gap-4">
                       <div className="flex items-center flex-1 w-full border-b md:border-b-0 pb-2 md:pb-0 border-gray-100">
                         <PhoneField
@@ -410,17 +370,13 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                           htmlFor="save-number"
                           className="text-[11px] md:text-xs text-gray-500 text-right leading-tight"
                         >
-                          <span className="font-bold">
-                            Same for future orders
-                          </span>
+                          <span className="font-bold">Same for future orders</span>
                         </label>
                         <input
                           id="save-number"
                           type="checkbox"
                           checked={SameNumberForFutureOrders}
-                          onChange={(e) =>
-                            setSameNumberForFutureOrders(e.target.checked)
-                          }
+                          onChange={(e) => setSameNumberForFutureOrders(e.target.checked)}
                           className="w-5 h-5 accent-[#cb6f4d] rounded border-gray-300 cursor-pointer"
                         />
                       </div>
@@ -443,13 +399,10 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                   </div>
                   <div>
                     <p className="font-medium">Bank card</p>
-                    <p className="text-xs text-gray-500">
-                      Use a credit or debit card
-                    </p>
+                    <p className="text-xs text-gray-500">Use a credit or debit card</p>
                     {cardDetails ? (
                       <p className="text-xs text-[#cb6f4d] mt-1 font-medium">
-                        •••• •••• ••••{" "}
-                        {String(cardDetails.cardNumber).slice(-4)}
+                        •••• •••• •••• {String(cardDetails.cardNumber).slice(-4)}
                       </p>
                     ) : (
                       <div className="flex gap-2 mt-1">
@@ -477,7 +430,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
             </section>
           </div>
 
-          {/* -- Right Column: Price Summary -- */}
+          {/* ── Right Column: Price Summary ── */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-sm shadow-sm sticky top-8">
               <h2 className="text-lg font-semibold mb-4 border-b pb-2 text-gray-500">
@@ -490,9 +443,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1 text-gray-600">
-                    <span className="underline decoration-dotted">
-                      Buyer Protection fee
-                    </span>
+                    <span className="underline decoration-dotted">Buyer Protection fee</span>
                     <button
                       onClick={() => setOpenBuyerProtectionModal(true)}
                       aria-label="Help"
@@ -526,7 +477,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
               >
                 {isPlacingOrder ? (
                   <>
-                    <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></span>
+                    <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-white" />
                     Processing...
                   </>
                 ) : (
@@ -543,7 +494,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
         </div>
       </div>
 
-      {/* -- Modals -- */}
+      {/* ── Modals ── */}
       <CardDetailsModal
         isOpen={openCardModal}
         onClose={() => setOpenCardModal(false)}
@@ -559,80 +510,17 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
         }}
       />
 
-      {/* Address Modal */}
-      {openAddressModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-opacity">
-          <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[95vh]">
-            <div className="relative p-4 border-b border-gray-100 flex items-center justify-center">
-              <h2 className="text-lg font-medium text-gray-900">Address</h2>
-              <button
-                type="button"
-                onClick={() => setOpenAddressModal(false)}
-                className="absolute right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form
-              onSubmit={handleSaveAddress}
-              className="p-6 overflow-y-auto space-y-5"
-            >
-              {[
-                {
-                  label: "Address line 1",
-                  key: "addressLine1",
-                  required: true,
-                },
-                {
-                  label: "Address line 2 (optional)",
-                  key: "addressLine2",
-                  required: false,
-                },
-                { label: "Postcode", key: "postcode", required: true },
-                { label: "City/Town", key: "city", required: true },
-              ].map(({ label, key, required }) => (
-                <div
-                  key={key}
-                  className="relative border-b border-gray-200 py-1 focus-within:border-[#cb6f4d] transition-colors"
-                >
-                  <label className="block text-xs font-normal text-gray-400">
-                    {label}
-                  </label>
-                  <input
-                    type="text"
-                    value={tempAddressForm[key as keyof typeof tempAddressForm]}
-                    onChange={(e) =>
-                      setTempAddressForm({
-                        ...tempAddressForm,
-                        [key]: e.target.value,
-                      })
-                    }
-                    className="w-full bg-transparent border-none outline-none p-0 text-[15px] text-gray-800 mt-0.5 focus:ring-0"
-                    required={required}
-                  />
-                </div>
-              ))}
-              <div className="pt-4 space-y-3">
-                <button
-                  type="submit"
-                  className="w-full bg-[#cb6f4d] hover:bg-[#b05b3b] text-white font-medium py-3 rounded-lg transition-colors text-[15px]"
-                >
-                  Save address
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenAddressModal(false)}
-                  className="w-full text-[#cb6f4d] hover:text-[#b05b3b] font-medium py-2 text-center text-[15px] block"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* ── THAI ADDRESS MODAL ────────────────────────────────────────────────── */}
+      <AddressModal
+        isOpen={openAddressModal}
+        onClose={() => setOpenAddressModal(false)}
+        initialAddress={savedAddress}
+        onSave={(addr) => setSavedAddress(addr)}
+        title="Delivery Address"
+        submitLabel="Save Address"
+      />
 
-      {/* Buyer Protection Modal */}
+      {/* ── Buyer Protection Modal ── */}
       {openBuyerProtectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -648,10 +536,7 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
             <div className="px-6 pb-6 overflow-y-auto space-y-6">
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fdf0eb] mx-auto">
-                  <ShieldCheck
-                    className="w-9 h-9 text-[#cb6f4d]"
-                    strokeWidth={1.5}
-                  />
+                  <ShieldCheck className="w-9 h-9 text-[#cb6f4d]" strokeWidth={1.5} />
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-950 tracking-tight pt-2">
                   Buyer Protection
@@ -668,15 +553,10 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
               <div className="space-y-6 text-[14px] text-gray-600 leading-relaxed">
                 <div className="flex gap-4 items-start">
                   <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                    <Banknote
-                      className="w-5 h-5 text-[#cb6f4d]"
-                      strokeWidth={2}
-                    />
+                    <Banknote className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
                   </div>
                   <div className="space-y-2 flex-1">
-                    <h3 className="font-semibold text-gray-900 text-[15px]">
-                      Refund policy
-                    </h3>
+                    <h3 className="font-semibold text-gray-900 text-[15px]">Refund policy</h3>
                     <p>You can receive a refund if your order:</p>
                     <ul className="list-disc pl-5 space-y-1 text-gray-600">
                       <li>was never shipped or is lost</li>
@@ -685,13 +565,8 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
                     </ul>
                     <p className="pt-1">
                       You have{" "}
-                      <span className="font-semibold text-gray-900">
-                        2 days to submit your claim
-                      </span>{" "}
-                      from when you're notified that an item was delivered, even
-                      if the item never arrived. Buyers cover the cost of
-                      returning an item unless agreed otherwise. Learn more in
-                      our{" "}
+                      <span className="font-semibold text-gray-900">2 days to submit your claim</span>{" "}
+                      from when you're notified that an item was delivered. Learn more in our{" "}
                       <button className="text-[#cb6f4d] underline font-medium hover:text-[#b05b3b]">
                         Refund Policy
                       </button>
@@ -702,23 +577,17 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
                 <div className="flex gap-4 items-start">
                   <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                    <LockIcon
-                      className="w-5 h-5 text-[#cb6f4d]"
-                      strokeWidth={2}
-                    />
+                    <LockIcon className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
                   </div>
                   <div className="space-y-2 flex-1">
-                    <h3 className="font-semibold text-gray-900 text-[15px]">
-                      Secure transactions
-                    </h3>
+                    <h3 className="font-semibold text-gray-900 text-[15px]">Secure transactions</h3>
                     <p>
-                      Your money is held securely throughout the entire
-                      transaction. We won't release it to the seller until you
-                      receive your order and confirm everything is OK.
+                      Your money is held securely throughout the entire transaction.
+                      We won't release it to the seller until you receive your order and confirm
+                      everything is OK.
                     </p>
                     <p>
-                      Payments are encrypted by our payment partner, so your
-                      money is always sent and received safely.{" "}
+                      Payments are encrypted by our payment partner.{" "}
                       <span className="font-semibold text-gray-900">
                         The seller will never see your payment details.
                       </span>
@@ -728,18 +597,13 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
                 <div className="flex gap-4 items-start">
                   <div className="mt-0.5 p-1 rounded bg-[#fdf0eb]/50">
-                    <MessageSquare
-                      className="w-5 h-5 text-[#cb6f4d]"
-                      strokeWidth={2}
-                    />
+                    <MessageSquare className="w-5 h-5 text-[#cb6f4d]" strokeWidth={2} />
                   </div>
                   <div className="space-y-1 flex-1">
-                    <h3 className="font-semibold text-gray-900 text-[15px]">
-                      Our support
-                    </h3>
+                    <h3 className="font-semibold text-gray-900 text-[15px]">Our support</h3>
                     <p>
-                      Reach out to our support team at any time – they're
-                      available to assist you with any issues.
+                      Reach out to our support team at any time – they're available to assist
+                      you with any issues.
                     </p>
                   </div>
                 </div>
@@ -758,6 +622,8 @@ const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
     </>
   );
 };
+
+// ── Wrapper with Suspense ──────────────────────────────────────────────────────
 
 const CheckOut: React.FC = () => {
   return (

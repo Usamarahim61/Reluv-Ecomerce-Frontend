@@ -211,7 +211,7 @@ const unreadMessagesCount = useMemo(() => {
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         if (selectedCata == "Catalogue") {
-          const response = await searchProducts(searchQuery, 5);
+          const response = await searchProducts(searchQuery, 5,user?.id);
           setSearchResults(response.items);
           setSearchResultsForMemebers([]);
           setShowResults(true);
