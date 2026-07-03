@@ -305,10 +305,18 @@ export default function SignUpLogin({
   // ── Register (send OTP) ───────────────────────────────────────────────────
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-      if (password.length < 6) {
-    showError({ kind: "auth", message: "Password must be at least 6 characters." });
-    return;
-  }
+    if (password.length < 6) {
+      showError({ kind: "auth", message: "Password must be at least 6 characters." });
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      showError({ kind: "auth", message: "Password must include at least one uppercase letter." });
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      showError({ kind: "auth", message: "Password must include at least one special character." });
+      return;
+    }
     setLoadingProvider("email");
     dismissError();
     try {
@@ -379,6 +387,18 @@ export default function SignUpLogin({
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
+    if (newPassword.length < 6) {
+      showError({ kind: "auth", message: "Password must be at least 6 characters." });
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      showError({ kind: "auth", message: "Password must include at least one uppercase letter." });
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      showError({ kind: "auth", message: "Password must include at least one special character." });
+      return;
+    }
     setLoadingProvider("email");
     dismissError();
     try {
@@ -521,7 +541,7 @@ export default function SignUpLogin({
                 <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Password"
+                    placeholder="Min. 6 chars, 1 uppercase, 1 special"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isBusy}
@@ -788,7 +808,7 @@ export default function SignUpLogin({
                 <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
                   <input
                     type={showNewPassword ? "text" : "password"}
-                    placeholder="New password"
+                    placeholder="Min. 6 chars, 1 uppercase, 1 special"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={isBusy}

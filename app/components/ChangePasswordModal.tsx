@@ -159,13 +159,15 @@ export default function ChangePasswordModal({ email, onClose, onSuccess, onError
 
  async function handleResetPassword() {
   if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+  if (!/[A-Z]/.test(password)) { setError("Password must include at least one uppercase letter."); return; }
+  if (!/[^A-Za-z0-9]/.test(password)) { setError("Password must include at least one special character."); return; }
   if (password !== confirm) { setError("Passwords do not match."); return; }
   setError("");
   setLoading(true);
   try {
     await apiPost("/api/password-reset/reset", { email, otp: otpString, password });
     setStep("done");
-    onSuccess?.(password); // ← pass the actual password value
+    onSuccess?.(password);
   } catch (e: any) {
     setError(e.message);
     onError?.();
@@ -309,7 +311,7 @@ export default function ChangePasswordModal({ email, onClose, onSuccess, onError
                       type={showPw ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 6 characters"
+                      placeholder="Min. 6 chars, 1 uppercase, 1 special"
                       className="w-full border border-gray-200 focus:border-[#cb6f4d] focus:outline-none
                                  rounded-lg px-4 py-3 pr-11 text-sm text-gray-700 transition-colors"
                     />
