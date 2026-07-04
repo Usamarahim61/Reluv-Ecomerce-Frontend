@@ -320,7 +320,7 @@ export async function fetchFilteredProducts(
 export async function searchProducts(
   query: string,
   pageSize = 5,
-  userId: any
+  userId?: any,
 ): Promise<ProductsPage> {
   const trimmedQuery = query.trim();
   const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 5));

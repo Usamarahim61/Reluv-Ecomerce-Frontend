@@ -30,6 +30,10 @@ import Link from "next/link";
 import {
   ConversationItem,
   MessageItem,
+  blockUser,
+  deleteConversation,
+  fetchBlockStatus,
+  unblockUser,
   uploadFiles,
 } from "@/services/messages-service";
 import { respondToOffer } from "@/services/offers-service";
@@ -192,11 +196,8 @@ export default function MessagesClient() {
     dispatch(markConversationRead(selectedId));
     const peerId = peerUser?.id;
     if (peerId) {
-      fetch(`${API_BASE_URL}/api/blocks/status/${peerId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setBlockStatus(data))
+      fetchBlockStatus(peerId)
+        .then(setBlockStatus)
         .catch(() => {});
     } else {
       setBlockStatus({ iBlockedThem: false, theyBlockedMe: false });
@@ -239,14 +240,7 @@ export default function MessagesClient() {
 
     try {
       setIsBlocking(true);
-      const res = await fetch(
-        `${API_BASE_URL}/api/blocks/block/${peerUser.id}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-        },
-      );
-      if (!res.ok) throw new Error("Failed to block user");
+      await blockUser(peerUser.id);
 
       setBlockStatus((prev) => ({ ...prev, iBlockedThem: true }));
       setBlockConfirmPending(false);
@@ -277,14 +271,7 @@ export default function MessagesClient() {
 
     try {
       setIsBlocking(true);
-      const res = await fetch(
-        `${API_BASE_URL}/api/blocks/unblock/${peerUser.id}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-        },
-      );
-      if (!res.ok) throw new Error("Failed to unblock user");
+      await unblockUser(peerUser.id);
 
       setBlockStatus((prev) => ({ ...prev, iBlockedThem: false }));
       setShowDetailsPanel(false);
@@ -332,6 +319,11 @@ export default function MessagesClient() {
           lastMessageAt: message.createdAt || new Date().toISOString(),
         }),
       );
+      if (Number(message.sender?.id) !== Number(user.id)) {
+        socket.emit("messages:mark-read", {
+          conversationId: message.conversationId ?? selectedId,
+        });
+      }
     };
 
     const handleMessagesRead = () => {
@@ -397,6 +389,43 @@ export default function MessagesClient() {
       socket.off("message:error", handleMessageError);
     };
   }, [selectedId, user?.id, peerUser?.id, dispatch]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const socket = getChatSocket();
+
+    const handleConversationUpsert = (event: {
+      conversation?: ConversationItem;
+    }) => {
+      if (!event.conversation?.id) return;
+      dispatch(fetchConversations());
+    };
+
+    const handleConversationDeleted = (event: { conversationId?: number }) => {
+      const conversationId = Number(event.conversationId);
+      if (!Number.isInteger(conversationId) || conversationId <= 0) return;
+      dispatch(removeConversation(conversationId));
+      if (selectedId === conversationId) {
+        dispatch(setSelectedConversationId(null));
+        setViewMessage(false);
+        router.replace("/Messages", { scroll: false });
+      }
+    };
+
+    const handleUnreadCountChanged = () => {
+      dispatch(fetchConversations());
+    };
+
+    socket.on("conversation:upsert", handleConversationUpsert);
+    socket.on("conversation:deleted", handleConversationDeleted);
+    socket.on("conversations:unread-count", handleUnreadCountChanged);
+
+    return () => {
+      socket.off("conversation:upsert", handleConversationUpsert);
+      socket.off("conversation:deleted", handleConversationDeleted);
+      socket.off("conversations:unread-count", handleUnreadCountChanged);
+    };
+  }, [dispatch, router, selectedId, user?.id]);
 
   const activeMessages = selectedId
     ? (messagesByConversation[String(selectedId)] ?? [])
@@ -744,15 +773,7 @@ export default function MessagesClient() {
 
     try {
       setIsDeleting(true);
-      const res = await fetch(
-        `${API_BASE_URL}/api/conversations/${selectedId}/delete`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-        },
-      );
-
-      if (!res.ok) throw new Error("Failed to delete conversation");
+      await deleteConversation(selectedId);
 
       const deletedConversationId = selectedId;
       setDeleteConfirmPending(false);

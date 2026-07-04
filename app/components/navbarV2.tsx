@@ -46,6 +46,7 @@ import {
 import { getUser, getUserAvatr } from "@/services/auth-service";
 import { API_BASE_URL } from "@/app/constants/api";
 import { getUserAvatarUrl } from "@/lib/user-profile";
+import { getChatSocket } from "@/lib/chat-socket";
 
 // ─── NEW: helper to convert File → base64 string ───────────────────────────
 function fileToBase64(file: File): Promise<string> {
@@ -286,6 +287,26 @@ const unreadMessagesCount = useMemo(() => {
       dispatch(fetchConversations());
     }
   }, [user?.id, dispatch, pathname]);
+
+  useEffect(() => {
+    if (!user?.id || isAndroid) return;
+    const socket = getChatSocket();
+    const refreshConversations = () => {
+      dispatch(fetchConversations());
+    };
+
+    socket.on("conversation:upsert", refreshConversations);
+    socket.on("conversation:deleted", refreshConversations);
+    socket.on("conversations:unread-count", refreshConversations);
+    socket.on("messages:read", refreshConversations);
+
+    return () => {
+      socket.off("conversation:upsert", refreshConversations);
+      socket.off("conversation:deleted", refreshConversations);
+      socket.off("conversations:unread-count", refreshConversations);
+      socket.off("messages:read", refreshConversations);
+    };
+  }, [dispatch, isAndroid, user?.id]);
 
   if (!isReady) return null;
   if (isAndroid) return <AndroidChrome />;
