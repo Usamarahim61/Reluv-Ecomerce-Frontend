@@ -808,7 +808,7 @@ export default function SignUpLogin({
                 <div className="relative border-b border-gray-300 focus-within:border-[#cb6f4d]">
                   <input
                     type={showNewPassword ? "text" : "password"}
-                    placeholder="Min. 6 chars, 1 uppercase, 1 special"
+                    placeholder="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={isBusy}
