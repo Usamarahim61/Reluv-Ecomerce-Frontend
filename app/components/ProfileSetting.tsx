@@ -10,6 +10,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "../constants/api";
 import ImageCropModal from "../components/ImageCropModal";
+import SearchableSelect from "../components/SearchableSelect";
 import { getGoogleAddress, getUserAvatarUrl } from "@/lib/user-profile";
 import {
   TH_PROVINCES,
@@ -189,8 +190,8 @@ export default function ProfileSetting() {
   };
 
   /* ---------- province select ---------- */
-  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = Number(e.target.value);
+  const handleProvinceChange = (val: string) => {
+    const code = Number(val);
     const province = TH_PROVINCES.find((p) => p.provinceCode === code);
     setFormData((prev) => ({
       ...prev,
@@ -204,8 +205,8 @@ export default function ProfileSetting() {
   };
 
   /* ---------- district select ---------- */
-  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = Number(e.target.value);
+  const handleDistrictChange = (val: string) => {
+    const code = Number(val);
     setFormData((prev) => ({
       ...prev,
       districtCode: code,
@@ -215,8 +216,8 @@ export default function ProfileSetting() {
   };
 
   /* ---------- subdistrict select ---------- */
-  const handleSubdistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = Number(e.target.value);
+  const handleSubdistrictChange = (val: string) => {
+    const code = Number(val);
     const sub = ALL_SUBDISTRICTS.find((s) => s.subdistrictCode === code);
     setFormData((prev) => ({
       ...prev,
@@ -361,13 +362,24 @@ export default function ProfileSetting() {
     );
   }
 
-  /* ---------- derived labels for display ---------- */
-  const selectedProvince = TH_PROVINCES.find(
-    (p) => p.provinceCode === formData.provinceCode,
-  );
-  const selectedDistrict = TH_DISTRICTS.find(
-    (d) => d.districtCode === formData.districtCode,
-  );
+  /* ---------- options for searchable dropdowns ---------- */
+  const provinceOptions = TH_PROVINCES.map((p) => ({
+    value: p.provinceCode,
+    label: `${p.provinceNameEn} (${p.provinceNameTh})`,
+    searchText: `${p.provinceNameEn} ${p.provinceNameTh}`,
+  }));
+
+  const districtOptions = districts.map((d) => ({
+    value: d.districtCode,
+    label: `${d.districtNameEn} (${d.districtNameTh})`,
+    searchText: `${d.districtNameEn} ${d.districtNameTh}`,
+  }));
+
+  const subdistrictOptions = subdistricts.map((s) => ({
+    value: s.subdistrictCode,
+    label: `${s.subdistrictNameEn} (${s.subdistrictNameTh})`,
+    searchText: `${s.subdistrictNameEn} ${s.subdistrictNameTh}`,
+  }));
 
   return (
     <div className="max-w-2xl mx-auto animate-fadeIn">
@@ -512,62 +524,41 @@ export default function ProfileSetting() {
             {/* PROVINCE */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 gap-1 sm:gap-4">
               <span className="font-medium">Province</span>
-              <select
+              <SearchableSelect
+                options={provinceOptions}
                 value={formData.provinceCode || ""}
                 onChange={handleProvinceChange}
-                className="cs-select"
-              >
-                <option value="">Select province</option>
-                {TH_PROVINCES.map((p) => (
-                  <option key={p.provinceCode} value={p.provinceCode}>
-                    {p.provinceNameEn} ({p.provinceNameTh})
-                  </option>
-                ))}
-              </select>
+                placeholder="Select province"
+                searchPlaceholder="Search province..."
+              />
             </div>
 
             {/* DISTRICT */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 gap-1 sm:gap-4">
               <span className="font-medium">District</span>
-              <select
+              <SearchableSelect
+                options={districtOptions}
                 value={formData.districtCode || ""}
                 onChange={handleDistrictChange}
                 disabled={!formData.provinceCode}
-                className="cs-select disabled:opacity-50"
-              >
-                <option value="">
-                  {formData.provinceCode
-                    ? "Select district"
-                    : "Select province first"}
-                </option>
-                {districts.map((d) => (
-                  <option key={d.districtCode} value={d.districtCode}>
-                    {d.districtNameEn} ({d.districtNameTh})
-                  </option>
-                ))}
-              </select>
+                placeholder="Select district"
+                disabledPlaceholder="Select province first"
+                searchPlaceholder="Search district..."
+              />
             </div>
 
             {/* SUBDISTRICT */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 gap-1 sm:gap-4">
               <span className="font-medium">Subdistrict</span>
-              <select
+              <SearchableSelect
+                options={subdistrictOptions}
                 value={formData.subdistrictCode || ""}
                 onChange={handleSubdistrictChange}
                 disabled={!formData.districtCode}
-                className="cs-select disabled:opacity-50"
-              >
-                <option value="">
-                  {formData.districtCode
-                    ? "Select subdistrict"
-                    : "Select district first"}
-                </option>
-                {subdistricts.map((s) => (
-                  <option key={s.subdistrictCode} value={s.subdistrictCode}>
-                    {s.subdistrictNameEn} ({s.subdistrictNameTh})
-                  </option>
-                ))}
-              </select>
+                placeholder="Select subdistrict"
+                disabledPlaceholder="Select district first"
+                searchPlaceholder="Search subdistrict..."
+              />
             </div>
 
             {/* POSTAL CODE — auto-filled, read-only */}

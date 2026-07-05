@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
+import SearchableSelectSellItem from "../components/SearchableSelectSellItem";
 
 const MAX_IMAGES = 6;
 const MAX_FILE_SIZE_MB = 10;
@@ -405,6 +406,10 @@ export default function UploadItem(): JSX.Element {
       ? activeCategoryPath[activeCategoryPath.length - 1].name
       : "Select a category";
 
+  const handleDynamicFieldChange = (key: string, value: string) => {
+    setDynamicFieldValues((prev) => ({ ...prev, [key]: value }));
+  };
+
   /* ---------------- SUBMIT ---------------- */
 
   const handleCreateProduct = async () => {
@@ -775,7 +780,7 @@ export default function UploadItem(): JSX.Element {
           </div>
         </section>
 
-        {/* --- DYNAMIC FIELDS --- */}
+        {/* --- DYNAMIC FIELDS (brand, material, color, size, etc. — arrive per category) --- */}
         {selectedCategory && (
           <section>
             {dynamicFieldsLoading && (
@@ -805,30 +810,23 @@ export default function UploadItem(): JSX.Element {
                         {field.required ? " *" : ""}
                       </label>
                       {field.type === "select" ? (
-                        <div className="relative">
-                          <select
-                            name={field.key}
-                            value={dynamicFieldValues[field.key] || ""}
-                            onChange={(e) =>
-                              setDynamicFieldValues((prev) => ({
-                                ...prev,
-                                [field.key]: e.target.value,
-                              }))
-                            }
-                            className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl appearance-none focus:outline-none text-gray-800"
-                          >
-                            <option value="">
-                              {field.placeholder ||
-                                `Select ${field.label.toLowerCase()}`}
-                            </option>
-                            {(field.options || []).map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
+                        <SearchableSelectSellItem
+                          options={(field.options || []).map((option) => ({
+                            value: option.value,
+                            label: option.label,
+                          }))}
+                          value={dynamicFieldValues[field.key] || ""}
+                          onChange={(value) =>
+                            handleDynamicFieldChange(field.key, value)
+                          }
+                          placeholder={
+                            field.placeholder ||
+                            `Select ${field.label.toLowerCase()}`
+                          }
+                          searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
+                          className="w-full sm:max-w-none"
+                          triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
+                        />
                       ) : (
                         <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
                           <input
@@ -836,10 +834,7 @@ export default function UploadItem(): JSX.Element {
                             name={field.key}
                             value={dynamicFieldValues[field.key] || ""}
                             onChange={(e) =>
-                              setDynamicFieldValues((prev) => ({
-                                ...prev,
-                                [field.key]: e.target.value,
-                              }))
+                              handleDynamicFieldChange(field.key, e.target.value)
                             }
                             placeholder={
                               field.placeholder ||
