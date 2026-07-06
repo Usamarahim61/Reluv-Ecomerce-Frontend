@@ -83,7 +83,7 @@ const ReluvAdForm = () => {
               onToggle={() => toggleSection(3)}
               isLast
             >
-              <SelectRow label="Estimated budget (€)" options={['< 5,000', '5,000 - 20,000', '20,000+']} />
+              <SelectRow label="Estimated budget (TBH)" options={['< 5,000', '5,000 - 20,000', '20,000+']} />
               <SelectRow label="Where are you located?" options={['United Kingdom', 'France', 'Germany', 'Spain']} />
               <SelectRow label="Type of request" options={['Display Advertising', 'Influencer Campaign']} />
               <div className="py-6">

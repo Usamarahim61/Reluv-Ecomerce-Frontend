@@ -69,7 +69,7 @@ const NEWS_DATA: NewsItem[] = [
   {
     id: "9",
     date: "October 24, 2024",
-    title: "Reluv Secures TPG-Led Secondary Investment at Valuation of €5B",
+    title: "Reluv Secures TPG-Led Secondary Investment at Valuation of TBH 5B",
     imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
   },
 ];

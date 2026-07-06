@@ -118,7 +118,7 @@ export default function ReluvHowItWorks() {
               <div>
                 <h4 className="font-bold text-[20px] mb-2">Shop with peace of mind</h4>
                 <p className="text-[18px] text-[#666666] leading-relaxed">
-                  As a buyer, you pay a Buyer Protection fee on each transaction when using the "Buy now" button. This helps safeguard your money. The cost is 5% of the item price plus 0,70 €.
+                  As a buyer, you pay a Buyer Protection fee on each transaction when using the "Buy now" button. This helps safeguard your money. The cost is 5% of the item price plus 0,70 TBH.
                 </p>
                 <a href="#" className="text-[#08787c] text-sm mt-3 inline-block hover:underline">Learn more</a>
               </div>

@@ -77,7 +77,7 @@ export default function ItemVerificationPage() {
             <StepItem 
               num={1}
               title="Choose your designer item"
-              desc="Look for the 'Item Verification' badge on the listing. When you buy, select the service for just 10 €."
+              desc="Look for the 'Item Verification' badge on the listing. When you buy, select the service for just 10 TBH."
               img="https://static-assets.vinted.com/images/landing/item-verification/step-1-tablets-up@2x.png"
             />
             <StepItem 

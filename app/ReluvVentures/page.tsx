@@ -4,7 +4,7 @@ import Image from 'next/image';
 const offers = [
   {
     title: 'Funding growth',
-    description: 'Focus on your long-term growth with our financial support. Our goal is to empower you on your mission with funding ranging from €0.5M–€10M.',
+    description: 'Focus on your long-term growth with our financial support. Our goal is to empower you on your mission with funding ranging from TBH 0.5M–TBH 10M.',
     icon: '/icons/funding-growth.svg', // Replace with your illustration path
   },
   {

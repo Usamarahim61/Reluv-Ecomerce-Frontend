@@ -219,7 +219,7 @@ export default function Referrals(): JSX.Element {
             <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
           ),
           label: "Made a sale",
-          reward: "+15 €",
+          reward: "+15 TBH",
           color: "text-green-600",
           pill: "bg-green-50 text-green-600",
         };
@@ -227,7 +227,7 @@ export default function Referrals(): JSX.Element {
         return {
           icon: <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />,
           label: "Listed 3 items",
-          reward: "+5 €",
+          reward: "+5 TBH",
           color: "text-amber-600",
           pill: "bg-amber-50 text-amber-600",
         };
@@ -268,9 +268,9 @@ export default function Referrals(): JSX.Element {
                 Tell a friend—help them sell!
               </h1>
               <p className="text-gray-500 text-[13px] leading-relaxed mt-2">
-                Get <span className="text-[#cb6f4d] font-semibold">5 €</span>{" "}
+                Get <span className="text-[#cb6f4d] font-semibold">5 TBH</span>{" "}
                 when your friend lists 3 items within 7 days, and{" "}
-                <span className="text-[#cb6f4d] font-semibold">10 €</span> more
+                <span className="text-[#cb6f4d] font-semibold">10 TBH</span> more
                 when they sell within 30 days.
               </p>
               <p className="text-[11px] text-gray-400 mt-1">
@@ -382,7 +382,7 @@ export default function Referrals(): JSX.Element {
                     )}
                     {rewardEarned > 0 && (
                       <span className="text-[#cb6f4d] text-xs font-medium">
-                        · {rewardEarned} € earned
+                        · {rewardEarned} TBH earned
                       </span>
                     )}
                   </div>
@@ -497,8 +497,8 @@ export default function Referrals(): JSX.Element {
               </div>
               <h3 className="font-bold text-lg">Wait for friends to list</h3>
               <p className="text-sm text-gray-500 leading-relaxed px-4">
-                You'll receive a <strong>5 € voucher</strong> when your friend
-                lists 3 items within 7 days, and <strong>10 € more</strong> when
+                You'll receive a <strong>5 TBH voucher</strong> when your friend
+                lists 3 items within 7 days, and <strong>10 TBH more</strong> when
                 they make their first sale within 30 days.
               </p>
             </div>
@@ -509,7 +509,7 @@ export default function Referrals(): JSX.Element {
               </div>
               <h3 className="font-bold text-lg">Spend vouchers on Reluv</h3>
               <p className="text-sm text-gray-500 leading-relaxed px-4">
-                Your voucher applies automatically to your next order of 15 € or
+                Your voucher applies automatically to your next order of 15 TBH or
                 more (excluding shipping and service fees).
               </p>
             </div>

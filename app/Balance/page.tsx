@@ -106,13 +106,13 @@ const BalanceCardView = () => (
     <div className="p-6 flex justify-between items-center border-b border-slate-100">
       <span className="text-slate-500">Pending balance</span>
       <div className="flex items-center gap-2">
-        <span className="font-medium text-slate-400">€0.00</span>
+        <span className="font-medium text-slate-400">TBH 0.00</span>
         <Info size={16} className="text-slate-300 cursor-help" />
       </div>
     </div>
     <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
       <div>
-        <h2 className="text-3xl font-bold mb-1">€0.00</h2>
+        <h2 className="text-3xl font-bold mb-1">TBH 0.00</h2>
         <p className="text-slate-400 text-sm">Available balance</p>
       </div>
       <button className="w-full sm:w-auto bg-[#007b7b] hover:bg-[#006666] text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-colors">

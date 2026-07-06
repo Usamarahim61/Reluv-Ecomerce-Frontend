@@ -1224,7 +1224,7 @@ function OrdersInner() {
           title: order.product?.title || "No title",
           type: order.type,
           status: mappedStatus,
-          price: `${order.totalAmount} €`,
+          price: `${order.totalAmount} TBH`,
           imageUrl: order.productImage || "",
           username: order.buyer?.username || "",
           date: new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -1253,7 +1253,7 @@ function OrdersInner() {
       imageUrl: product.images?.[0]?.url
         ? `${API_BASE_URL}${product.images[0].url}`
         : order.productImage || "",
-      price: order.totalAmount ? `${order.totalAmount} €` : "—",
+      price: order.totalAmount ? `${order.totalAmount} TBH` : "—",
       date: new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",

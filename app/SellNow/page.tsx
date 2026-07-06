@@ -614,9 +614,9 @@ export default function UploadItem(): JSX.Element {
 
         {/* --- PRICE --- */}
         <section>
-          <label className="block font-semibold text-[#1a1816] mb-2">Price (THB)</label>
+          <label className="block font-semibold text-[#1a1816] mb-2">Price (TBH)</label>
           <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
-            <span className="text-gray-500 font-medium">THB</span>
+            <span className="text-gray-500 font-medium">TBH</span>
             <input
               type="text"
               placeholder="0.00"
