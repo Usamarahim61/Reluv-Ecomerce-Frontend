@@ -9,9 +9,16 @@ import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
 import SearchableSelectSellItem from "../components/SearchableSelectSellItem";
+import ColorPalette from "../components/ColorPalette";
 
 const MAX_IMAGES = 6;
 const MAX_FILE_SIZE_MB = 10;
+
+const isColorField = (field: Pick<DynamicField, "key" | "label">) => {
+  const key = field.key.trim().toLowerCase();
+  const label = field.label.trim().toLowerCase();
+  return key === "color" || key === "colour" || label === "color" || label === "colour";
+};
 
 type LeafCategoryEntry = {
   node: CategoryNode;
@@ -803,12 +810,26 @@ export default function UploadItem(): JSX.Element {
               !dynamicFieldsError &&
               dynamicFields.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {dynamicFields.map((field) => (
+                  {dynamicFields.map((field) => {
+                    const showColorPalette = isColorField(field);
+
+                    return (
                     <div key={field.key}>
-                      <label className="block font-semibold text-[#1a1816] mb-2">
-                        {field.label}
-                        {field.required ? " *" : ""}
-                      </label>
+                      {showColorPalette ? (
+                        <ColorPalette
+                          value={dynamicFieldValues[field.key] || ""}
+                          onChange={(value) =>
+                            handleDynamicFieldChange(field.key, value)
+                          }
+                          label={field.label}
+                          required={field.required}
+                        />
+                      ) : (
+                        <>
+                          <label className="block font-semibold text-[#1a1816] mb-2">
+                            {field.label}
+                            {field.required ? " *" : ""}
+                          </label>
                       {field.type === "select" ? (
                         <SearchableSelectSellItem
                           options={(field.options || []).map((option) => ({
@@ -847,8 +868,11 @@ export default function UploadItem(): JSX.Element {
                           )}
                         </div>
                       )}
+                        </>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
           </section>

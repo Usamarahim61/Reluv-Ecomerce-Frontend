@@ -54,6 +54,7 @@ import { getUserFav_Products } from "@/services/auth-service";
 import SellerReviewSection from "@/app/components/SellerReviewSection";
 import { toast } from "react-toastify";
 import PriceBreakdownDialog from "@/app/components/PriceBreakdownDialog";
+import { ColorSwatch } from "@/app/components/ColorPalette";
 import { BACKEND_URL } from "@/constants";
 
 type BreadcrumbItem = { label: string; slug: string };
@@ -1317,7 +1318,10 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Colour</span>
-                    <span className="font-medium text-[#333]">{color}</span>
+                    <span className="flex items-center gap-2 font-medium text-[#333]">
+                      {color !== "N/A" && <ColorSwatch color={color} />}
+                      {color}
+                    </span>
                   </div>
 
                   {/* Dynamic attributes */}
