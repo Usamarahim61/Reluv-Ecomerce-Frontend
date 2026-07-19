@@ -54,7 +54,6 @@ import { getUserFav_Products } from "@/services/auth-service";
 import SellerReviewSection from "@/app/components/SellerReviewSection";
 import { toast } from "react-toastify";
 import PriceBreakdownDialog from "@/app/components/PriceBreakdownDialog";
-import { ColorSwatch } from "@/app/components/ColorPalette";
 import { BACKEND_URL } from "@/constants";
 
 type BreadcrumbItem = { label: string; slug: string };
@@ -63,6 +62,19 @@ const toText = (value: unknown, fallback = ""): string => {
   if (typeof value === "string") return value.trim() || fallback;
   if (typeof value === "number") return String(value);
   return fallback;
+};
+
+const isColorLikeField = (code = "", name = "") => {
+  const haystack = `${code} ${name}`.toLowerCase();
+  return haystack.includes("color") || haystack.includes("colour");
+};
+
+const parseAttributeValues = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 };
 
 const findCategoryPath = (
@@ -419,8 +431,33 @@ export default function ProductDetailPage() {
     product?.description,
     "Product details are not available.",
   );
-  const color = toText(product?.color, "N/A");
   const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
+  const colorValues = useMemo(() => {
+    const values = new Set<string>();
+
+    const addValue = (rawValue: unknown) => {
+      if (typeof rawValue !== "string") return;
+      parseAttributeValues(rawValue).forEach((item) => values.add(item));
+    };
+
+    addValue(product?.color);
+
+    (product?.attributes ?? []).forEach((attr) => {
+      if (attr?.code && isColorLikeField(attr.code, attr.name ?? "")) {
+        addValue(attr.value);
+      }
+    });
+
+    if (product?.attributeValues) {
+      Object.entries(product.attributeValues).forEach(([key, value]) => {
+        if (isColorLikeField(key, key)) {
+          addValue(value);
+        }
+      });
+    }
+
+    return Array.from(values);
+  }, [product?.color, product?.attributes, product?.attributeValues]);
   const shippingFromPrice = toText(product?.shippingFromPrice, "TBH 100");
   const seller = product?.user ?? {};
   const isOwnProduct =
@@ -1029,10 +1066,14 @@ export default function ProductDetailPage() {
                   <span className="text-[13px] text-[#666] font-sans">
                     {condition}
                   </span>
-                  <span className="text-[13px] text-[#ccc]">/</span>
-                  <span className="text-[13px] text-[#666] font-sans">
-                    {color}
-                  </span>
+                  {colorValues.length > 0 && (
+                    <>
+                      <span className="text-[13px] text-[#ccc]">/</span>
+                      <span className="text-[13px] text-[#666] font-sans">
+                        {colorValues.join(", ")}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 {/* Price */}
@@ -1318,15 +1359,14 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Colour</span>
-                    <span className="flex items-center gap-2 font-medium text-[#333]">
-                      {color !== "N/A" && <ColorSwatch color={color} />}
-                      {color}
+                    <span className="font-medium text-[#333] text-right">
+                      {colorValues.length > 0 ? colorValues.join(", ") : "N/A"}
                     </span>
                   </div>
 
                   {/* Dynamic attributes */}
-                  {product?.attributes
-                    ?.filter((attr) => {
+                  {(product?.attributes ?? [])
+                    .filter((attr) => {
                       const skipCodes = new Set([
                         "brand",
                         "size",
@@ -1337,17 +1377,32 @@ export default function ProductDetailPage() {
                       return (
                         attr.name &&
                         attr.value &&
-                        !skipCodes.has(attr.code?.toLowerCase() ?? "") && !attr.code?.startsWith("brand_") 
+                        !skipCodes.has(attr.code?.toLowerCase() ?? "") &&
+                        !attr.code?.startsWith("brand_")
                       );
                     })
-                    .map((attr, index) => (
-                      <div key={attr.id ?? index} className="pdp-detail-row">
-                        <span className="text-[#888]">{attr.name}</span>
-                        <span className="font-medium text-[#333]">
-                          {attr.value}
-                        </span>
-                      </div>
-                    ))}
+                    .map((attr, index) => {
+                      const values = parseAttributeValues(attr.value);
+                      const isColorAttr = isColorLikeField(
+                        attr.code ?? "",
+                        attr.name ?? "",
+                      );
+
+                      return (
+                        <div key={attr.id ?? index} className="pdp-detail-row">
+                          <span className="text-[#888]">{attr.name}</span>
+                          <div className="flex flex-wrap justify-end gap-2 text-right">
+                            {values.length > 0 ? (
+                              <span className="font-medium text-[#333]">
+                                {values.join(", ")}
+                              </span>
+                            ) : (
+                              <span className="font-medium text-[#333]">N/A</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
 
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Shipping</span>

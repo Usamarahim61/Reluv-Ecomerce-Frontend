@@ -19,6 +19,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
 import { useAuth } from "@/context/AuthContext";
+import ColorPalette from "../components/ColorPalette";
+import SearchableSelectSellItem from "../components/SearchableSelectSellItem";
 
 const MAX_IMAGES = 6;
 const MAX_FILE_SIZE_MB = 10;
@@ -83,6 +85,11 @@ const getLeafCategoryEntries = (
     }
     return getLeafCategoryEntries(node.categories, currentPath);
   });
+};
+
+const isColorField = (field: Pick<DynamicField, "key" | "label" | "originalKey">) => {
+  const haystack = `${field.key || ""} ${field.originalKey || ""} ${field.label || ""}`.toLowerCase();
+  return haystack.includes("color") || haystack.includes("colour");
 };
 
 /* ================================================================
@@ -1093,64 +1100,84 @@ function EditItemInner(): JSX.Element {
               !dynamicFieldsError &&
               dynamicFields.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {dynamicFields.map((field) => (
-                    <div key={field.originalKey}>
-                      <label className="block font-semibold text-[#1a1816] mb-2 font-sans">
-                        {field.label}
-                        {field.required ? " *" : ""}
-                      </label>
-                      {field.type === "select" ? (
-                        <div className="relative">
-                          <select
-                            name={field.originalKey}
+                  {dynamicFields.map((field) => {
+                    const showColorPalette = isColorField(field);
+
+                    return (
+                      <div key={field.originalKey}>
+                        {showColorPalette ? (
+                          <ColorPalette
                             value={dynamicFieldValues[field.originalKey] || ""}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setDynamicFieldValues((prev) => ({
                                 ...prev,
-                                [field.originalKey]: e.target.value,
+                                [field.originalKey]: value,
                               }))
                             }
-                            className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl appearance-none focus:outline-none text-gray-800 font-sans"
-                          >
-                            <option value="">
-                              {field.placeholder ||
-                                `Select ${field.label.toLowerCase()}`}
-                            </option>
-                            {(field.options || []).map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
-                          <input
-                            type={field.type === "number" ? "number" : "text"}
-                            name={field.originalKey}
-                            value={dynamicFieldValues[field.originalKey] || ""}
-                            onChange={(e) =>
-                              setDynamicFieldValues((prev) => ({
-                                ...prev,
-                                [field.originalKey]: e.target.value,
-                              }))
-                            }
-                            placeholder={
-                              field.placeholder ||
-                              `Enter ${field.label.toLowerCase()}`
-                            }
-                            className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300 font-sans"
+                            label={field.label}
+                            required={field.required}
+                            options={(field.options || []).map((option) => ({
+                              label: option.label,
+                              value: option.value,
+                            }))}
                           />
-                          {field.unit && (
-                            <span className="text-gray-500 text-sm font-sans">
-                              {field.unit}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        ) : (
+                          <>
+                            <label className="block font-semibold text-[#1a1816] mb-2 font-sans">
+                              {field.label}
+                              {field.required ? " *" : ""}
+                            </label>
+                            {field.type === "select" ? (
+                              <SearchableSelectSellItem
+                                options={(field.options || []).map((option) => ({
+                                  value: option.value,
+                                  label: option.label,
+                                }))}
+                                value={dynamicFieldValues[field.originalKey] || ""}
+                                onChange={(value) =>
+                                  setDynamicFieldValues((prev) => ({
+                                    ...prev,
+                                    [field.originalKey]: value,
+                                  }))
+                                }
+                                placeholder={
+                                  field.placeholder ||
+                                  `Select ${field.label.toLowerCase()}`
+                                }
+                                searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
+                                className="w-full sm:max-w-none"
+                                triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                                <input
+                                  type={field.type === "number" ? "number" : "text"}
+                                  name={field.originalKey}
+                                  value={dynamicFieldValues[field.originalKey] || ""}
+                                  onChange={(e) =>
+                                    setDynamicFieldValues((prev) => ({
+                                      ...prev,
+                                      [field.originalKey]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder={
+                                    field.placeholder ||
+                                    `Enter ${field.label.toLowerCase()}`
+                                  }
+                                  className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300 font-sans"
+                                />
+                                {field.unit && (
+                                  <span className="text-gray-500 text-sm font-sans">
+                                    {field.unit}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
           </section>
