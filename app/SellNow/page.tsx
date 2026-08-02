@@ -823,6 +823,10 @@ export default function UploadItem(): JSX.Element {
                           }
                           label={field.label}
                           required={field.required}
+                          options={(field.options || []).map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
                         />
                       ) : (
                         <>
