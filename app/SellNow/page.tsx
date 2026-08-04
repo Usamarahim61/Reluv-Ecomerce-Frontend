@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo, ChangeEvent, JSX } from "react";
+import { useEffect, useMemo, useRef, useState, ChangeEvent, JSX } from "react";
 import { Plus, Camera, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -7,9 +7,14 @@ import { API_BASE_URL } from "../constants/api";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
+import { useAiListingAnalysis } from "@/lib/hooks/useAiListingAnalysis";
+import type { ApplyTarget, ResolvedField, ResolvedTextField } from "@/lib/ai/types";
 import { useAuth } from "@/context/AuthContext";
 import SearchableSelectSellItem from "../components/SearchableSelectSellItem";
 import ColorPalette from "../components/ColorPalette";
+import AiAnalysisProgress from "../components/AiListingAssistant/AiAnalysisProgress";
+import AiSuggestionsPanel from "../components/AiListingAssistant/AiSuggestionsPanel";
+import LuxuryVerificationNotice from "../components/AiListingAssistant/LuxuryVerificationNotice";
 
 const MAX_IMAGES = 6;
 const MAX_FILE_SIZE_MB = 10;
@@ -95,6 +100,163 @@ export default function UploadItem(): JSX.Element {
   const [dynamicFieldsLoading, setDynamicFieldsLoading] = useState<boolean>(false);
   const [dynamicFieldsError, setDynamicFieldsError] = useState<string | null>(null);
   const [dynamicFieldValues, setDynamicFieldValues] = useState<Record<string, string>>({});
+  const [dynamicFieldTypeOverrides, setDynamicFieldTypeOverrides] = useState<
+    Record<string, "select" | "text">
+  >({});
+  const [appliedAiFields, setAppliedAiFields] = useState<Set<ApplyTarget>>(new Set());
+  const [showAiSuggestions, setShowAiSuggestions] = useState(true);
+
+  const allCategoryNodes = useMemo(() => {
+    const collect = (nodes: CategoryNode[]): CategoryNode[] =>
+      nodes.flatMap((node) => [node, ...(node.categories ? collect(node.categories) : [])]);
+    return collect(categoryTree);
+  }, [categoryTree]);
+
+  const findCategoryPath = (
+    predicate: (node: CategoryNode) => boolean,
+    nodes: CategoryNode[],
+    path: CategoryNode[] = [],
+  ): CategoryNode[] | null => {
+    for (const node of nodes) {
+      const nextPath = [...path, node];
+      if (predicate(node)) return nextPath;
+      const childMatch = findCategoryPath(predicate, node.categories || [], nextPath);
+      if (childMatch) return childMatch;
+    }
+    return null;
+  };
+
+  const findCategoryNodeBySuggestion = (suggestion?: ResolvedField | null): CategoryNode | null => {
+    if (!suggestion) return null;
+    const rawValue = suggestion.rawValue?.trim() ?? "";
+    const resolvedLabel = suggestion.resolvedLabel?.trim() ?? "";
+    const target = (resolvedLabel || rawValue).trim();
+    if (!target) return null;
+
+    if (suggestion.resolvedId) {
+      const path = findCategoryPath((node) => node.id === suggestion.resolvedId, categoryTree);
+      if (path) return path[path.length - 1];
+    }
+
+    const normalizedTarget = target.toLowerCase();
+    const exactMatch = allCategoryNodes.find(
+      (node) => node.name.trim().toLowerCase() === normalizedTarget,
+    );
+    if (exactMatch) return exactMatch;
+
+    return (
+      allCategoryNodes.find((node) => {
+        const normalizedName = node.name.trim().toLowerCase();
+        return (
+          normalizedName.includes(normalizedTarget) ||
+          normalizedTarget.includes(normalizedName)
+        );
+      }) ?? null
+    );
+  };
+
+  const suggestionFieldAliases: Record<ApplyTarget, string[]> = {
+    category: ["category"],
+    subcategory: ["subcategory", "sub category", "sub-category", "sub_category"],
+    brand: ["brand", "brand_women_shoes", "shoes brand", "shoes_brand"],
+    primaryColor: ["primarycolor", "primary color", "colour", "color", "colour"],
+    secondaryColor: ["secondarycolor", "secondary color", "colour", "color", "colour"],
+    material: ["material"],
+    condition: ["condition"],
+    gender: ["gender", "sex"],
+    style: ["style", "occasion", "shoe style", "look"],
+    title: ["title"],
+    description: ["description"],
+  };
+
+  const normalizeString = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-_\/]+/g, " ")
+      .replace(/[^a-z0-9 ]+/g, "");
+
+  const findDynamicFieldForSuggestion = (
+    suggestionKey: ApplyTarget,
+    suggestion: ResolvedField,
+  ): DynamicField | undefined => {
+    const aliases = suggestionFieldAliases[suggestionKey] || [];
+    const target = normalizeString(suggestion.resolvedLabel || suggestion.rawValue || "");
+    return dynamicFields.find((field) => {
+      const haystack = normalizeString(`${field.key} ${field.label}`);
+      if (aliases.some((alias) => haystack.includes(normalizeString(alias)))) {
+        return true;
+      }
+      return target && haystack.includes(target);
+    });
+  };
+
+  const optionMatchesSuggestion = (optionText: string, targetText: string): boolean => {
+    const normalizedOption = normalizeString(optionText);
+    const normalizedTarget = normalizeString(targetText);
+    if (!normalizedTarget) return false;
+    if (normalizedOption === normalizedTarget) return true;
+    if (normalizedOption.includes(normalizedTarget) || normalizedTarget.includes(normalizedOption)) return true;
+    const targetWords = normalizedTarget.split(" ").filter(Boolean);
+    return targetWords.every((word) => normalizedOption.includes(word));
+  };
+
+  const getOptionValueForSuggestion = (
+    field: DynamicField,
+    suggestion: ResolvedField,
+  ): string | null => {
+    const target = suggestion.resolvedLabel || suggestion.rawValue || "";
+    if (!target || !field.options) return null;
+
+    const exactMatch = field.options.find(
+      (opt) =>
+        optionMatchesSuggestion(String(opt.value), target) ||
+        optionMatchesSuggestion(opt.label, target),
+    );
+    return exactMatch ? String(exactMatch.value) : null;
+  };
+
+  const applySuggestionToDynamicField = (
+    suggestionKey: ApplyTarget,
+    suggestion: ResolvedField,
+  ) => {
+    const field = findDynamicFieldForSuggestion(suggestionKey, suggestion);
+    if (!field) return;
+
+    const optionValue = getOptionValueForSuggestion(field, suggestion);
+    if (optionValue !== null) {
+      handleDynamicFieldChange(field.key, optionValue);
+      return;
+    }
+
+    const fallbackValue = suggestion.rawValue || suggestion.resolvedLabel || "";
+    if (!fallbackValue) return;
+
+    if (field.type === "select") {
+      setDynamicFieldTypeOverrides((prev) => ({
+        ...prev,
+        [field.key]: "text",
+      }));
+    }
+    handleDynamicFieldChange(field.key, fallbackValue);
+  };
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      setDynamicFieldTypeOverrides({});
+    }
+  }, [selectedCategory]);
+
+  const {
+    analyze,
+    cancel,
+    reset: resetAiAnalysis,
+    isAnalyzing,
+    progressMessage,
+    result: aiResult,
+    error: aiError,
+  } = useAiListingAnalysis();
+
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<UploadImage[]>([]);
 
@@ -203,6 +365,7 @@ export default function UploadItem(): JSX.Element {
 
         if (loadedFields.length > 0) {
           setDynamicFields(loadedFields);
+          setDynamicFieldTypeOverrides({});
           setDynamicFieldValues({});
           setDynamicFieldsLoading(false);
 
@@ -338,6 +501,65 @@ export default function UploadItem(): JSX.Element {
       return;
     }
     fileInputRef.current?.click();
+  };
+
+  const handleAnalyzePhotos = () => {
+    if (images.length === 0) {
+      toast.warn("Upload at least one photo before running AI analysis.");
+      return;
+    }
+
+    analyze({ files: images.map((image) => image.file), categoryId: selectedCategory?.id ?? null });
+  };
+
+  const handleApplyField = (field: ApplyTarget) => {
+    const suggestion = aiResult?.suggestions[field];
+    if (!suggestion) return;
+
+    if (field === "title") {
+      setTitle((suggestion as ResolvedTextField).text ?? title);
+    } else if (field === "description") {
+      setDescription((suggestion as ResolvedTextField).text ?? description);
+    } else if (field === "category" || field === "subcategory") {
+      const categoryNode = findCategoryNodeBySuggestion(suggestion as ResolvedField);
+      if (categoryNode) {
+        const path = findCategoryPath((node) => node.id === categoryNode.id, categoryTree);
+        setSelectedCategory(categoryNode);
+        setActiveCategoryPath(path ? path.slice(0, -1) : []);
+      }
+    } else {
+      applySuggestionToDynamicField(field, suggestion as ResolvedField);
+    }
+
+    setAppliedAiFields((prev) => new Set(prev).add(field));
+  };
+
+  const handleApplyAll = () => {
+    if (!aiResult) return;
+
+    if (aiResult.suggestions.title.text) setTitle(aiResult.suggestions.title.text);
+    if (aiResult.suggestions.description.text) setDescription(aiResult.suggestions.description.text);
+
+    const applyKeys: ApplyTarget[] = [
+      "title",
+      "description",
+      "category",
+      "subcategory",
+      "brand",
+      "material",
+      "primaryColor",
+      "secondaryColor",
+      "condition",
+      "gender",
+      "style",
+    ];
+
+    applyKeys.forEach((key) => handleApplyField(key));
+    setAppliedAiFields(new Set(applyKeys));
+  };
+
+  const handleDismissAiSuggestions = () => {
+    setShowAiSuggestions(false);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -593,6 +815,38 @@ export default function UploadItem(): JSX.Element {
               </button>
             )}
           </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={handleAnalyzePhotos}
+              disabled={images.length === 0 || isAnalyzing}
+              className="inline-flex items-center justify-center rounded-full bg-[#cb6f4d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#a65c3f] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isAnalyzing ? "Analyzing photos..." : "Analyze with AI"}
+            </button>
+            <p className="text-xs text-gray-500 sm:text-right">
+              Tip: AI works best with clear, well-lit photos showing brand details.
+            </p>
+          </div>
+
+          <AiAnalysisProgress message={progressMessage} onCancel={cancel} />
+
+          {aiError && (
+            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {aiError}
+            </div>
+          )}
+
+          {aiResult && showAiSuggestions && (
+            <AiSuggestionsPanel
+              suggestions={aiResult.suggestions}
+              appliedFields={appliedAiFields}
+              onApplyField={handleApplyField}
+              onApplyAll={handleApplyAll}
+              onDismiss={handleDismissAiSuggestions}
+            />
+          )}
         </section>
 
         {/* --- TITLE --- */}
@@ -811,7 +1065,8 @@ export default function UploadItem(): JSX.Element {
               dynamicFields.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {dynamicFields.map((field) => {
-                    const showColorPalette = isColorField(field);
+                    const showColorPalette =
+                      isColorField(field) && dynamicFieldTypeOverrides[field.key] !== "text";
 
                     return (
                     <div key={field.key}>
@@ -834,7 +1089,7 @@ export default function UploadItem(): JSX.Element {
                             {field.label}
                             {field.required ? " *" : ""}
                           </label>
-                      {field.type === "select" ? (
+                      {((dynamicFieldTypeOverrides[field.key] ?? field.type) === "select") ? (
                         <SearchableSelectSellItem
                           options={(field.options || []).map((option) => ({
                             value: option.value,
