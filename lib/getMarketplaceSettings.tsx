@@ -9,7 +9,7 @@ export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/marketplace-settings`, {
       // maintenance mode needs to reflect immediately — no stale cache
-      cache: "no-store",
+      // cache: "no-store",
     });
 
     if (!res.ok) {
