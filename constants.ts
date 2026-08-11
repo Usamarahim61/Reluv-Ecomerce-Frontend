@@ -1,8 +1,6 @@
-// export const BACKEND_URL = "https://reluv-ecomerce-backend-1.onrender.com";
-// export const BACKEND_URL = "https://wealthy-authority-eb78443cb3.strapiapp.com";
-// export const BACKEND_URL = "http://192.168.100.134:1337";
-// export const BACKEND_URL = "http://localhost:1337";
-export const BACKEND_URL = "https://reluv.novakonnect.com";
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://reluv.novakonnect.com"
 
-export const NEXT_PUBLIC_LINE_CALLBACK_URL="https://reluv-ecomerce-frontend.vercel.app/auth/callback/line"
-export const NEXT_PUBLIC_SITE_URL="https://reluv-ecomerce-frontend.vercel.app"
+export const NEXT_PUBLIC_GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""
+export const NEXT_PUBLIC_LINE_CHANNEL_ID = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID ?? ""
+export const NEXT_PUBLIC_LINE_CALLBACK_URL = process.env.NEXT_PUBLIC_LINE_CALLBACK_URL ?? ""
+export const NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ""
