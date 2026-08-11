@@ -267,8 +267,8 @@ export default function SignUpLogin({
       clearInterval(poll);
       try {
         // Calls your backend/Strapi endpoint using the retrieved OAuth code
-        const data = await loginWithLine(event.data.code);
-        setAuthLogin(data.jwt, data.user);
+        const data = await loginWithLine({ code: event.data.code });
+        setAuthLogin(data.jwt, data.user as any);
         popup.close();
         onClose();
       } catch (err: any) {
