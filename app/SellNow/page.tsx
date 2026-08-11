@@ -8,6 +8,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchCatalogTree } from "@/lib/features/categoriesSlice";
 import { CategoryNode } from "@/lib/categoryUtils";
 import { useAiListingAnalysis } from "@/lib/hooks/useAiListingAnalysis";
+import { fetchFilteredProducts, type ProductCardItem } from "@/services/products-service";
+import ProductCard from "@/app/components/ProductCard";
 import type { ApplyTarget, ResolvedField, ResolvedTextField } from "@/lib/ai/types";
 import { useAuth } from "@/context/AuthContext";
 import SearchableSelectSellItem from "../components/SearchableSelectSellItem";
@@ -91,6 +93,9 @@ export default function UploadItem(): JSX.Element {
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<ProductCardItem[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState<boolean>(false);
+  const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false);
   const [categorySearch, setCategorySearch] = useState<string>("");
@@ -103,6 +108,7 @@ export default function UploadItem(): JSX.Element {
   const [dynamicFieldTypeOverrides, setDynamicFieldTypeOverrides] = useState<
     Record<string, "select" | "text">
   >({});
+  const [dynamicFieldOtherActive, setDynamicFieldOtherActive] = useState<Record<string, boolean>>({});
   const [appliedAiFields, setAppliedAiFields] = useState<Set<ApplyTarget>>(new Set());
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
 
@@ -176,6 +182,53 @@ export default function UploadItem(): JSX.Element {
       .replace(/[\s\-_\/]+/g, " ")
       .replace(/[^a-z0-9 ]+/g, "");
 
+  const getDynamicFieldValue = (aliases: string[]): string | undefined => {
+    const normalizedAliases = aliases.map((alias) => normalizeString(alias));
+
+    for (const field of dynamicFields) {
+      const normalizedFieldKey = normalizeString(field.key);
+      const normalizedFieldLabel = normalizeString(field.label);
+      const value = dynamicFieldValues[field.key]?.trim();
+
+      if (!value) continue;
+
+      if (
+        normalizedAliases.some(
+          (alias) =>
+            normalizedFieldKey.includes(alias) ||
+            normalizedFieldLabel.includes(alias),
+        )
+      ) {
+        return value;
+      }
+    }
+
+    return undefined;
+  };
+
+  const buildRelatedProductFilters = () => {
+    if (!selectedCategory) return null;
+
+    const filters: Record<string, string | number | undefined> = {
+      category: selectedCategory.slug || selectedCategory.name,
+      brand: getDynamicFieldValue(["brand"]),
+      size: getDynamicFieldValue(["size"]),
+      condition: getDynamicFieldValue(["condition"]),
+      colour: getDynamicFieldValue(["colour", "color"]),
+      material: getDynamicFieldValue(["material"]),
+      sortBy: "price_asc",
+    };
+
+    return Object.entries(filters).reduce<Record<string, string | number>>(
+      (acc, [key, value]) => {
+        if (value == null || String(value).trim() === "") return acc;
+        acc[key] = value;
+        return acc;
+      },
+      {},
+    );
+  };
+
   const findDynamicFieldForSuggestion = (
     suggestionKey: ApplyTarget,
     suggestion: ResolvedField,
@@ -225,6 +278,13 @@ export default function UploadItem(): JSX.Element {
 
     const optionValue = getOptionValueForSuggestion(field, suggestion);
     if (optionValue !== null) {
+      // If suggestion matches an existing option, ensure 'Other' input is disabled
+      setDynamicFieldOtherActive((prev) => ({ ...prev, [field.key]: false }));
+      setDynamicFieldTypeOverrides((prev) => {
+        const copy = { ...prev };
+        delete copy[field.key];
+        return copy;
+      });
       handleDynamicFieldChange(field.key, optionValue);
       return;
     }
@@ -233,10 +293,12 @@ export default function UploadItem(): JSX.Element {
     if (!fallbackValue) return;
 
     if (field.type === "select") {
+      // Show the text input (Other) for this field so user can edit/clear it
       setDynamicFieldTypeOverrides((prev) => ({
         ...prev,
         [field.key]: "text",
       }));
+      setDynamicFieldOtherActive((prev) => ({ ...prev, [field.key]: true }));
     }
     handleDynamicFieldChange(field.key, fallbackValue);
   };
@@ -456,6 +518,48 @@ export default function UploadItem(): JSX.Element {
     document.addEventListener("mousedown", onDocumentClick);
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      setRelatedProducts([]);
+      setRelatedError(null);
+      setRelatedLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = window.setTimeout(async () => {
+      const params = buildRelatedProductFilters();
+      if (!params) return;
+
+      setRelatedLoading(true);
+      setRelatedError(null);
+
+      try {
+        const response = await fetchFilteredProducts({
+          ...params,
+          pageSize: 8,
+        });
+
+        if (!isMounted) return;
+        setRelatedProducts(response.items || []);
+      } catch (error) {
+        if (!isMounted) return;
+        setRelatedError(
+          error instanceof Error ? error.message : "Failed to load related products",
+        );
+        setRelatedProducts([]);
+      } finally {
+        if (!isMounted) return;
+        setRelatedLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timer);
+    };
+  }, [selectedCategory, JSON.stringify(dynamicFieldValues)]);
 
   /* ---------------- SYNC IMAGES REF ---------------- */
 
@@ -1090,42 +1194,121 @@ export default function UploadItem(): JSX.Element {
                             {field.required ? " *" : ""}
                           </label>
                       {((dynamicFieldTypeOverrides[field.key] ?? field.type) === "select") ? (
-                        <SearchableSelectSellItem
-                          options={(field.options || []).map((option) => ({
-                            value: option.value,
-                            label: option.label,
-                          }))}
-                          value={dynamicFieldValues[field.key] || ""}
-                          onChange={(value) =>
-                            handleDynamicFieldChange(field.key, value)
-                          }
-                          placeholder={
-                            field.placeholder ||
-                            `Select ${field.label.toLowerCase()}`
-                          }
-                          searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
-                          className="w-full sm:max-w-none"
-                          triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
-                        />
-                      ) : (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
-                          <input
-                            type={field.type === "number" ? "number" : "text"}
-                            name={field.key}
+                        dynamicFieldOtherActive[field.key] ? (
+                          <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                            <input
+                              type="text"
+                              name={field.key}
+                              value={dynamicFieldValues[field.key] || ""}
+                              onChange={(e) =>
+                                handleDynamicFieldChange(field.key, e.target.value)
+                              }
+                              placeholder={
+                                field.placeholder || `Enter ${field.label.toLowerCase()}`
+                              }
+                              className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // revert back to dropdown and remove any text override
+                                setDynamicFieldOtherActive((prev) => ({ ...prev, [field.key]: false }));
+                                setDynamicFieldTypeOverrides((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy[field.key];
+                                  return copy;
+                                });
+                                handleDynamicFieldChange(field.key, "");
+                              }}
+                              className="text-gray-400 hover:text-gray-700 p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                                <SearchableSelectSellItem
+                            options={(field.options || []).map((option) => ({
+                              value: option.value,
+                              label: option.label,
+                            }))}
                             value={dynamicFieldValues[field.key] || ""}
-                            onChange={(e) =>
-                              handleDynamicFieldChange(field.key, e.target.value)
-                            }
+                            onChange={(value) => {
+                              const selected = (field.options || []).find((o) => String(o.value) === String(value));
+                              const isOther = value === "__other__" || (selected?.label || "").trim().toLowerCase() === "other";
+                              if (isOther) {
+                                setDynamicFieldOtherActive((prev) => ({ ...prev, [field.key]: true }));
+                                handleDynamicFieldChange(field.key, "");
+                              } else {
+                                handleDynamicFieldChange(field.key, value);
+                              }
+                            }}
                             placeholder={
-                              field.placeholder ||
-                              `Enter ${field.label.toLowerCase()}`
+                              field.placeholder || `Select ${field.label.toLowerCase()}`
                             }
-                            className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
+                            searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
+                            className="w-full sm:max-w-none"
+                            triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
                           />
-                          {field.unit && (
-                            <span className="text-gray-500 text-sm">{field.unit}</span>
-                          )}
-                        </div>
+                        )
+                      ) : (
+                        (() => {
+                          const isOverriddenToText = dynamicFieldTypeOverrides[field.key] === "text";
+                          const showClear = dynamicFieldOtherActive[field.key] || isOverriddenToText;
+                          if (showClear) {
+                            return (
+                              <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                                <input
+                                  type={field.type === "number" ? "number" : "text"}
+                                  name={field.key}
+                                  value={dynamicFieldValues[field.key] || ""}
+                                  onChange={(e) =>
+                                    handleDynamicFieldChange(field.key, e.target.value)
+                                  }
+                                  placeholder={
+                                    field.placeholder || `Enter ${field.label.toLowerCase()}`
+                                  }
+                                  className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // remove override and revert to dropdown
+                                    setDynamicFieldOtherActive((prev) => ({ ...prev, [field.key]: false }));
+                                    setDynamicFieldTypeOverrides((prev) => {
+                                      const copy = { ...prev };
+                                      delete copy[field.key];
+                                      return copy;
+                                    });
+                                    handleDynamicFieldChange(field.key, "");
+                                  }}
+                                  className="text-gray-400 hover:text-gray-700 p-1"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                              <input
+                                type={field.type === "number" ? "number" : "text"}
+                                name={field.key}
+                                value={dynamicFieldValues[field.key] || ""}
+                                onChange={(e) =>
+                                  handleDynamicFieldChange(field.key, e.target.value)
+                                }
+                                placeholder={
+                                  field.placeholder || `Enter ${field.label.toLowerCase()}`
+                                }
+                                className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300"
+                              />
+                              {field.unit && (
+                                <span className="text-gray-500 text-sm">{field.unit}</span>
+                              )}
+                            </div>
+                          );
+                        })()
                       )}
                         </>
                       )}
@@ -1134,6 +1317,42 @@ export default function UploadItem(): JSX.Element {
                   })}
                 </div>
               )}
+          </section>
+        )}
+
+        {selectedCategory && relatedProducts.length > 0 && (
+          <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-[#1a1816]">
+                  Pricing comparison
+                </h2>
+                <p className="text-sm text-gray-500">
+                  See similar items in this category and niche while you list.
+                </p>
+              </div>
+              {relatedProducts.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  Showing {relatedProducts.length > 4 ? 4 : relatedProducts.length} related items.
+                </p>
+              )}
+            </div>
+
+            {relatedLoading ? (
+              <p className="text-sm text-gray-500">Loading related products...</p>
+            ) : relatedError ? (
+              <p className="text-sm text-red-500">{relatedError}</p>
+            ) : relatedProducts.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No related listings found yet. Try adjusting category, brand or item details.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {relatedProducts.slice(0, 4).map((product) => (
+                  <ProductCard key={String(product.id)} {...product} />
+                ))}
+              </div>
+            )}
           </section>
         )}
 

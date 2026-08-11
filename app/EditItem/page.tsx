@@ -150,6 +150,7 @@ function EditItemInner(): JSX.Element {
   const [dynamicFieldValues, setDynamicFieldValues] = useState<
     Record<string, string>
   >({});
+  const [dynamicFieldOtherActive, setDynamicFieldOtherActive] = useState<Record<string, boolean>>({});
 
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const newImagesRef = useRef<NewImage[]>([]);
@@ -1128,26 +1129,59 @@ function EditItemInner(): JSX.Element {
                               {field.required ? " *" : ""}
                             </label>
                             {field.type === "select" ? (
-                              <SearchableSelectSellItem
-                                options={(field.options || []).map((option) => ({
-                                  value: option.value,
-                                  label: option.label,
-                                }))}
-                                value={dynamicFieldValues[field.originalKey] || ""}
-                                onChange={(value) =>
-                                  setDynamicFieldValues((prev) => ({
-                                    ...prev,
-                                    [field.originalKey]: value,
-                                  }))
-                                }
-                                placeholder={
-                                  field.placeholder ||
-                                  `Select ${field.label.toLowerCase()}`
-                                }
-                                searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
-                                className="w-full sm:max-w-none"
-                                triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
-                              />
+                              dynamicFieldOtherActive[field.originalKey] ? (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
+                                  <input
+                                    type="text"
+                                    name={field.originalKey}
+                                    value={dynamicFieldValues[field.originalKey] || ""}
+                                    onChange={(e) =>
+                                      setDynamicFieldValues((prev) => ({
+                                        ...prev,
+                                        [field.originalKey]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={
+                                      field.placeholder || `Enter ${field.label.toLowerCase()}`
+                                    }
+                                    className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300 font-sans"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDynamicFieldOtherActive((prev) => ({ ...prev, [field.originalKey]: false }));
+                                      setDynamicFieldValues((prev) => ({ ...prev, [field.originalKey]: "" }));
+                                    }}
+                                    className="text-gray-400 hover:text-gray-700 p-1"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <SearchableSelectSellItem
+                                  options={(field.options || []).map((option) => ({
+                                    value: option.value,
+                                    label: option.label,
+                                  }))}
+                                  value={dynamicFieldValues[field.originalKey] || ""}
+                                  onChange={(value) => {
+                                    const selected = (field.options || []).find((o) => String(o.value) === String(value));
+                                    const isOther = value === "__other__" || (selected?.label || "").trim().toLowerCase() === "other";
+                                    if (isOther) {
+                                      setDynamicFieldOtherActive((prev) => ({ ...prev, [field.originalKey]: true }));
+                                      setDynamicFieldValues((prev) => ({ ...prev, [field.originalKey]: "" }));
+                                    } else {
+                                      setDynamicFieldValues((prev) => ({ ...prev, [field.originalKey]: value }));
+                                    }
+                                  }}
+                                  placeholder={
+                                    field.placeholder || `Select ${field.label.toLowerCase()}`
+                                  }
+                                  searchPlaceholder={`Search ${field.label.toLowerCase()}...`}
+                                  className="w-full sm:max-w-none"
+                                  triggerClassName="px-4 py-3 bg-[#f7f7f7] border-gray-200 rounded-xl h-auto"
+                                />
+                              )
                             ) : (
                               <div className="flex items-center gap-2 px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl">
                                 <input
@@ -1161,8 +1195,7 @@ function EditItemInner(): JSX.Element {
                                     }))
                                   }
                                   placeholder={
-                                    field.placeholder ||
-                                    `Enter ${field.label.toLowerCase()}`
+                                    field.placeholder || `Enter ${field.label.toLowerCase()}`
                                   }
                                   className="flex-1 bg-transparent focus:outline-none text-gray-800 placeholder-gray-300 font-sans"
                                 />

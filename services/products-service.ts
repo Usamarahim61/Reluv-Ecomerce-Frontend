@@ -17,7 +17,8 @@ export type ProductCardItem = {
   imageUrl?: string | null;
   likes: number;
   userId?: number | string | null;
-  fav_products?: any
+  fav_products?: any;
+  isVerifiedLuxury?: boolean;
 };
 export type MemebersCardItem = {
   id: number | string;
@@ -78,11 +79,12 @@ export type ProductDetailItem = {
   totalPrice: string;
   likes: number;
   images: string[];
-  user:any
+  user:any;
   attributeValues?: Record<string, string>;
   attributes?: Array<{ id?: number | string; code?: string; name?: string; value?: string }>;
   rating: number;
-  isHidden: boolean
+  isHidden: boolean;
+  isVerifiedLuxury?: boolean;
 };
 
 
@@ -210,6 +212,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
     imageUrl,
     likes,
     userId,
+    isVerifiedLuxury: Boolean(entry.isVerifiedLuxury),
   };
 };
 
@@ -249,6 +252,7 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
     user: product.user,
     attributeValues,
     attributes: Array.isArray(product.attributes) ? product.attributes : [],
+    isVerifiedLuxury: Boolean(product.isVerifiedLuxury),
   };
 };
 

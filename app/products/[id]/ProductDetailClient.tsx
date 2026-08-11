@@ -427,6 +427,7 @@ export default function ProductDetailPage() {
   const brand = toText(product?.brand || product?.attributes?.find(item=> item?.code?.startsWith("brand_"))?.value, "No brand");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
+  const isVerified = Boolean(product?.isVerifiedLuxury);
   const description = toText(
     product?.description,
     "Product details are not available.",
@@ -1034,12 +1035,20 @@ export default function ProductDetailPage() {
                     <p className="text-[12px] font-semibold tracking-widest text-[#c0613a] uppercase font-sans mb-1">
                       {brand}
                     </p>
-                    <h1
-                      className="text-[22px] font-bold leading-tight text-[#1a1a1a]"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {name}
-                    </h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1
+                        className="text-[22px] font-bold leading-tight text-[#1a1a1a]"
+                        style={{ fontFamily: "Georgia, serif" }}
+                      >
+                        {name}
+                      </h1>
+                      {isVerified && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#c0613a] bg-[#fff5ef] px-3 py-1 text-[11px] font-semibold text-[#c0613a]">
+                          <ShieldCheck size={14} />
+                          Verified luxury
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Only show wishlist button for non-owners */}

@@ -66,7 +66,7 @@ export default function Footer() {
                   <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
                     Reluv
                   </h1> */}
-                  <Image src="/reLuv_logo.png" alt="Reluv Logo" width={100} height={40} />
+                  <Image src="/Relove_HD_Logo.png" alt="Reluv Logo" width={100} height={40} />
                 </Link>
               ) : (
                 <h4 className="mb-4 text-[16px] font-medium text-gray-500">
