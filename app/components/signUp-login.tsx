@@ -22,7 +22,6 @@ import {
   loginWithLine, // Added Line service
 } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
-// import { BACKEND_URL,  NEXT_PUBLIC_GOOGLE_CLIENT_ID, NEXT_PUBLIC_LINE_CHANNEL_ID } from "@/constants";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const API = process.env.BACKEND_URL ?? "";
 const LINE_CHANNEL_ID = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID ?? ""; // Added Line Channel ID
