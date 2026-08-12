@@ -20,12 +20,9 @@ const FIELD_LABELS: Record<ApplyTarget, string> = {
   category: "Category",
   subcategory: "Subcategory",
   brand: "Brand",
-  primaryColor: "Primary Color",
-  secondaryColor: "Secondary Color",
+  Color: "Color",
   material: "Material",
   condition: "Condition",
-  gender: "Gender",
-  style: "Style",
   title: "Title",
   description: "Description",
 };
@@ -37,18 +34,16 @@ const APPLICABLE_FIELD_ORDER: ApplyTarget[] = [
   "subcategory",
   "brand",
   "condition",
-  "primaryColor",
-  "secondaryColor",
+  "Color",
   "material",
-  "gender",
-  "style",
 ];
 
 function isResolvedField(field: ResolvedField | ResolvedTextField): field is ResolvedField {
   return "resolvedId" in field;
 }
 
-function hasApplicableValue(field: ResolvedField | ResolvedTextField): boolean {
+function hasApplicableValue(field: ResolvedField | ResolvedTextField | undefined): boolean {
+  if (!field) return false;
   if (field.tier === "unknown") return false;
   if (isResolvedField(field)) return Boolean(field.resolvedLabel || field.rawValue);
   return Boolean(field.text && field.text.trim().length > 0);

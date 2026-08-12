@@ -28,12 +28,9 @@ export interface ResolvedSuggestions {
   category: ResolvedField;
   subcategory: ResolvedField;
   brand: ResolvedField;
-  primaryColor: ResolvedField;
-  secondaryColor: ResolvedField;
+  Color: ResolvedField;
   material: ResolvedField;
   condition: ResolvedField;
-  gender: ResolvedField;
-  style: ResolvedField;
   title: ResolvedTextField;
   description: ResolvedTextField;
 }

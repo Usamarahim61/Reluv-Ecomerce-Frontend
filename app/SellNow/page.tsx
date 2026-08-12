@@ -165,12 +165,9 @@ export default function UploadItem(): JSX.Element {
     category: ["category"],
     subcategory: ["subcategory", "sub category", "sub-category", "sub_category"],
     brand: ["brand", "brand_women_shoes", "shoes brand", "shoes_brand"],
-    primaryColor: ["primarycolor", "primary color", "colour", "color", "colour"],
-    secondaryColor: ["secondarycolor", "secondary color", "colour", "color", "colour"],
+    Color: ["primaryColor", "primary color", "colour", "color", "colour"],
     material: ["material"],
     condition: ["condition"],
-    gender: ["gender", "sex"],
-    style: ["style", "occasion", "shoe style", "look"],
     title: ["title"],
     description: ["description"],
   };
@@ -651,11 +648,8 @@ export default function UploadItem(): JSX.Element {
       "subcategory",
       "brand",
       "material",
-      "primaryColor",
-      "secondaryColor",
+      "Color",
       "condition",
-      "gender",
-      "style",
     ];
 
     applyKeys.forEach((key) => handleApplyField(key));
