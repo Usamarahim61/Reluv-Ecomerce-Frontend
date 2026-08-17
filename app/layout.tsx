@@ -9,6 +9,7 @@ import NavbarV2 from "./components/navbarV2";
 import AuthSessionPrompt from "./components/AuthSessionPrompt";
 import { getMarketplaceSettings } from "@/lib/getMarketplaceSettings";
 import MaintenanceScreen from "./components/MaintenanceScreen";
+import Footer from "./components/Footer";
 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -65,6 +66,7 @@ export default async function RootLayout({
                 <NavbarV2 />
                 <AuthSessionPrompt />
                 {children}
+                <Footer/>
               </NotificationProvider>
             </AuthProvider>
           )}

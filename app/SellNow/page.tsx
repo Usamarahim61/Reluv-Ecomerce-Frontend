@@ -93,9 +93,6 @@ export default function UploadItem(): JSX.Element {
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<ProductCardItem[]>([]);
-  const [relatedLoading, setRelatedLoading] = useState<boolean>(false);
-  const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const [categoryMenuOpen, setCategoryMenuOpen] = useState<boolean>(false);
   const [categorySearch, setCategorySearch] = useState<string>("");
@@ -111,6 +108,8 @@ export default function UploadItem(): JSX.Element {
   const [dynamicFieldOtherActive, setDynamicFieldOtherActive] = useState<Record<string, boolean>>({});
   const [appliedAiFields, setAppliedAiFields] = useState<Set<ApplyTarget>>(new Set());
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
+  const [aiDescriptionApplied, setAiDescriptionApplied] = useState(false);
+  const [realPhotosConfirmed, setRealPhotosConfirmed] = useState(false);
 
   const allCategoryNodes = useMemo(() => {
     const collect = (nodes: CategoryNode[]): CategoryNode[] =>
@@ -201,29 +200,6 @@ export default function UploadItem(): JSX.Element {
     }
 
     return undefined;
-  };
-
-  const buildRelatedProductFilters = () => {
-    if (!selectedCategory) return null;
-
-    const filters: Record<string, string | number | undefined> = {
-      category: selectedCategory.slug || selectedCategory.name,
-      brand: getDynamicFieldValue(["brand"]),
-      size: getDynamicFieldValue(["size"]),
-      condition: getDynamicFieldValue(["condition"]),
-      colour: getDynamicFieldValue(["colour", "color"]),
-      material: getDynamicFieldValue(["material"]),
-      sortBy: "price_asc",
-    };
-
-    return Object.entries(filters).reduce<Record<string, string | number>>(
-      (acc, [key, value]) => {
-        if (value == null || String(value).trim() === "") return acc;
-        acc[key] = value;
-        return acc;
-      },
-      {},
-    );
   };
 
   const findDynamicFieldForSuggestion = (
@@ -516,47 +492,6 @@ export default function UploadItem(): JSX.Element {
     return () => document.removeEventListener("mousedown", onDocumentClick);
   }, []);
 
-  useEffect(() => {
-    if (!selectedCategory) {
-      setRelatedProducts([]);
-      setRelatedError(null);
-      setRelatedLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    const timer = window.setTimeout(async () => {
-      const params = buildRelatedProductFilters();
-      if (!params) return;
-
-      setRelatedLoading(true);
-      setRelatedError(null);
-
-      try {
-        const response = await fetchFilteredProducts({
-          ...params,
-          pageSize: 8,
-        });
-
-        if (!isMounted) return;
-        setRelatedProducts(response.items || []);
-      } catch (error) {
-        if (!isMounted) return;
-        setRelatedError(
-          error instanceof Error ? error.message : "Failed to load related products",
-        );
-        setRelatedProducts([]);
-      } finally {
-        if (!isMounted) return;
-        setRelatedLoading(false);
-      }
-    }, 500);
-
-    return () => {
-      isMounted = false;
-      window.clearTimeout(timer);
-    };
-  }, [selectedCategory, JSON.stringify(dynamicFieldValues)]);
 
   /* ---------------- SYNC IMAGES REF ---------------- */
 
@@ -621,6 +556,7 @@ export default function UploadItem(): JSX.Element {
       setTitle((suggestion as ResolvedTextField).text ?? title);
     } else if (field === "description") {
       setDescription((suggestion as ResolvedTextField).text ?? description);
+      setAiDescriptionApplied(true);
     } else if (field === "category" || field === "subcategory") {
       const categoryNode = findCategoryNodeBySuggestion(suggestion as ResolvedField);
       if (categoryNode) {
@@ -635,11 +571,22 @@ export default function UploadItem(): JSX.Element {
     setAppliedAiFields((prev) => new Set(prev).add(field));
   };
 
+  const handleApplySuggestedPrice = (suggestedPrice: number) => {
+    if (!Number.isFinite(suggestedPrice) || suggestedPrice <= 0) return;
+    setPrice(suggestedPrice.toFixed(2));
+  };
+
   const handleApplyAll = () => {
     if (!aiResult) return;
 
     if (aiResult.suggestions.title.text) setTitle(aiResult.suggestions.title.text);
-    if (aiResult.suggestions.description.text) setDescription(aiResult.suggestions.description.text);
+    if (aiResult.suggestions.description.text) {
+      setDescription(aiResult.suggestions.description.text);
+      setAiDescriptionApplied(true);
+    }
+    if (aiResult.suggestedPrice.amount != null) {
+      setPrice(Number(aiResult.suggestedPrice.amount).toFixed(2));
+    }
 
     const applyKeys: ApplyTarget[] = [
       "title",
@@ -794,7 +741,7 @@ export default function UploadItem(): JSX.Element {
       const response = await fetch(`${API_BASE_URL}/api/products/sell-now`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+          body: JSON.stringify({
           title,
           description,
           price: parsedPrice,
@@ -802,6 +749,7 @@ export default function UploadItem(): JSX.Element {
           dynamicValues: cleanedDynamicValues,
           imageIds,
           userId: user?.id,
+          aiAssisted: Boolean(aiResult),
         }),
       });
 
@@ -862,6 +810,11 @@ export default function UploadItem(): JSX.Element {
         <p className="text-gray-500 text-sm">Fill in the details below to list your item.</p>
       </header>
 
+      {/* §3 / §20 — Seller responsibility notice */}
+      <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        AI suggestions are not guaranteed to be correct. You are responsible for reviewing and correcting all listing details before publishing.
+      </div>
+
       <div className="space-y-8">
         {/* --- PHOTOS SECTION --- */}
         <section>
@@ -914,15 +867,37 @@ export default function UploadItem(): JSX.Element {
             )}
           </div>
 
+          {/* §25 / §27 — Personal data in photos warning */}
+          <p className="mt-3 text-xs text-gray-500">
+            Avoid uploading photos containing people, addresses, or personal documents. Focus on the item itself.
+          </p>
+
+          {/* §29 — Real photos declaration */}
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={realPhotosConfirmed}
+              onChange={(e) => setRealPhotosConfirmed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-[#cb6f4d]"
+            />
+            <span className="text-xs text-gray-600">
+              I confirm these are real photos of the actual item and have not been AI-generated or materially altered.
+            </span>
+          </label>
+
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
-              onClick={handleAnalyzePhotos}
-              disabled={images.length === 0 || isAnalyzing}
-              className="inline-flex items-center justify-center rounded-full bg-[#cb6f4d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#a65c3f] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isAnalyzing ? "Analyzing photos..." : "Analyze with AI"}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={handleAnalyzePhotos}
+                disabled={images.length === 0 || isAnalyzing}
+                className="inline-flex items-center justify-center rounded-full bg-[#cb6f4d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#a65c3f] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isAnalyzing ? "Analyzing photos..." : "Analyze with AI"}
+              </button>
+              {/* §4 — AI may make mistakes disclosure */}
+              <span className="text-xs text-gray-400">ⓘ AI suggestions may be inaccurate — always review before publishing.</span>
+            </div>
             <p className="text-xs text-gray-500 sm:text-right">
               Tip: AI works best with clear, well-lit photos showing brand details.
             </p>
@@ -931,16 +906,19 @@ export default function UploadItem(): JSX.Element {
           <AiAnalysisProgress message={progressMessage} onCancel={cancel} />
 
           {aiError && (
-            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {aiError}
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              AI features may be temporarily unavailable or inaccurate. {aiError}
             </div>
           )}
 
           {aiResult && showAiSuggestions && (
             <AiSuggestionsPanel
+              requestId={aiResult.requestId}
               suggestions={aiResult.suggestions}
+              suggestedPrice={aiResult.suggestedPrice}
               appliedFields={appliedAiFields}
               onApplyField={handleApplyField}
+              onApplySuggestedPrice={handleApplySuggestedPrice}
               onApplyAll={handleApplyAll}
               onDismiss={handleDismissAiSuggestions}
             />
@@ -961,12 +939,20 @@ export default function UploadItem(): JSX.Element {
 
         {/* --- DESCRIPTION --- */}
         <section>
-          <label className="block font-semibold text-[#1a1816] mb-2">Description</label>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="block font-semibold text-[#1a1816]">Description</label>
+            {/* §19 — AI-generated content label */}
+            {aiDescriptionApplied && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                AI-assisted — please review
+              </span>
+            )}
+          </div>
           <textarea
             placeholder="Describe your item..."
             rows={5}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => { setDescription(e.target.value); setAiDescriptionApplied(false); }}
             className="w-full px-4 py-3 bg-[#f7f7f7] border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#cb6f4d]/30 text-gray-800 resize-none"
           />
         </section>
@@ -1165,6 +1151,7 @@ export default function UploadItem(): JSX.Element {
                   {dynamicFields.map((field) => {
                     const showColorPalette =
                       isColorField(field) && dynamicFieldTypeOverrides[field.key] !== "text";
+                    const isConditionField = field.key.toLowerCase() === "condition";
 
                     return (
                     <div key={field.key}>
@@ -1306,6 +1293,12 @@ export default function UploadItem(): JSX.Element {
                       )}
                         </>
                       )}
+                      {/* §10 — Condition helper text */}
+                      {isConditionField && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          AI cannot detect odours, internal damage, or defects not visible in photos. Please describe the actual condition.
+                        </p>
+                      )}
                     </div>
                     );
                   })}
@@ -1314,41 +1307,10 @@ export default function UploadItem(): JSX.Element {
           </section>
         )}
 
-        {selectedCategory && relatedProducts.length > 0 && (
-          <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-[#1a1816]">
-                  Pricing comparison
-                </h2>
-                <p className="text-sm text-gray-500">
-                  See similar items in this category and niche while you list.
-                </p>
-              </div>
-              {relatedProducts.length > 0 && (
-                <p className="text-xs text-gray-500">
-                  Showing {relatedProducts.length > 4 ? 4 : relatedProducts.length} related items.
-                </p>
-              )}
-            </div>
-
-            {relatedLoading ? (
-              <p className="text-sm text-gray-500">Loading related products...</p>
-            ) : relatedError ? (
-              <p className="text-sm text-red-500">{relatedError}</p>
-            ) : relatedProducts.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No related listings found yet. Try adjusting category, brand or item details.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {relatedProducts.slice(0, 4).map((product) => (
-                  <ProductCard key={String(product.id)} {...product} />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+        {/* §30 — No professional advice notice */}
+        <p className="text-xs text-gray-400 text-center">
+          AI suggestions are not professional valuations, legal advice, or authentication. Obtain qualified advice where needed.
+        </p>
 
         {/* --- SUBMIT --- */}
         <div className="pt-4">

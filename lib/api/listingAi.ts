@@ -79,6 +79,23 @@ export async function rescopeSuggestion(params: RescopeParams): Promise<AnalyzeL
   return payload as AnalyzeListingResult;
 }
 
+export async function submitAiFeedback(params: {
+  requestId: string;
+  field?: string;
+  rating: "correct" | "incorrect" | "incomplete";
+}): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/listing-ai/feedback`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(params),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new AiAnalysisError(body?.error || `Could not save feedback (${response.status}).`);
+  }
+}
+
 export interface LuxuryEvidencePayload {
   productId: number;
   receiptImageIds?: number[];

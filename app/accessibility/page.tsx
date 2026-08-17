@@ -135,7 +135,6 @@ export default function AccessibilityPage() {
         </p>
       </section>
     </main>
-    <Footer/>
     </>
   );
 }

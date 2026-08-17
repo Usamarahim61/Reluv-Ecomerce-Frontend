@@ -19,6 +19,7 @@ export type ProductCardItem = {
   userId?: number | string | null;
   fav_products?: any;
   isVerifiedLuxury?: boolean;
+  aiAssisted?: boolean;
 };
 export type MemebersCardItem = {
   id: number | string;
@@ -85,6 +86,7 @@ export type ProductDetailItem = {
   rating: number;
   isHidden: boolean;
   isVerifiedLuxury?: boolean;
+  aiAssisted?: boolean;
 };
 
 
@@ -253,6 +255,7 @@ const mapProductToDetail = (entry: any): ProductDetailItem => {
     attributeValues,
     attributes: Array.isArray(product.attributes) ? product.attributes : [],
     isVerifiedLuxury: Boolean(product.isVerifiedLuxury),
+    aiAssisted: Boolean(product.aiAssisted),
   };
 };
 

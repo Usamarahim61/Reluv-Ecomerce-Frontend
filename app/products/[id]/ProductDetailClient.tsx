@@ -428,6 +428,7 @@ export default function ProductDetailPage() {
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
   const isVerified = Boolean(product?.isVerifiedLuxury);
+  const isAiAssisted = Boolean(product?.aiAssisted);
   const description = toText(
     product?.description,
     "Product details are not available.",
@@ -1048,6 +1049,11 @@ export default function ProductDetailPage() {
                           Verified luxury
                         </span>
                       )}
+                      {isAiAssisted && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#d9c9a3] bg-[#fbf6ea] px-3 py-1 text-[11px] font-semibold text-[#7b5b16]">
+                          AI-assisted
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1476,9 +1482,6 @@ export default function ProductDetailPage() {
           onClose={() => setShowCarousel(false)}
         />
 
-        <div className="hidden md:block mt-16">
-          <Footer />
-        </div>
       </main>
 
       {/* Make Offer Modal */}

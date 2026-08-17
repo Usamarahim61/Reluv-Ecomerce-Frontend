@@ -1,7 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { Check, Sparkles, X } from "lucide-react";
-import type { ApplyTarget, ResolvedField, ResolvedSuggestions, ResolvedTextField } from "@/lib/ai/types";
+import {
+  type ApplyTarget,
+  type ResolvedField,
+  type ResolvedSuggestions,
+  type ResolvedTextField,
+  type SuggestedPrice,
+} from "@/lib/ai/types";
+import { submitAiFeedback } from "@/lib/api/listingAi";
 
 /**
  * Shows what the AI detected, field by field, with each field's confidence
@@ -55,28 +64,49 @@ function displayValue(field: ResolvedField | ResolvedTextField): string {
 }
 
 interface AiSuggestionsPanelProps {
+  requestId: string;
   suggestions: ResolvedSuggestions;
-  /** Fields the seller has already applied (so we can show a check + disable re-applying). */
+  suggestedPrice: SuggestedPrice;
   appliedFields: Set<ApplyTarget>;
   onApplyField: (field: ApplyTarget) => void;
+  onApplySuggestedPrice: (price: number) => void;
   onApplyAll: () => void;
   onDismiss: () => void;
 }
 
 export default function AiSuggestionsPanel({
+  requestId,
   suggestions,
+  suggestedPrice,
   appliedFields,
   onApplyField,
+  onApplySuggestedPrice,
   onApplyAll,
   onDismiss,
 }: AiSuggestionsPanelProps) {
+  const [feedbackGiven, setFeedbackGiven] = useState<"correct" | "incorrect" | "incomplete" | null>(
+    null,
+  );
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  const handleFeedback = async (rating: "correct" | "incorrect" | "incomplete") => {
+    setFeedbackError(null);
+    try {
+      await submitAiFeedback({ requestId, field: "overall", rating });
+      setFeedbackGiven(rating);
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Could not save feedback.");
+    }
+  };
+
   const applicableFields = APPLICABLE_FIELD_ORDER.filter((key) => hasApplicableValue(suggestions[key]));
 
   if (applicableFields.length === 0) {
     return (
       <div className="mt-4 rounded-xl border border-gray-200 bg-[#f7f7f7] p-4 text-sm text-gray-600">
-        The AI couldn't confidently detect enough details from these photos. Feel free to fill out the
-        form manually - clearer, well-lit photos usually help.
+        The AI couldn't confidently detect enough details from these photos. AI features can be
+        unavailable or inaccurate, so feel free to fill out the form manually. Clear, well-lit
+        photos usually help.
         <button type="button" onClick={onDismiss} className="ml-2 font-semibold text-[#1a1816] underline">
           Dismiss
         </button>
@@ -124,6 +154,11 @@ export default function AiSuggestionsPanel({
                   )}
                 </div>
                 <p className="truncate text-sm font-medium text-[#1a1816]">{displayValue(field)}</p>
+                {key === "brand" && (
+                  <p className="mt-0.5 text-[10px] text-gray-400">
+                    Only apply if you are confident this brand is correct.
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -141,6 +176,74 @@ export default function AiSuggestionsPanel({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-[#e8dfd0] bg-white p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Price reference</p>
+            <p className="mt-1 text-sm font-medium text-[#1a1816]">
+              {suggestedPrice.amount == null
+                ? "No comparable price estimate available."
+                : suggestedPrice.lowAmount != null && suggestedPrice.highAmount != null
+                  ? `${suggestedPrice.currency} ${suggestedPrice.lowAmount.toLocaleString()} - ${suggestedPrice.currency} ${suggestedPrice.highAmount.toLocaleString()}`
+                  : `${suggestedPrice.currency} ${suggestedPrice.amount.toLocaleString()}`}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{suggestedPrice.basis}</p>
+            <p className="mt-1 text-[11px] text-gray-400">{suggestedPrice.disclaimer}</p>
+          </div>
+          {suggestedPrice.amount != null && (
+            <button
+              type="button"
+              onClick={() => onApplySuggestedPrice(suggestedPrice.amount as number)}
+              className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-[#1a1816] hover:border-[#1a1816]"
+            >
+              Apply
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 border-t border-[#e8dfd0] pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-500">Were these suggestions helpful?</span>
+          {feedbackGiven ? (
+            <span className="text-xs text-green-700">Thanks for your feedback.</span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleFeedback("correct")}
+                className="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs text-gray-600 hover:border-green-400 hover:text-green-700"
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFeedback("incorrect")}
+                className="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs text-gray-600 hover:border-red-400 hover:text-red-700"
+              >
+                Incorrect
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFeedback("incomplete")}
+                className="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs text-gray-600 hover:border-amber-400 hover:text-amber-700"
+              >
+                Incomplete
+              </button>
+            </>
+          )}
+        </div>
+        {feedbackError && <p className="mt-2 text-xs text-red-600">{feedbackError}</p>}
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Link href="/complaints-dispute-resolution" className="text-xs font-semibold text-[#cb6f4d] underline">
+            Report an AI error or appeal
+          </Link>
+          <Link href="/ai-policy" className="text-xs text-gray-500 underline">
+            Review the AI policy
+          </Link>
+        </div>
       </div>
     </div>
   );

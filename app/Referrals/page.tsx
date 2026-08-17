@@ -516,7 +516,6 @@ export default function Referrals(): JSX.Element {
           </div>
         </section>
       </div>
-      <Footer />
     </>
   );
 }

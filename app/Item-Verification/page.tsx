@@ -131,7 +131,6 @@ export default function ItemVerificationPage() {
         </div>
       </section>
     </div>
-    <Footer/>
     </>
   );
 }

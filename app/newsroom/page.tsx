@@ -161,7 +161,7 @@ const newsroom = () => {
 
       </div>
     </div>
-    {/* <Footer /> */}
+
     </>
   );
 };

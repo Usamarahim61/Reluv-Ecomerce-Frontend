@@ -131,7 +131,7 @@ export function useAiListingAnalysis(): UseAiListingAnalysisResult {
   const error = activeMutation.isError
     ? activeMutation.error instanceof Error
       ? activeMutation.error.message
-      : "Something went wrong analyzing these images."
+      : "AI features may be temporarily unavailable right now."
     : null;
 
   const isRateLimited = activeMutation.error instanceof RateLimitedError;

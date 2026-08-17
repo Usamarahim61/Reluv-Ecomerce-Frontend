@@ -881,7 +881,6 @@ function ShopPageContent() {
         )}
       </main>
 
-      <Footer />
     </div>
   );
 }
