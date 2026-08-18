@@ -1958,7 +1958,6 @@ function OrdersInner() {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 }

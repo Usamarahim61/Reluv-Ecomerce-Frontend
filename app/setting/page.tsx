@@ -156,10 +156,6 @@ export default function SettingsComp() {
         </div>
       </main>
 
-      {/* Footer */}
-      <div className="hidden md:block mt-16">
-        <Footer />
-      </div>
     </div>
   );
 }

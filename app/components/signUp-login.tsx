@@ -22,10 +22,9 @@ import {
   loginWithLine, // Added Line service
 } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
-import { BACKEND_URL,  NEXT_PUBLIC_GOOGLE_CLIENT_ID, NEXT_PUBLIC_LINE_CHANNEL_ID } from "@/constants";
-const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
-const API = BACKEND_URL ?? "";
-const LINE_CHANNEL_ID = NEXT_PUBLIC_LINE_CHANNEL_ID ?? ""; // Added Line Channel ID
+import { NEXT_PUBLIC_GOOGLE_CLIENT_ID, NEXT_PUBLIC_LINE_CALLBACK_URL, NEXT_PUBLIC_LINE_CHANNEL_ID } from "@/constants";
+const GOOGLE_CLIENT_ID = NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const LINE_CHANNEL_ID = NEXT_PUBLIC_LINE_CHANNEL_ID;
 
 type AuthErrorKind = "network" | "auth" | "cancelled" | "unknown";
 interface AuthError {
@@ -243,7 +242,7 @@ export default function SignUpLogin({
     const params = new URLSearchParams({
       response_type: "code",
       client_id: LINE_CHANNEL_ID,
-      redirect_uri: `${window.location.origin}/auth/callback/line`,
+      redirect_uri: `${NEXT_PUBLIC_LINE_CALLBACK_URL}`,
       state: "line_auth_state", 
       scope: "openid profile email",
     });
@@ -267,8 +266,8 @@ export default function SignUpLogin({
       clearInterval(poll);
       try {
         // Calls your backend/Strapi endpoint using the retrieved OAuth code
-        const data = await loginWithLine(event.data.code);
-        setAuthLogin(data.jwt, data.user);
+        const data = await loginWithLine({ code: event.data.code });
+        setAuthLogin(data.jwt, data.user as any);
         popup.close();
         onClose();
       } catch (err: any) {

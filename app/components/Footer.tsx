@@ -3,6 +3,7 @@
 import { Facebook, Linkedin, Instagram, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 
 type FooterLink = {
@@ -12,6 +13,10 @@ type FooterLink = {
 
 export default function Footer() {
   if (Capacitor.isNativePlatform()) return null;
+
+  const pathname = usePathname();
+  const HIDDEN_FOOTER_ROUTES = new Set(["/SellNow", "/CheckOut"]);
+  if (HIDDEN_FOOTER_ROUTES.has(pathname)) return null;
 
   const sections: { title: string; links: FooterLink[] }[] = [
     {
@@ -36,10 +41,10 @@ export default function Footer() {
     {
       title: 'Help',
       links: [
-        { label: 'Help Centre', href: '#' },
-        { label: 'Selling', href: '#' },
-        { label: 'Buying', href: '#' },
-        { label: 'Trust and Safety', href: '#' },
+        { label: 'Help Centre', href: '/help' },
+        { label: 'Selling', href: '/SellNow' },
+        { label: 'Buying', href: '/how-is-it-works' },
+        { label: 'Trust and Safety', href: '/ai-policy' },
       ],
     },
   ];
@@ -66,7 +71,7 @@ export default function Footer() {
                   <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
                     Reluv
                   </h1> */}
-                  <Image src="/reLuv_logo.png" alt="Reluv Logo" width={100} height={40} />
+                  <Image src="/Relove_HD_Logo.png" alt="Reluv Logo" width={100} height={40} />
                 </Link>
               ) : (
                 <h4 className="mb-4 text-[16px] font-medium text-gray-500">
@@ -116,11 +121,12 @@ export default function Footer() {
 
         {/* Bottom Links: Centered on mobile */}
         <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 text-[13px] text-gray-500">
-          <a href="#" className="hover:underline">Privacy Centre</a>
-          <a href="#" className="hover:underline">Cookie Policy</a>
-          <a href="#" className="hover:underline">Cookie Settings</a>
-          <a href="#" className="hover:underline">Terms & Conditions</a>
-          <a href="#" className="hover:underline">Our Platform</a>
+          <Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+          <Link href="/privacy-policy#cookies" className="hover:underline">Cookie Policy</Link>
+          <Link href="/privacy-policy#cookies" className="hover:underline">Cookie Settings</Link>
+          <Link href="/terms-and-conditions" className="hover:underline">Terms & Conditions</Link>
+          <Link href="/ai-policy" className="hover:underline">AI Policy</Link>
+          <Link href="/complaints-dispute-resolution" className="hover:underline">Complaints & Appeals</Link>
         </div>
       </div>
     </footer>

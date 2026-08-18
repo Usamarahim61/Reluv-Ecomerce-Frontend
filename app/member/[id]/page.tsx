@@ -635,9 +635,6 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      <div className="hidden md:block">
-        <Footer />
-      </div>
 
       {/* Edit modal */}
       {/* {editProduct && (

@@ -119,10 +119,6 @@ export default function HelpComp(): JSX.Element {
         </div>
       </div>
 
-      {/* Hide footer on mobile, show on medium screens and up */}
-      <footer className="hidden md:block">
-        <Footer />
-      </footer>
     </div>
   );
 }

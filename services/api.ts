@@ -1,6 +1,11 @@
 import { API_BASE_URL } from "@/app/constants/api";
 
-const BASE_URL = `${API_BASE_URL}/api`;
+const normalizeBaseUrl = (value?: string | null) => {
+  if (!value) return "https://reluv.novakonnect.com";
+  return value.trim().replace(/\/+$/, "");
+};
+
+const BASE_URL = `${normalizeBaseUrl(API_BASE_URL)}/api`;
 
 const AUTH_ERROR_STATUSES = new Set([401, 403]);
 

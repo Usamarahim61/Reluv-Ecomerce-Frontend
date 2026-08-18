@@ -182,7 +182,6 @@ export default function ReluvHowItWorks() {
   </div>
 </section>
     </div>
-    <Footer/>
     </>
 
   );

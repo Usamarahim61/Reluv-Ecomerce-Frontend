@@ -7,33 +7,27 @@ import Providers from "./providers";
 import Script from "next/script";
 import NavbarV2 from "./components/navbarV2";
 import AuthSessionPrompt from "./components/AuthSessionPrompt";
+import { getMarketplaceSettings } from "@/lib/getMarketplaceSettings";
+import MaintenanceScreen from "./components/MaintenanceScreen";
+import Footer from "./components/Footer";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const greatVibes = Great_Vibes({
-  variable: "--font-great-vibes",
-  subsets: ["latin"],
-  weight: "400",
-});
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const greatVibes = Great_Vibes({ variable: "--font-great-vibes", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
   title: "Reluv - Ecommerce Platform",
   description: "Reluv Ecommerce - Buy, Sell, Discover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { maintenanceMode, maintenanceMessage } = await getMarketplaceSettings();
+
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <head>
@@ -43,15 +37,12 @@ export default function RootLayout({
               try {
                 var html = document.documentElement;
                 html.classList.add('loading');
-                
                 var ua = navigator.userAgent || "";
                 var isCap = /Capacitor/i.test(ua);
                 var isAndroid = /Android/i.test(ua);
-                
                 if (isCap && isAndroid || (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android')) {
                   html.classList.add('android-native');
                 }
-                
                 requestAnimationFrame(() => {
                   html.classList.remove('loading');
                 });
@@ -67,13 +58,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
       >
         <Providers>
-          <AuthProvider>
-            <NotificationProvider>
-              <NavbarV2 />
-              <AuthSessionPrompt />
-              {children}
-            </NotificationProvider>
-          </AuthProvider>
+          {maintenanceMode ? (
+            <MaintenanceScreen message={maintenanceMessage} />
+          ) : (
+            <AuthProvider>
+              <NotificationProvider>
+                <NavbarV2 />
+                <AuthSessionPrompt />
+                {children}
+                <Footer/>
+              </NotificationProvider>
+            </AuthProvider>
+          )}
         </Providers>
       </body>
     </html>

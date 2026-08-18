@@ -64,6 +64,19 @@ const toText = (value: unknown, fallback = ""): string => {
   return fallback;
 };
 
+const isColorLikeField = (code = "", name = "") => {
+  const haystack = `${code} ${name}`.toLowerCase();
+  return haystack.includes("color") || haystack.includes("colour");
+};
+
+const parseAttributeValues = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const findCategoryPath = (
   nodes: CategoryNode[],
   targetName: string,
@@ -414,12 +427,39 @@ export default function ProductDetailPage() {
   const brand = toText(product?.brand || product?.attributes?.find(item=> item?.code?.startsWith("brand_"))?.value, "No brand");
   const condition = toText(product?.condition, "Good");
   const price = toText(product?.price, "TBH 0.00");
+  const isVerified = Boolean(product?.isVerifiedLuxury);
+  const isAiAssisted = Boolean(product?.aiAssisted);
   const description = toText(
     product?.description,
     "Product details are not available.",
   );
-  const color = toText(product?.color, "N/A");
   const uploadedAt = toRelativeUploadTime(product?.uploadedAt);
+  const colorValues = useMemo(() => {
+    const values = new Set<string>();
+
+    const addValue = (rawValue: unknown) => {
+      if (typeof rawValue !== "string") return;
+      parseAttributeValues(rawValue).forEach((item) => values.add(item));
+    };
+
+    addValue(product?.color);
+
+    (product?.attributes ?? []).forEach((attr) => {
+      if (attr?.code && isColorLikeField(attr.code, attr.name ?? "")) {
+        addValue(attr.value);
+      }
+    });
+
+    if (product?.attributeValues) {
+      Object.entries(product.attributeValues).forEach(([key, value]) => {
+        if (isColorLikeField(key, key)) {
+          addValue(value);
+        }
+      });
+    }
+
+    return Array.from(values);
+  }, [product?.color, product?.attributes, product?.attributeValues]);
   const shippingFromPrice = toText(product?.shippingFromPrice, "TBH 100");
   const seller = product?.user ?? {};
   const isOwnProduct =
@@ -996,12 +1036,25 @@ export default function ProductDetailPage() {
                     <p className="text-[12px] font-semibold tracking-widest text-[#c0613a] uppercase font-sans mb-1">
                       {brand}
                     </p>
-                    <h1
-                      className="text-[22px] font-bold leading-tight text-[#1a1a1a]"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {name}
-                    </h1>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1
+                        className="text-[22px] font-bold leading-tight text-[#1a1a1a]"
+                        style={{ fontFamily: "Georgia, serif" }}
+                      >
+                        {name}
+                      </h1>
+                      {isVerified && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#c0613a] bg-[#fff5ef] px-3 py-1 text-[11px] font-semibold text-[#c0613a]">
+                          <ShieldCheck size={14} />
+                          Verified luxury
+                        </span>
+                      )}
+                      {isAiAssisted && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[#d9c9a3] bg-[#fbf6ea] px-3 py-1 text-[11px] font-semibold text-[#7b5b16]">
+                          AI-assisted
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Only show wishlist button for non-owners */}
@@ -1028,10 +1081,14 @@ export default function ProductDetailPage() {
                   <span className="text-[13px] text-[#666] font-sans">
                     {condition}
                   </span>
-                  <span className="text-[13px] text-[#ccc]">/</span>
-                  <span className="text-[13px] text-[#666] font-sans">
-                    {color}
-                  </span>
+                  {colorValues.length > 0 && (
+                    <>
+                      <span className="text-[13px] text-[#ccc]">/</span>
+                      <span className="text-[13px] text-[#666] font-sans">
+                        {colorValues.join(", ")}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 {/* Price */}
@@ -1317,12 +1374,14 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Colour</span>
-                    <span className="font-medium text-[#333]">{color}</span>
+                    <span className="font-medium text-[#333] text-right">
+                      {colorValues.length > 0 ? colorValues.join(", ") : "N/A"}
+                    </span>
                   </div>
 
                   {/* Dynamic attributes */}
-                  {product?.attributes
-                    ?.filter((attr) => {
+                  {(product?.attributes ?? [])
+                    .filter((attr) => {
                       const skipCodes = new Set([
                         "brand",
                         "size",
@@ -1333,17 +1392,32 @@ export default function ProductDetailPage() {
                       return (
                         attr.name &&
                         attr.value &&
-                        !skipCodes.has(attr.code?.toLowerCase() ?? "") && !attr.code?.startsWith("brand_") 
+                        !skipCodes.has(attr.code?.toLowerCase() ?? "") &&
+                        !attr.code?.startsWith("brand_")
                       );
                     })
-                    .map((attr, index) => (
-                      <div key={attr.id ?? index} className="pdp-detail-row">
-                        <span className="text-[#888]">{attr.name}</span>
-                        <span className="font-medium text-[#333]">
-                          {attr.value}
-                        </span>
-                      </div>
-                    ))}
+                    .map((attr, index) => {
+                      const values = parseAttributeValues(attr.value);
+                      const isColorAttr = isColorLikeField(
+                        attr.code ?? "",
+                        attr.name ?? "",
+                      );
+
+                      return (
+                        <div key={attr.id ?? index} className="pdp-detail-row">
+                          <span className="text-[#888]">{attr.name}</span>
+                          <div className="flex flex-wrap justify-end gap-2 text-right">
+                            {values.length > 0 ? (
+                              <span className="font-medium text-[#333]">
+                                {values.join(", ")}
+                              </span>
+                            ) : (
+                              <span className="font-medium text-[#333]">N/A</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
 
                   <div className="pdp-detail-row">
                     <span className="text-[#888]">Shipping</span>
@@ -1408,9 +1482,6 @@ export default function ProductDetailPage() {
           onClose={() => setShowCarousel(false)}
         />
 
-        <div className="hidden md:block mt-16">
-          <Footer />
-        </div>
       </main>
 
       {/* Make Offer Modal */}

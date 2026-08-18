@@ -1,7 +1,12 @@
-import { BACKEND_URL } from "@/constants";
+import { BACKEND_URL } from "../../constants";
 import { Capacitor } from "@capacitor/core";
 
-const FALLBACK_WEB = BACKEND_URL;
+const normalizeBaseUrl = (value?: string | null) => {
+  if (!value) return "";
+  return value.trim().replace(/\/+$/, "");
+};
+
+const FALLBACK_WEB = normalizeBaseUrl(BACKEND_URL) || "https://reluv.novakonnect.com";
 const FALLBACK_ANDROID_EMULATOR = "http://10.0.2.2:1337";
 const BACKEND_PORT = "1337";
 
@@ -32,12 +37,12 @@ const getAndroidBackendUrl = () => {
 };
 
 export const API_BASE_URL = (() => {
-  const env = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const env = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
   if (env) return env;
 
   if (typeof window === "undefined") return FALLBACK_WEB;
 
-  const configuredApiBaseUrl = (window as WindowWithApiBaseUrl).__API_BASE_URL__;
+  const configuredApiBaseUrl = normalizeBaseUrl((window as WindowWithApiBaseUrl).__API_BASE_URL__);
   if (configuredApiBaseUrl) {
     return configuredApiBaseUrl;
   }

@@ -244,7 +244,6 @@ export default function SustainabilityPage() {
         </div>
       </section>
     </div>
-    {/* <Footer /> */}
     </>
   );
 }

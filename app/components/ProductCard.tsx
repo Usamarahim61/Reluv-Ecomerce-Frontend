@@ -51,6 +51,7 @@ export default function ProductCard({
   imageUrl,
   images,
   likes,
+  isVerifiedLuxury = false,
   variant = "default",
   isLiked: isLikedProp = false,
   onFavChange,                    // ✅ from parent
@@ -152,6 +153,13 @@ export default function ProductCard({
             <div className="absolute top-3 left-3 flex items-center gap-1 bg-linear-to-r from-[#cb6f4d] to-[#b85f3d] text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
               <Flame size={14} />
               Trending
+            </div>
+          )}
+
+          {isVerifiedLuxury && (
+            <div className="absolute left-3 top-14 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#444] shadow-sm">
+              <ShieldCheck size={12} className="text-[#cb6f4d]" />
+              Verified luxury
             </div>
           )}
 

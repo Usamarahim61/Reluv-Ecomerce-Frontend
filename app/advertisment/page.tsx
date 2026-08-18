@@ -119,7 +119,6 @@ const ReluvAdForm = () => {
         </div>
       </main>
     </div>
-    <Footer/>
     </>
   );
 };

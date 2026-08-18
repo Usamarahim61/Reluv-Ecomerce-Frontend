@@ -62,7 +62,6 @@ const Balance = () => {
         </main>
       </div>
 
-      <Footer />
     </div>
   );
 };
