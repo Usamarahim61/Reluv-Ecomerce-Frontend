@@ -45,6 +45,8 @@ export default function Footer() {
         { label: 'Selling', href: '/SellNow' },
         { label: 'Buying', href: '/how-is-it-works' },
         { label: 'Trust and Safety', href: '/ai-policy' },
+        { label: 'Seller Rules', href: '/seller-rules' },
+        { label: 'Shipping Policy', href: '/shipping-policy' },
       ],
     },
   ];
@@ -121,12 +123,16 @@ export default function Footer() {
 
         {/* Bottom Links: Centered on mobile */}
         <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 text-[13px] text-gray-500">
+          <Link href="/privacy-centre" className="hover:underline">Privacy Centre</Link>
           <Link href="/privacy-policy" className="hover:underline">Privacy Policy</Link>
-          <Link href="/privacy-policy#cookies" className="hover:underline">Cookie Policy</Link>
-          <Link href="/privacy-policy#cookies" className="hover:underline">Cookie Settings</Link>
+          <Link href="/privacy-rights" className="hover:underline">Your Privacy Rights</Link>
+          <Link href="/cookie-policy" className="hover:underline">Cookie Policy</Link>
+          <Link href="/cookie-policy" className="hover:underline">Cookie Settings</Link>
           <Link href="/terms-and-conditions" className="hover:underline">Terms & Conditions</Link>
           <Link href="/ai-policy" className="hover:underline">AI Policy</Link>
           <Link href="/complaints-dispute-resolution" className="hover:underline">Complaints & Appeals</Link>
+          <Link href="/seller-rules" className="hover:underline">Seller Rules</Link>
+          <Link href="/shipping-policy" className="hover:underline">Shipping Policy</Link>
         </div>
       </div>
     </footer>
