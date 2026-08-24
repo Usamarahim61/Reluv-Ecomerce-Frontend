@@ -1,66 +1,110 @@
+import { GEMINI_API_KEY, GEMINI_MODEL } from "../../../next-env"
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { base64Data, mediaType } = await req.json();
+// Fallback order: Primary -> 3.5 Flash -> 3.1 Flash-Lite
+const MODEL_FALLBACK_LIST = [
+  GEMINI_MODEL || "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+];
 
-    if (!base64Data || !mediaType) {
-      return NextResponse.json({ error: "Missing base64Data or mediaType", title: "" }, { status: 400 });
-    }
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+async function generateContentWithModel(
+  model: string,
+  apiKey: string,
+  mediaType: string,
+  cleanedBase64: string
+) {
+  return await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-4o-mini",   // cheapest vision model, uses least credits
-        max_tokens: 50,
-        messages: [
+        contents: [
           {
-            role: "user",
-            content: [
+            parts: [
               {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mediaType};base64,${base64Data}`,
-                  detail: "low",   // use low detail to save credits
-                },
+                text: "Identify the clothing/fashion item in this image. Reply with ONLY a short search query (3-6 words), no punctuation, no explanation — e.g. 'blue denim jacket' or 'floral summer dress'.",
               },
               {
-                type: "text",
-                text: `You are a product search assistant for a second-hand fashion marketplace.
-Look at this image and respond with ONLY a short product search query (2–5 words) that best describes what you see — brand, item type, and color if visible.
-Examples: "Gucci leather handbag", "Nike Air Max white", "floral midi dress".
-Do NOT include any explanation, punctuation, or extra words. Just the search query.`,
+                inline_data: {
+                  mime_type: mediaType,
+                  data: cleanedBase64,
+                },
               },
             ],
           },
         ],
+        generationConfig: {
+          maxOutputTokens: 30,
+        },
       }),
-    });
+    }
+  );
+}
 
-    const data = await response.json();
+export async function POST(req: NextRequest) {
+  try {
+    const apiKey = GEMINI_API_KEY;
 
-    console.log("=== OpenAI API Response ===");
-    console.log("HTTP Status:", response.status);
-    console.log("Body:", JSON.stringify(data, null, 2));
-    console.log("===========================");
-
-    if (!response.ok || data?.error) {
-      const msg = data?.error?.message ?? "Unknown OpenAI error";
-      console.error("OpenAI error:", msg);
-      return NextResponse.json({ error: msg, title: "" }, { status: 500 });
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Server missing GEMINI_API_KEY configuration" },
+        { status: 500 }
+      );
     }
 
-    const text: string = data?.choices?.[0]?.message?.content ?? "";
+    const { base64Data, mediaType } = await req.json();
 
-    console.log("Extracted title:", `"${text.trim()}"`);
+    if (!base64Data || !mediaType) {
+      return NextResponse.json(
+        { error: "Missing required image data or media type" },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json({ title: text.trim() });
+    const cleanedBase64 = base64Data.includes(",")
+      ? base64Data.split(",")[1]
+      : base64Data;
 
-  } catch (error) {
-    console.error("OpenAI route error:", error);
-    return NextResponse.json({ error: "Failed to analyze image", title: "" }, { status: 500 });
+    let response: Response | null = null;
+    let lastErrorText = "";
+
+    // Loop through fallback models until one succeeds
+    for (const model of MODEL_FALLBACK_LIST) {
+      response = await generateContentWithModel(
+        model,
+        apiKey,
+        mediaType,
+        cleanedBase64
+      );
+
+      if (response.ok) {
+        break; // Request succeeded!
+      }
+
+      lastErrorText = await response.text();
+      console.warn(`Model ${model} failed with status ${response.status}. Trying next fallback...`);
+    }
+
+    if (!response || !response.ok) {
+      return NextResponse.json(
+        { error: `Gemini API failed across all attempted models`, details: lastErrorText },
+        { status: response ? response.status : 500 }
+      );
+    }
+
+    const data = await response.json();
+    console.log("Gemini API response data:", data);
+    const title: string =
+      data
+
+    return NextResponse.json({ title });
+  } catch (err: any) {
+    console.error("image-search route exception:", err);
+    return NextResponse.json(
+      { error: "Internal server error", message: err?.message || String(err) },
+      { status: 500 }
+    );
   }
 }

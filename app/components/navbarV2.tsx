@@ -48,13 +48,13 @@ import { API_BASE_URL } from "@/app/constants/api";
 import { getUserAvatarUrl } from "@/lib/user-profile";
 import { getChatSocket } from "@/lib/chat-socket";
 
-// ─── NEW: helper to convert File → base64 string ───────────────────────────
+// ─── HELPER: Convert File to Base64 String ──────────────────────────────────
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // strip the "data:image/...;base64," prefix
+      // Strip "data:image/...;base64," prefix
       resolve(result.split(",")[1]);
     };
     reader.onerror = reject;
@@ -62,16 +62,20 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-// ─── NEW: ask Claude what the image shows via local API route (no CORS) ────
+// ─── HELPER: Query Gemini Image Title Route ──────────────────────────────────
 async function getImageTitle(file: File): Promise<string> {
   const base64Data = await fileToBase64(file);
-  const mediaType = file.type; // e.g. "image/jpeg"
+  const mediaType = file.type || "image/jpeg";
 
   const response = await fetch("/api/image-search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ base64Data, mediaType }),
   });
+
+  if (!response.ok) {
+    throw new Error("Failed to identify image");
+  }
 
   const data = await response.json();
   return data.title ?? "";
