@@ -716,11 +716,8 @@ const FILTERS: { key: "all" | Severity; label: string }[] = [
   { key: "info", label: "Policy & process" },
 ];
 
-export default function ProhibitedItemsPolicy({
-  lastUpdated = "[DATE]",
-}: {
-  lastUpdated?: string;
-}) {
+export default function ProhibitedItemsPolicy() {
+  const lastUpdated = "[DATE]";
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(SECTIONS.map((s) => s.id))
   );

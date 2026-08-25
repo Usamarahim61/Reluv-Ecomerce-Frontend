@@ -591,11 +591,8 @@ function SectionBlock({ block }: { block: Block }) {
   return null;
 }
 
-export default function PaymentPolicy({
-  lastUpdated = "[DATE]",
-}: {
-  lastUpdated?: string;
-}) {
+export default function PaymentPolicy() {
+  const lastUpdated = "[DATE]";
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(SECTIONS.map((s) => s.id))
   );
@@ -608,9 +605,10 @@ export default function PaymentPolicy({
     if (!q) return SECTIONS;
     return SECTIONS.filter((s) => {
       if (s.title.toLowerCase().includes(q)) return true;
-      return s.blocks.some((b) =>
-        b.type === "p" ? b.text.toLowerCase().includes(q) : b.items.some((it) => it.toLowerCase().includes(q))
-      );
+      return s.blocks.some((b) => {
+        if (b.type === "p" || b.type === "sub") return b.text.toLowerCase().includes(q);
+        return b.items.some((it) => it.toLowerCase().includes(q));
+      });
     });
   }, [query]);
 
@@ -653,7 +651,7 @@ export default function PaymentPolicy({
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
             Payment, Fees &amp; Payout Policy
           </h1>
-          <p className="mt-2 text-sm text-neutral-500">Last updated: {lastUpdated}</p>
+          {/* <p className="mt-2 text-sm text-neutral-500">Last updated: {lastUpdated}</p> */}
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-600">
             This Policy explains how payments, fees, Seller proceeds, refunds and payouts are handled
             through RELove. It forms part of the RELove Terms &amp; Conditions and should be read

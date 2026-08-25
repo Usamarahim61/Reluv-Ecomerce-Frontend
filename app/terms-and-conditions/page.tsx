@@ -764,11 +764,8 @@ function SectionBlock({ block }: { block: Block }) {
   return null;
 }
 
-export default function TermsAndConditions({
-  lastUpdated = "[DATE]",
-}: {
-  lastUpdated?: string;
-}) {
+export default function TermsAndConditions() {
+  const lastUpdated = "[DATE]";
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(SECTIONS.map((s) => s.id))
   );
