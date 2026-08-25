@@ -1177,6 +1177,7 @@ export default function SellerRulesPage() {
             {[
               { label: "Prohibited & Restricted Items Policy", href: "#" },
               { label: "Buyer Protection & Refund Policy", href: "#" },
+              { label: "Shipping Policy", href: "#" },
               { label: "Shipping Policy", href: "/shipping-policy" },
               { label: "Payment, Fees & Payout Policy", href: "#" },
               { label: "Intellectual Property & Counterfeit Policy", href: "#" },
