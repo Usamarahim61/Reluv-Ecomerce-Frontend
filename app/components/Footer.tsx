@@ -129,8 +129,10 @@ export default function Footer() {
           <Link href="/cookie-policy" className="hover:underline">Cookie Policy</Link>
           <Link href="/cookie-policy" className="hover:underline">Cookie Settings</Link>
           <Link href="/terms-and-conditions" className="hover:underline">Terms & Conditions</Link>
+          <Link href="/account-deletion-policy" className="hover:underline">Account deletion policy</Link>
           <Link href="/ai-policy" className="hover:underline">AI Policy</Link>
           <Link href="/Buyer-Protection-Policy" className="hover:underline">Buyer Protection</Link>
+          <Link href="/ristricted-prohibited-Policy" className="hover:underline">Ristricted and Prohibited items</Link>
           <Link href="/payments-refund-policy" className="hover:underline">Payments & Refunds</Link>
           <Link href="/complaints-dispute-resolution" className="hover:underline">Complaints & Appeals</Link>
           <Link href="/seller-rules" className="hover:underline">Seller Rules</Link>
