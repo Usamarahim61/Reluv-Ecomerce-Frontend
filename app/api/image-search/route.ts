@@ -1,9 +1,9 @@
-import { GEMINI_API_KEY, GEMINI_MODEL } from "../../../next-env"
+// import { GEMINI_API_KEY, GEMINI_MODEL } from "../../../next-env"
 import { NextRequest, NextResponse } from "next/server";
 
 // Fallback order: Primary -> 3.5 Flash -> 3.1 Flash-Lite
 const MODEL_FALLBACK_LIST = [
-  GEMINI_MODEL || "gemini-3.6-flash",
+   "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3.1-flash-lite",
 ];
@@ -45,7 +45,7 @@ async function generateContentWithModel(
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = GEMINI_API_KEY;
+    const apiKey = '';
 
     if (!apiKey) {
       return NextResponse.json(
