@@ -10,6 +10,7 @@ import AuthSessionPrompt from "./components/AuthSessionPrompt";
 import { getMarketplaceSettings } from "@/lib/getMarketplaceSettings";
 import MaintenanceScreen from "./components/MaintenanceScreen";
 import Footer from "./components/Footer";
+import CookieConsent from "./components/CookieConsent";
 
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -66,6 +67,7 @@ export default async function RootLayout({
                 <NavbarV2 />
                 <AuthSessionPrompt />
                 {children}
+                 <CookieConsent />
                 <Footer/>
               </NotificationProvider>
             </AuthProvider>
