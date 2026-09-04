@@ -7,7 +7,7 @@ import {
 
 // localStorage.getItem("jwt")
 export function login(identifier: string, password: string) {
-  return apiRequest("/auth/local", {
+  return apiRequest("/local-auth/login", {
     method: "POST",
     body: JSON.stringify({ identifier, password }),
   });
