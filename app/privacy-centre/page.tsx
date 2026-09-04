@@ -1,11 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { 
-  ShieldCheck, 
-  Eye, 
-  Download, 
-  Trash2, 
-  Mail, 
-  Cookie, 
+import {
+  ShieldCheck,
+  Eye,
+  Download,
+  Trash2,
+  Mail,
+  Cookie,
   Sparkles,
   Users,
   Globe,
@@ -17,58 +19,9 @@ import {
   CheckCircle,
   Truck
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
-const privacyActions = [
-  {
-    icon: Eye,
-    title: "Access Your Personal Data",
-    description: "Request access to personal data that RELove holds about you, subject to applicable law.",
-    action: "Access My Data",
-    href: "#",
-    color: "blue"
-  },
-  {
-    icon: Settings,
-    title: "Correct Your Information",
-    description: "Update certain information directly through your RELove account or request correction of inaccurate data.",
-    action: "Manage My Account",
-    href: "/setting",
-    color: "purple"
-  },
-  {
-    icon: Download,
-    title: "Download Your Data",
-    description: "Request certain personal data in a format that allows it to be transmitted or used elsewhere.",
-    action: "Request My Data",
-    href: "#",
-    color: "green"
-  },
-  {
-    icon: Trash2,
-    title: "Delete Your Account",
-    description: "Request deletion of your RELove account. RELove may retain certain information where required by law.",
-    action: "Delete My Account",
-    href: "#",
-    color: "red"
-  },
-  {
-    icon: Mail,
-    title: "Marketing Preferences",
-    description: "Manage your preferences for optional marketing communications from RELove.",
-    action: "Marketing Preferences",
-    href: "#",
-    color: "orange"
-  },
-  {
-    icon: Cookie,
-    title: "Cookie Settings",
-    description: "Manage your choices regarding optional cookies and similar technologies.",
-    action: "Cookie Settings",
-    href: "/cookie-policy",
-    color: "amber"
-  },
-];
-
+// static data that doesn't depend on the logged-in user stays outside the component
 const resources = [
   {
     title: "Privacy Policy",
@@ -126,6 +79,60 @@ const pdpaRights = [
 ];
 
 export default function PrivacyCentrePage() {
+  const { user } = useAuth();
+
+  // depends on `user`, so it must be built INSIDE the component, after useAuth() runs
+  const privacyActions = [
+    {
+      icon: Eye,
+      title: "Access Your Personal Data",
+      description: "Request access to personal data that RELove holds about you, subject to applicable law.",
+      action: "Access My Data",
+      href: `/member/${user?.id}`,
+      color: "blue"
+    },
+    {
+      icon: Settings,
+      title: "Correct Your Information",
+      description: "Update certain information directly through your RELove account or request correction of inaccurate data.",
+      action: "Manage My Account",
+      href: "/setting",
+      color: "purple"
+    },
+    {
+      icon: Download,
+      title: "Download Your Data",
+      description: "Request certain personal data in a format that allows it to be transmitted or used elsewhere.",
+      action: "Request My Data",
+      href: "/setting?tab=privacy",
+      color: "green"
+    },
+    {
+      icon: Trash2,
+      title: "Delete Your Account",
+      description: "Request deletion of your RELove account. RELove may retain certain information where required by law.",
+      action: "Delete My Account",
+      href: "#",
+      color: "red"
+    },
+    {
+      icon: Mail,
+      title: "Marketing Preferences",
+      description: "Manage your preferences for optional marketing communications from RELove.",
+      action: "Marketing Preferences",
+      href: "#",
+      color: "orange"
+    },
+    {
+      icon: Cookie,
+      title: "Cookie Settings",
+      description: "Manage your choices regarding optional cookies and similar technologies.",
+      action: "Cookie Settings",
+      href: "/cookie-policy",
+      color: "amber"
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[#f7f2eb]">
       {/* Decorative Background */}
