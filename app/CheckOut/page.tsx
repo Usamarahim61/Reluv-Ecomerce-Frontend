@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Lock as LockIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import CardDetailsModal from "../components/AddCard";
 import PickupPointModal from "../components/PickupPointModal";
 import PhoneField from "../components/PhoneField";
 import { useAuth } from "@/context/AuthContext";
@@ -53,10 +52,8 @@ const CheckOutContent: React.FC = () => {
   const [savedAddress, setSavedAddress] = useState<ThaiAddress>(emptyThaiAddress);
   const [openAddressModal, setOpenAddressModal] = useState(false);
 
-  const [openCardModal, setOpenCardModal] = useState(false);
   const [openPickupModal, setOpenPickupModal] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">("pickup");
-  const [cardDetails, setCardDetails] = useState<any>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [SameNumberForFutureOrders, setSameNumberForFutureOrders] = useState(false);
   const [pickupAddress, setPickupAddress] = useState("");
@@ -107,16 +104,56 @@ const CheckOutContent: React.FC = () => {
     fetchData();
   }, [user?.id]);
 
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+
+    if (paymentStatus === "success" && sessionId) {
+      const confirmPayment = async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/orders/confirm-payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          });
+
+          const result = await res.json();
+
+          if (!res.ok) {
+            toast.error(result?.message || "Payment could not be confirmed.", toastConfig);
+            return;
+          }
+
+          toast.success(
+            result?.alreadyExists
+              ? "Payment already confirmed. Your order is being processed."
+              : "Payment successful! Your order is being processed.",
+            toastConfig,
+          );
+
+          setTimeout(() => {
+            window.location.href = "/Orders";
+          }, 2000);
+        } catch (error) {
+          console.error("Payment confirmation error:", error);
+          toast.error("Payment was completed, but we could not confirm it. Please contact support.", toastConfig);
+        }
+      };
+
+      confirmPayment();
+      return;
+    }
+
+    if (paymentStatus === "cancelled") {
+      toast.error("Payment was cancelled. No order was created.", toastConfig);
+    }
+  }, [searchParams]);
+
   // ── Place order ────────────────────────────────────────────────────────────
 
   const handlePlaceOrder = async () => {
     try {
       if (isPlacingOrder) return;
-
-      if (!cardDetails) {
-        toast.error("Please add card details", toastConfig);
-        return;
-      }
 
       if (deliveryMethod === "pickup" && !pickupAddress) {
         toast.error("Please select a pick-up point", toastConfig);
@@ -156,15 +193,11 @@ const CheckOutContent: React.FC = () => {
         OrderStatus: "placed",
         currencyCode: data.currency,
         total: totalToPay,
-        cardDetails: {
-          cardName: cardDetails.cardName,
-          cardNumber: cardDetails.cardNumber,
-          expiry: cardDetails.expiry,
-          cvv: cardDetails.cvv,
-        },
+        customerEmail: user?.email || undefined,
+        username: user?.username || user?.email || "",
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/orders/place-order`, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/create-checkout-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -172,25 +205,28 @@ const CheckOutContent: React.FC = () => {
 
       const result = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !result?.url) {
         toast.error(
-          result?.message || "Failed to place order. Please try again.",
+          result?.message || "Failed to initialize payment. Please try again.",
           toastConfig,
         );
         return;
       }
 
       const offerId = searchParams.get("offerId");
-      if (offerId && result?.data?.id) {
-        await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: result.data.id, buyerId: user?.id }),
-        });
+      if (offerId) {
+        try {
+          await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId: null, buyerId: user?.id }),
+          });
+        } catch (offerError) {
+          console.error("Offer completion error:", offerError);
+        }
       }
 
-      toast.success("Order placed successfully!", toastConfig);
-      setTimeout(() => { window.location.href = "/Orders"; }, 2000);
+      window.location.href = result.url;
     } catch (error) {
       console.error("Order Error:", error);
       toast.error("Something went wrong. Please try again.", toastConfig);
@@ -389,43 +425,16 @@ const CheckOutContent: React.FC = () => {
             {/* Payment Section */}
             <section>
               <h2 className="text-lg font-semibold mb-2">Payment</h2>
-              <div
-                className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between cursor-pointer border border-gray-200"
-                onClick={() => setOpenCardModal(true)}
-              >
+              <div className="bg-white p-4 rounded-sm shadow-sm border border-gray-200">
                 <div className="flex items-center gap-4">
                   <div className="p-2 border border-gray-100 rounded">
                     <CreditCard className="text-gray-400" />
                   </div>
                   <div>
-                    <p className="font-medium">Bank card</p>
-                    <p className="text-xs text-gray-500">Use a credit or debit card</p>
-                    {cardDetails ? (
-                      <p className="text-xs text-[#cb6f4d] mt-1 font-medium">
-                        •••• •••• •••• {String(cardDetails.cardNumber).slice(-4)}
-                      </p>
-                    ) : (
-                      <div className="flex gap-2 mt-1">
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center">
-                          <div className="flex -space-x-1">
-                            <div className="w-3 h-3 rounded-full bg-red-500 opacity-80" />
-                            <div className="w-3 h-3 rounded-full bg-orange-500 opacity-80" />
-                          </div>
-                        </div>
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center text-[10px] font-bold text-blue-800 italic">
-                          VISA
-                        </div>
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center">
-                          <div className="flex -space-x-1">
-                            <div className="w-3 h-3 rounded-full bg-red-500 opacity-80" />
-                            <div className="w-3 h-3 rounded-full bg-blue-500 opacity-80" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <p className="font-medium">Secure checkout with Stripe</p>
+                    <p className="text-xs text-gray-500">Pay safely using your card in Stripe&apos;s hosted checkout</p>
                   </div>
                 </div>
-                <ChevronRight className="text-gray-300" />
               </div>
             </section>
           </div>
@@ -472,7 +481,7 @@ const CheckOutContent: React.FC = () => {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={!cardDetails || isPlacingOrder}
+                disabled={isPlacingOrder}
                 className="w-full bg-[#cb6f4d] hover:bg-[#a85a3c] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4 flex items-center justify-center gap-2"
               >
                 {isPlacingOrder ? (
@@ -481,7 +490,7 @@ const CheckOutContent: React.FC = () => {
                     Processing...
                   </>
                 ) : (
-                  "Pay"
+                  "Pay with Stripe"
                 )}
               </button>
 
@@ -495,12 +504,6 @@ const CheckOutContent: React.FC = () => {
       </div>
 
       {/* ── Modals ── */}
-      <CardDetailsModal
-        isOpen={openCardModal}
-        onClose={() => setOpenCardModal(false)}
-        onSave={(card) => setCardDetails(card)}
-      />
-
       <PickupPointModal
         isOpen={openPickupModal}
         onClose={() => setOpenPickupModal(false)}
