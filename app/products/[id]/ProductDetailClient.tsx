@@ -55,6 +55,7 @@ import SellerReviewSection from "@/app/components/SellerReviewSection";
 import { toast } from "react-toastify";
 import PriceBreakdownDialog from "@/app/components/PriceBreakdownDialog";
 import { BACKEND_URL } from "@/constants";
+import { useBuyerProtectionFee } from "../../components/useBuyerProtectionFee";
 
 type BreadcrumbItem = { label: string; slug: string };
 const APIURL = BACKEND_URL;
@@ -483,7 +484,8 @@ export default function ProductDetailPage() {
       return index === 0 ? "sm:col-span-2" : "sm:col-span-1";
     return "sm:col-span-1";
   };
-
+    // ADDED
+  const { buyerProtectionFee, commissionRate } = useBuyerProtectionFee(product?.price);
   const productInfo = {
     productId: product?.id,
     documentId: product?.documentId,
@@ -492,8 +494,8 @@ export default function ProductDetailPage() {
     price: getPriceValue(price) || 0,
     currency: getCurrencyCode(price) || "TBH",
     imageUrl: productImages,
-    buyerProtectionFee: 100.0,
-    shippingFee: getPriceValue(shippingFromPrice) || 0,
+    buyerProtectionFee: buyerProtectionFee,
+    shippingFee:  0,
     sellerId: seller?.id,
   };
 
@@ -1110,7 +1112,7 @@ export default function ProductDetailPage() {
                   >
                     <ShieldCheck size={13} className="text-[#dd9376]" />
                     {currency}{" "}
-                    {(priceNum + productInfo.buyerProtectionFee).toFixed(2)} ·
+                  { (Number(productInfo.buyerProtectionFee || 0)).toFixed(2)}
                     Includes Buyer Protection
                     <Info size={11} className="text-[#c0613a] opacity-70" />
                   </button>
@@ -1505,7 +1507,7 @@ export default function ProductDetailPage() {
         onClose={() => setShowPriceBreakdown(false)}
         title={name}
         price={price}
-        buyerProtectionFee={productInfo.buyerProtectionFee}
+        buyerProtectionFee={Number(productInfo.buyerProtectionFee)}
         shippingFromPrice={shippingFromPrice}
       />
     </>

@@ -3,6 +3,8 @@ import { Heart, ShieldCheck, Flame } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
+import { useBuyerProtectionFee } from "../components/useBuyerProtectionFee";
+
 
 const toDisplayText = (value: unknown): string => {
   if (value == null) return "";
@@ -71,7 +73,9 @@ export default function ProductCard({
   const conditionText = toDisplayText(condition);
   const priceText = toDisplayText(price);
   const totalPriceText = toDisplayText(totalPrice);
-  const showTrending = Number(likes || 0) >= 50;
+  const showTrending = Number(likes || 0) >= 50; 
+  const { buyerProtectionFee, commissionRate } = useBuyerProtectionFee(price);
+
 
   // Sync when parent prop updates (after initial fav fetch completes)
   useEffect(() => {
@@ -226,7 +230,7 @@ export default function ProductCard({
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#aaa]">buyer protection Incl.</span>
               <div className="flex items-center gap-1 text-[#1a1a1a] font-semibold">
-                <span>100 TBH</span>
+                <span>{ (Number(buyerProtectionFee || 0)).toFixed(2)} TBH</span>
                 <ShieldCheck size={12} className="text-[#cb6f4d]" />
               </div>
             </div>

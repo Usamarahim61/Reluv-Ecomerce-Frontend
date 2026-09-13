@@ -3,6 +3,7 @@ import { Heart, ShieldCheck, Flame } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
+import { useBuyerProtectionFee } from "./useBuyerProtectionFee";
 
 interface ProductProps {
   id: string | number;
@@ -85,6 +86,8 @@ export default function ProductCardV3({
   const totalPriceValue = toDisplayText(totalPrice);
   const showTrending = Number(likes || 0) >= 50;
   const isAndroid = variant === "android";
+  const { buyerProtectionFee, commissionRate } = useBuyerProtectionFee(price);
+
 
   const AddLike = async (e: React.MouseEvent) => {
     e.preventDefault();
