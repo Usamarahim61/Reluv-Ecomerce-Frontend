@@ -203,25 +203,7 @@ export default function MessagesClient() {
       setBlockStatus({ iBlockedThem: false, theyBlockedMe: false });
     }
 
-    dispatch(fetchMessages(selectedId)).then((result: any) => {
-      if (result.payload?.messages) {
-        console.log(
-          "Fetched messages for conversation",
-          selectedId,
-          ":",
-          result.payload.messages,
-        );
-        result.payload.messages.forEach((msg: any, i: number) => {
-          console.log(`Message ${i}:`, {
-            id: msg.id,
-            content: msg.content,
-            hasAttachments: !!msg.attachments,
-            attachmentsCount: msg.attachments?.length || 0,
-            attachments: msg.attachments,
-          });
-        });
-      }
-    });
+    dispatch(fetchMessages(selectedId));
 
     // Re-fetch conversations when messages are loaded to update unread count
     return () => {
@@ -303,32 +285,29 @@ export default function MessagesClient() {
         clientMessageId?: string;
       },
     ) => {
-      if (message.conversationId && message.conversationId !== selectedId)
-        return;
-      console.log("Socket message:new received:", message);
-      dispatch(
-        upsertMessage({
-          conversationId: message.conversationId ?? selectedId,
-          message,
-        }),
-      );
+      const msgConvId = message.conversationId ?? selectedId;
+      // Always update the conversation preview regardless of which chat is open
       dispatch(
         updateConversationPreview({
-          conversationId: message.conversationId ?? selectedId,
+          conversationId: msgConvId,
           lastMessagePreview: message.content,
           lastMessageAt: message.createdAt || new Date().toISOString(),
         }),
       );
+      // Only insert the bubble into the active thread
+      if (message.conversationId && message.conversationId !== selectedId) {
+        dispatch(fetchConversations());
+        return;
+      }
+      dispatch(upsertMessage({ conversationId: msgConvId, message }));
       if (Number(message.sender?.id) !== Number(user.id)) {
-        socket.emit("messages:mark-read", {
-          conversationId: message.conversationId ?? selectedId,
-        });
+        socket.emit("messages:mark-read", { conversationId: msgConvId });
+        dispatch(fetchConversations());
       }
     };
 
     const handleMessagesRead = () => {
-      // Re-fetch conversations when messages are marked as read
-      dispatch(fetchConversations());
+      dispatch(markConversationRead(selectedId));
     };
 
     const handleBlockChanged = (event: {
@@ -378,15 +357,24 @@ export default function MessagesClient() {
       dispatch(fetchConversations());
     };
 
+    const handleOfferChanged = () => {
+      if (selectedId) dispatch(fetchMessages(selectedId));
+      dispatch(fetchConversations());
+    };
+
     socket.on("message:new", handleNewMessage);
     socket.on("messages:read", handleMessagesRead);
     socket.on("block:changed", handleBlockChanged);
     socket.on("message:error", handleMessageError);
+    socket.on("offer:created", handleOfferChanged);
+    socket.on("offer:responded", handleOfferChanged);
     return () => {
       socket.off("message:new", handleNewMessage);
       socket.off("messages:read", handleMessagesRead);
       socket.off("block:changed", handleBlockChanged);
       socket.off("message:error", handleMessageError);
+      socket.off("offer:created", handleOfferChanged);
+      socket.off("offer:responded", handleOfferChanged);
     };
   }, [selectedId, user?.id, peerUser?.id, dispatch]);
 
@@ -398,6 +386,8 @@ export default function MessagesClient() {
       conversation?: ConversationItem;
     }) => {
       if (!event.conversation?.id) return;
+      // Join the room so message:new events are received for this conversation
+      socket.emit("conversation:join", { conversationId: event.conversation.id });
       dispatch(fetchConversations());
     };
 
@@ -531,14 +521,6 @@ export default function MessagesClient() {
         content: text || "",
         attachments: attachmentIds,
         clientMessageId,
-      });
-
-      console.log("Emitted message:send with:", {
-        conversationId: selectedId,
-        contentLength: text?.length || 0,
-        attachmentIds,
-        clientMessageId,
-        socketConnected: socket.connected,
       });
 
       setInputValue("");
@@ -1336,23 +1318,6 @@ export default function MessagesClient() {
                         ? parseFloat(String(activeConversation.product.price))
                         : 0);
 
-                    console.log(
-                      "Rendering message:",
-                      msg.id,
-                      "Offer data:",
-                      {
-                        hasOffer: !!msg.offer,
-                        offerId: msg.offer?.id,
-                        offerSeller: msg.offer?.seller,
-                        offerBuyer: msg.offer?.buyer,
-                        offerStatus: msg.offer?.status,
-                        isMine,
-                        userId: user?.id,
-                      },
-                      "Has attachments:",
-                      msg.attachments?.length || 0,
-                      msg.attachments,
-                    );
                     return (
                       <div
                         key={msg.id}
@@ -1442,25 +1407,8 @@ export default function MessagesClient() {
                                         if (offerSellerId) {
                                           return isOfferSeller;
                                         }
-                                        
-                                        // Fallback: The offer message is sent by the person making the offer
-                                        // If I receive it (!isMine), then I should respond
-                                        // This works for both initial offers and counter-offers
-                                        const shouldShowButtons = !isMine;
-                                        
-                                        console.log('Offer button logic:', {
-                                          offerId,
-                                          offerSellerId,
-                                          offerBuyerId,
-                                          isOfferSeller,
-                                          isOfferBuyer,
-                                          isMine,
-                                          shouldShowButtons,
-                                          userId: user?.id,
-                                          messageSenderId: msg.sender?.id
-                                        });
-                                        
-                                        return shouldShowButtons;
+                                        // Fallback: receiver of the message should respond
+                                        return !isMine;
                                       })() && (
                                         <div className="flex flex-wrap gap-2 mt-3">
                                           <button

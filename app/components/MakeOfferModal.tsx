@@ -61,8 +61,11 @@ export default function MakeOfferModal({
     setError(null);
     try {
       const token = localStorage.getItem("jwt");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
       const res = await fetch(`${API_BASE_URL}/api/offers/make`, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -76,14 +79,15 @@ export default function MakeOfferModal({
           conversationId,
         }),
       });
+      clearTimeout(timeout);
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error?.message ?? "Failed to submit offer.");
         return;
       }
       setSuccess(true);
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err: any) {
+      setError(err?.name === "AbortError" ? "Request timed out. The server may be waking up — please try again." : "Network error. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1059,10 +1059,17 @@ function OrdersInner() {
         ]);
         const sellerData = sellerRes.ok ? await sellerRes.json() : { data: [] };
         const buyerData = buyerRes.ok ? await buyerRes.json() : { data: [] };
-        setOffersData([
-          ...(sellerData.data || []).map((o: any) => ({ ...o, role: "seller" })),
-          ...(buyerData.data || []).map((o: any) => ({ ...o, role: "buyer" })),
-        ]);
+        const sellerOffers = (sellerData.data || []).map((o: any) => ({ ...o, role: "seller" }));
+        const buyerOffers = (buyerData.data || [])
+          .filter((o: any) => o.buyer?.id === user.id || o.buyer === user.id)
+          .map((o: any) => ({ ...o, role: "buyer" }));
+        // Merge: if same offer appears in both (e.g. user is both buyer and seller on platform),
+        // keep the seller entry separately and the buyer entry separately — don't deduplicate by ID
+        const merged = [
+          ...sellerOffers,
+          ...buyerOffers.filter((bo: any) => !sellerOffers.some((so: any) => so.id === bo.id && so.seller?.id === user.id)),
+        ];
+        setOffersData(merged);
       } catch { /* silent */ } finally {
         setOffersLoading(false);
       }
@@ -1109,17 +1116,23 @@ function OrdersInner() {
 
   // ── Mutation handlers ────────────────────────────────────────────────────────
   const handleRespondToOffer = async (offerId: number, action: "accepted" | "declined") => {
-    if (!user?.id) return;
+    if (!user?.id || respondingTo === offerId) return;
     setRespondingTo(offerId);
+    // Optimistically update immediately so buttons disappear before the response
+    setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: action } : o)));
     try {
       const res = await fetch(`${API_BASE_URL}/api/offers/${offerId}/respond`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({ action, sellerId: Number(user.id) }),
       });
-      if (res.ok)
-        setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: action } : o)));
-    } catch { /* silent */ } finally {
+      if (!res.ok) {
+        // Revert optimistic update on failure
+        setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: "pending" } : o)));
+      }
+    } catch {
+      setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: "pending" } : o)));
+    } finally {
       setRespondingTo(null);
     }
   };
@@ -1186,6 +1199,11 @@ function OrdersInner() {
     );
   };
 
+  const handleViewProduct = (productId: unknown) => {
+    if (productId == null || String(productId).trim() === "") return;
+    router.push(`/products/${encodeURIComponent(String(productId))}`);
+  };
+
   const handleDisputeSubmit = async (order: any, reason: string, details: string) => {
     if (!user?.id) return;
     try {
@@ -1221,6 +1239,7 @@ function OrdersInner() {
         return {
           id: order.id,
           documentId: order.documentId,
+          productId: order.product?.id || order.product?.documentId || null,
           title: order.product?.title || "No title",
           type: order.type,
           status: mappedStatus,
@@ -1451,7 +1470,7 @@ function OrdersInner() {
       return (
         <div className="space-y-3">
           {filteredOffers.map((offer) => {
-            const isSeller = offer.role === "seller";
+            const isSeller = offer.seller?.id === user?.id;
             const isPending = offer.status === "pending";
             const isResponding = respondingTo === offer.id;
             // For buyer: hide timer/buy if order already placed for this product
@@ -1468,7 +1487,18 @@ function OrdersInner() {
                 key={offer.id}
                 className="group flex flex-col gap-3 rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-4 transition-all hover:border-[#e8c4b0] hover:bg-[#fff7f4] hover:shadow-[0_4px_16px_rgba(203,111,77,0.10)]"
               >
-                <div className="flex items-center gap-4">
+                <div
+                  className="flex cursor-pointer items-center gap-4"
+                  onClick={() => handleViewProduct(offer.product?.id || offer.product?.documentId || offer.product)}
+                  role="link"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleViewProduct(offer.product?.id || offer.product?.documentId || offer.product);
+                    }
+                  }}
+                >
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#ece9e4] bg-[#f5f0eb] md:h-20 md:w-20">
                     {offer.productImage ? (
                       <img src={`${API_BASE_URL}${offer.productImage}`} alt={offer.productTitle} className="h-full w-full object-cover" />
@@ -1605,7 +1635,18 @@ function OrdersInner() {
               key={order.id}
               className="group flex flex-col gap-3 rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-3 transition-all hover:border-[#e8c4b0] hover:bg-[#fff7f4] hover:shadow-[0_4px_16px_rgba(203,111,77,0.10)] md:p-4"
             >
-              <div className="flex cursor-pointer items-center gap-4">
+              <div
+                className="flex cursor-pointer items-center gap-4"
+                onClick={() => handleViewProduct(order.productId)}
+                role="link"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleViewProduct(order.productId);
+                  }
+                }}
+              >
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#ece9e4] bg-[#f5f0eb] md:h-20 md:w-20">
                   {order.imageUrl ? (
                     <img

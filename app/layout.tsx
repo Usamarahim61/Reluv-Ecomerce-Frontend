@@ -9,7 +9,7 @@ import NavbarV2 from "./components/navbarV2";
 import AuthSessionPrompt from "./components/AuthSessionPrompt";
 import { getMarketplaceSettings } from "@/lib/getMarketplaceSettings";
 import MaintenanceScreen from "./components/MaintenanceScreen";
-import Footer from "./components/Footer";
+import ConditionalFooter from "./components/ConditionalFooter";
 import CookieConsent from "./components/CookieConsent";
 
 
@@ -68,7 +68,7 @@ export default async function RootLayout({
                 <AuthSessionPrompt />
                 {children}
                  <CookieConsent />
-                <Footer/>
+                <ConditionalFooter />
               </NotificationProvider>
             </AuthProvider>
           )}
