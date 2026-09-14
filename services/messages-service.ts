@@ -201,6 +201,85 @@ export async function sendMessage(params: {
   return payload?.message ?? null;
 }
 
+export async function createOfferViaSocket(params: {
+  productId: number;
+  buyerId: number;
+  sellerId: number;
+  offerPrice: number;
+  message?: string;
+  conversationId: number;
+}): Promise<unknown> {
+  const socket = getChatSocket();
+  const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  return new Promise((resolve, reject) => {
+    const timeout = globalThis.setTimeout(() => {
+      cleanup();
+      reject(new Error("offer:create timed out."));
+    }, 10000);
+
+    const cleanup = () => {
+      globalThis.clearTimeout(timeout);
+      socket.off("offer:created", handleCreated);
+      socket.off("offer:error", handleError);
+    };
+
+    const handleCreated = (event: { clientOfferId?: string; offer?: unknown }) => {
+      if (event.clientOfferId !== clientOfferId) return;
+      cleanup();
+      resolve(event.offer);
+    };
+
+    const handleError = (event: { clientOfferId?: string; message?: string }) => {
+      if (event.clientOfferId !== clientOfferId) return;
+      cleanup();
+      reject(new Error(event.message || "Failed to send offer."));
+    };
+
+    socket.on("offer:created", handleCreated);
+    socket.on("offer:error", handleError);
+    socket.emit("offer:create", { ...params, clientOfferId });
+  });
+}
+
+export async function respondToOfferViaSocket(params: {
+  offerId: number;
+  action: "accepted" | "declined";
+  sellerId: number;
+  conversationId: number;
+}): Promise<unknown> {
+  const socket = getChatSocket();
+
+  return new Promise((resolve, reject) => {
+    const timeout = globalThis.setTimeout(() => {
+      cleanup();
+      reject(new Error("offer:respond timed out."));
+    }, 10000);
+
+    const cleanup = () => {
+      globalThis.clearTimeout(timeout);
+      socket.off("offer:responded", handleResponded);
+      socket.off("offer:error", handleError);
+    };
+
+    const handleResponded = (event: { offerId?: number; offer?: unknown }) => {
+      if (Number(event.offerId) !== Number(params.offerId)) return;
+      cleanup();
+      resolve(event.offer);
+    };
+
+    const handleError = (event: { offerId?: number; message?: string }) => {
+      if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
+      cleanup();
+      reject(new Error(event.message || "Failed to respond to offer."));
+    };
+
+    socket.on("offer:responded", handleResponded);
+    socket.on("offer:error", handleError);
+    socket.emit("offer:respond", params);
+  });
+}
+
 export async function deleteConversation(conversationId: number): Promise<void> {
   try {
     await socketRequest("conversation:delete", { conversationId });

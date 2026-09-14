@@ -31,12 +31,13 @@ import {
   ConversationItem,
   MessageItem,
   blockUser,
+  createOfferViaSocket,
   deleteConversation,
   fetchBlockStatus,
+  respondToOfferViaSocket,
   unblockUser,
   uploadFiles,
 } from "@/services/messages-service";
-import { respondToOffer } from "@/services/offers-service";
 import { getChatSocket, disconnectChatSocket } from "@/lib/chat-socket";
 import { getChatContentRejection } from "@/lib/chat-content-validation";
 import { getFirstImageUrl } from "@/services/products-service";
@@ -277,7 +278,13 @@ export default function MessagesClient() {
   useEffect(() => {
     if (!selectedId || !user?.id) return;
     const socket = getChatSocket();
-    socket.emit("conversation:join", { conversationId: selectedId });
+    const joinSelectedConversation = () => {
+      socket.emit("conversation:join", { conversationId: selectedId });
+    };
+
+    // Socket.IO rooms are connection-scoped, so rejoin after reconnecting.
+    if (socket.connected) joinSelectedConversation();
+    socket.on("connect", joinSelectedConversation);
 
     const handleNewMessage = (
       message: MessageItem & {
@@ -369,6 +376,7 @@ export default function MessagesClient() {
     socket.on("offer:created", handleOfferChanged);
     socket.on("offer:responded", handleOfferChanged);
     return () => {
+      socket.off("connect", joinSelectedConversation);
       socket.off("message:new", handleNewMessage);
       socket.off("messages:read", handleMessagesRead);
       socket.off("block:changed", handleBlockChanged);
@@ -563,7 +571,8 @@ export default function MessagesClient() {
 
     try {
       setRespondingToOfferId(offerId);
-      const response = await respondToOffer(offerId, {
+      await respondToOfferViaSocket({
+        offerId,
         action,
         sellerId: user.id,
         conversationId: selectedId,
@@ -681,28 +690,14 @@ export default function MessagesClient() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/offers/make`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-        },
-        body: JSON.stringify({
+      await createOfferViaSocket({
           productId: product.id,
-          buyerId: user?.id,
-          sellerId: peerUser?.id,
+          buyerId: Number(user?.id),
+          sellerId: Number(peerUser?.id),
           offerPrice: amount,
           message: offerMessage || undefined,
           conversationId: selectedId,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || "Failed to make offer");
-      }
-
-      const { data: offer } = await response.json();
+        });
 
       // Refresh messages to show the offer message created by backend
       dispatch(fetchMessages(selectedId));
