@@ -99,6 +99,36 @@ const CATEGORY_ICONS: Record<Category, React.ElementType> = {
 };
 
 // ── Brand spinner ─────────────────────────────────────────────────────────────
+const getEntityId = (entity: unknown) => {
+  if (entity && typeof entity === "object" && "id" in entity) {
+    return (entity as { id?: string | number }).id;
+  }
+  return entity;
+};
+
+const sameId = (left: unknown, right: unknown) => {
+  const leftId = getEntityId(left);
+  const rightId = getEntityId(right);
+  return leftId != null && rightId != null && String(leftId) === String(rightId);
+};
+
+const getRecordValue = (value: unknown, key: string) => {
+  if (!value || typeof value !== "object" || !(key in value)) return undefined;
+  return (value as Record<string, unknown>)[key];
+};
+
+const getProductOwnerId = (offer: unknown) => {
+  const product = getRecordValue(offer, "product");
+  return (
+    getEntityId(getRecordValue(product, "users_permissions_user")) ??
+    getEntityId(getRecordValue(product, "userId")) ??
+    getEntityId(getRecordValue(product, "owner")) ??
+    getEntityId(getRecordValue(offer, "productOwner"))
+  );
+};
+
+const getOfferSellerId = (offer: unknown) => getEntityId(getRecordValue(offer, "seller"));
+
 function BrandSpinner({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
@@ -992,12 +1022,13 @@ function OrdersInner() {
     // Only track accepted offers that don't already have a placed order
     const acceptedOffers = offersData.filter((o) => {
       if (o.status !== "accepted" || !o.expiresAt) return false;
+      if (sameId(getProductOwnerId(o), user?.id)) return false;
       // Hide timer if buyer already placed an order for this product
       const alreadyOrdered = ordersData.some(
         (ord) =>
-          ord.buyer?.id === o.buyer?.id &&
-          (ord.product?.id === o.product?.id ||
-            ord.product?.documentId === o.product?.documentId) &&
+          sameId(ord.buyer, o.buyer) &&
+          (sameId(ord.product, o.product) ||
+            sameId(ord.product?.documentId, o.product?.documentId)) &&
           ord.orderStatus !== "cancelled",
       );
       return !alreadyOrdered;
@@ -1024,7 +1055,7 @@ function OrdersInner() {
       setTimeLeft(newTimeLeft);
     }, 1000);
     return () => clearInterval(interval);
-  }, [offersData, ordersData]);
+  }, [offersData, ordersData, user?.id]);
 
   // ── Fetches ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1061,13 +1092,13 @@ function OrdersInner() {
         const buyerData = buyerRes.ok ? await buyerRes.json() : { data: [] };
         const sellerOffers = (sellerData.data || []).map((o: any) => ({ ...o, role: "seller" }));
         const buyerOffers = (buyerData.data || [])
-          .filter((o: any) => o.buyer?.id === user.id || o.buyer === user.id)
+          .filter((o: any) => sameId(o.buyer, user.id))
           .map((o: any) => ({ ...o, role: "buyer" }));
         // Merge: if same offer appears in both (e.g. user is both buyer and seller on platform),
         // keep the seller entry separately and the buyer entry separately — don't deduplicate by ID
         const merged = [
           ...sellerOffers,
-          ...buyerOffers.filter((bo: any) => !sellerOffers.some((so: any) => so.id === bo.id && so.seller?.id === user.id)),
+          ...buyerOffers.filter((bo: any) => !sellerOffers.some((so: any) => sameId(so.id, bo.id) && sameId(so.seller, user.id))),
         ];
         setOffersData(merged);
       } catch { /* silent */ } finally {
@@ -1180,7 +1211,10 @@ function OrdersInner() {
   };
 
   const handleBuyWithOffer = (offer: any) => {
+    if (sameId(getProductOwnerId(offer), user?.id)) return;
+
     const product = offer.product;
+    const checkoutSellerId = getProductOwnerId(offer) ?? getOfferSellerId(offer);
     router.push(
       `/CheckOut?${new URLSearchParams({
         productId: String(product?.id || offer.product),
@@ -1193,7 +1227,7 @@ function OrdersInner() {
         imageUrl: offer.productImage || "",
         buyerProtectionFee: "100",
         shippingFee: "100",
-        sellerId: String(offer.seller?.id || ""),
+        sellerId: String(checkoutSellerId || ""),
         offerId: String(offer.id),
       }).toString()}`,
     );
@@ -1332,9 +1366,9 @@ function OrdersInner() {
   const offerHasOrder = (offer: any): boolean => {
     return ordersData.some(
       (ord) =>
-        ord.buyer?.id === offer.buyer?.id &&
-        (ord.product?.id === offer.product?.id ||
-          ord.product?.documentId === offer.product?.documentId) &&
+        sameId(ord.buyer, offer.buyer) &&
+        (sameId(ord.product, offer.product) ||
+          sameId(ord.product?.documentId, offer.product?.documentId)) &&
         ord.orderStatus !== "cancelled",
     );
   };
@@ -1470,11 +1504,21 @@ function OrdersInner() {
       return (
         <div className="space-y-3">
           {filteredOffers.map((offer) => {
-            const isSeller = offer.seller?.id === user?.id;
+            const productOwnerId = getProductOwnerId(offer);
+            const hasProductOwner = productOwnerId != null;
+            const isProductOwner = sameId(productOwnerId, user?.id);
+            const isSeller = hasProductOwner
+              ? isProductOwner
+              : offer.role === "seller" ||
+                (offer.role !== "buyer" && sameId(offer.seller, user?.id));
             const isPending = offer.status === "pending";
             const isResponding = respondingTo === offer.id;
             // For buyer: hide timer/buy if order already placed for this product
             const hasOrderedAlready = !isSeller && offerHasOrder(offer);
+            const canBuyAcceptedOffer =
+              (hasProductOwner ? !isProductOwner : !isSeller) &&
+              offer.status === "accepted" &&
+              !hasOrderedAlready;
 
             const statusColor =
               offer.status === "accepted"
@@ -1566,7 +1610,7 @@ function OrdersInner() {
                 )}
 
                 {/* Buyer: timer + buy button — hidden once order placed */}
-                {!isSeller && offer.status === "accepted" && !hasOrderedAlready && (
+                {canBuyAcceptedOffer && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between bg-[#fff8f5] border border-[#f0ddd3] rounded-xl px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -1597,7 +1641,7 @@ function OrdersInner() {
                 )}
 
                 {/* Buyer: order already placed against this offer's product */}
-                {!isSeller && offer.status === "accepted" && hasOrderedAlready && (
+                {(hasProductOwner ? !isProductOwner : !isSeller) && offer.status === "accepted" && hasOrderedAlready && (
                   <div className="flex items-center justify-center gap-2 rounded-full bg-[#edf7f0] border border-[#b8e0c8] px-4 py-2 text-xs font-semibold text-[#2e7d4f]">
                     <Check size={13} strokeWidth={2.5} />
                     Order placed — offer fulfilled
