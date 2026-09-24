@@ -1223,7 +1223,7 @@ function OrdersInner() {
         brand: product?.brand || "",
         size: product?.size || "",
         price: String(offer.offerPrice),
-        currency: "TBH",
+        currency: "THB",
         imageUrl: offer.productImage || "",
         buyerProtectionFee: "100",
         shippingFee: "100",
@@ -1277,7 +1277,7 @@ function OrdersInner() {
           title: order.product?.title || "No title",
           type: order.type,
           status: mappedStatus,
-          price: `${order.totalAmount} TBH`,
+          price: `${order.totalAmount} THB`,
           imageUrl: order.productImage || "",
           username: order.buyer?.username || "",
           date: new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -1306,7 +1306,7 @@ function OrdersInner() {
       imageUrl: product.images?.[0]?.url
         ? `${API_BASE_URL}${product.images[0].url}`
         : order.productImage || "",
-      price: order.totalAmount ? `${order.totalAmount} TBH` : "—",
+      price: order.totalAmount ? `${order.totalAmount} THB` : "—",
       date: new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
@@ -1568,8 +1568,8 @@ function OrdersInner() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end">
                     <span className="text-xs text-[#aaa]">Offer</span>
-                    <span className="text-base font-bold text-[#cb6f4d]">{offer.offerPrice} TBH</span>
-                    <span className="text-xs text-[#bbb] line-through">{offer.originalPrice} TBH</span>
+                    <span className="text-base font-bold text-[#cb6f4d]">{offer.offerPrice} THB</span>
+                    <span className="text-xs text-[#bbb] line-through">{offer.originalPrice} THB</span>
                   </div>
                 </div>
 
