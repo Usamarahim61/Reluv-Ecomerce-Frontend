@@ -1,5 +1,6 @@
 "use client";
-import { X, Search, Tag, ShoppingBag, User } from "lucide-react";
+import { Search, Tag, ShoppingBag, User, Trash2, Download, Settings, ShieldCheck, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { JSX, useState } from "react";
 
 import Footer from "../components/Footer";
@@ -65,7 +66,69 @@ export default function HelpComp(): JSX.Element {
       case "buying":
         return <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">Contenu pour Acheter (Design à venir...)</div>;
       case "account":
-        return <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">Contenu pour Mon compte (Design à venir...)</div>;
+        return (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-300">
+            <h3 className="font-semibold text-lg">Mon compte et paramètres</h3>
+            <p className="text-gray-600 text-sm">Gérez votre compte, vos données personnelles et vos préférences de confidentialité.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                href="/setting"
+                className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 hover:border-[#cb6f4d] hover:bg-[#fdf8f5] transition-colors group"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f8f2ea] shrink-0 group-hover:bg-[#cb6f4d] transition-colors">
+                  <Settings className="w-4 h-4 text-[#cb6f4d] group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-[#1a1816] text-sm">Paramètres du compte</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Modifier votre profil, email et mot de passe.</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-[#cb6f4d] shrink-0 mt-0.5 transition-colors" />
+              </Link>
+
+              <Link
+                href="/setting?tab=privacy"
+                className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 hover:border-[#cb6f4d] hover:bg-[#fdf8f5] transition-colors group"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f8f2ea] shrink-0 group-hover:bg-[#cb6f4d] transition-colors">
+                  <Download className="w-4 h-4 text-[#cb6f4d] group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-[#1a1816] text-sm">Télécharger mes données</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Exporter une copie de vos données de compte.</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-[#cb6f4d] shrink-0 mt-0.5 transition-colors" />
+              </Link>
+
+              <Link
+                href="/privacy-centre"
+                className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 hover:border-[#cb6f4d] hover:bg-[#fdf8f5] transition-colors group"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f8f2ea] shrink-0 group-hover:bg-[#cb6f4d] transition-colors">
+                  <ShieldCheck className="w-4 h-4 text-[#cb6f4d] group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-[#1a1816] text-sm">Centre de confidentialité</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Gérer vos droits et préférences de confidentialité.</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-[#cb6f4d] shrink-0 mt-0.5 transition-colors" />
+              </Link>
+
+              <Link
+                href="/account-deletion-policy"
+                className="flex items-start gap-3 p-4 rounded-lg border border-red-100 hover:border-red-400 hover:bg-red-50 transition-colors group"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50 shrink-0 group-hover:bg-red-500 transition-colors">
+                  <Trash2 className="w-4 h-4 text-red-500 group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-red-600 text-sm">Supprimer mon compte</p>
+                  <p className="text-xs text-gray-500 mt-0.5">En savoir plus sur la suppression de votre compte RELove.</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-red-400 shrink-0 mt-0.5 transition-colors" />
+              </Link>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
