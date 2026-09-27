@@ -1172,10 +1172,10 @@ function OrdersInner() {
     if (!user?.id) return;
     setConfirmingOrder(orderId);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/update-status`, {
         method: "PUT",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ data: { orderStatus: "in progress", seller: Number(user.id) } }),
+        body: JSON.stringify({ orderStatus: "in progress" }),
       });
       if (res.ok) {
         setOrdersData((prev) =>
@@ -1193,10 +1193,10 @@ function OrdersInner() {
     if (!user?.id) return;
     setRejectOrder(orderId);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/update-status`, {
         method: "PUT",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ data: { orderStatus: "cancelled", seller: Number(user.id) } }),
+        body: JSON.stringify({ orderStatus: "cancelled" }),
       });
       if (res.ok) {
         setOrdersData((prev) =>
