@@ -197,11 +197,11 @@ export default function Home() {
             )}
           </div>
         </section>
-        {/* How Reluv Works Section */}
+        {/* How Relove Works Section */}
         <section className="bg-[#fbfbfb] py-20 px-4">
           <div className="max-w-7xl mx-auto text-center">
             <h2 className="font-serif text-4xl font-bold text-gray-900 mb-4">
-              How Reluv works
+              How Relove works
             </h2>
             <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
               Buying and selling pre-loved fashion has never been easier — or

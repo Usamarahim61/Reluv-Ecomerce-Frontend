@@ -4,7 +4,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Footer from '../components/Footer';
 
-const ReluvAdForm = () => {
+const ReloveAdForm = () => {
   const [openSections, setOpenSections] = useState({ 1: true, 2: true, 3: true });
   const [charCount, setCharCount] = useState(300);
 
@@ -28,9 +28,9 @@ const ReluvAdForm = () => {
         </div>
         <div className="max-w-5xl mx-auto px-6 relative z-10">
           <div className="md:w-1/2">
-            <h1 className="text-4xl font-bold mb-6">Advertise with Reluv</h1>
+            <h1 className="text-4xl font-bold mb-6">Advertise with Relove</h1>
             <p className="text-lg opacity-90 mb-4 leading-relaxed">
-              Reluv is the largest online C2C marketplace in Europe dedicated to second-hand fashion, 
+              Relove is the largest online C2C marketplace in Europe dedicated to second-hand fashion, 
               with over 80 million members — and we're growing.
             </p>
             <p className="text-lg opacity-90">
@@ -167,4 +167,4 @@ const SelectRow = ({ label, options }: { label: string; options: string[] }) => 
   </div>
 );
 
-export default ReluvAdForm;
+export default ReloveAdForm;

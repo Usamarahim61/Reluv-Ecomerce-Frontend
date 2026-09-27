@@ -20,11 +20,11 @@ export default function Footer() {
 
   const sections: { title: string; links: FooterLink[] }[] = [
     {
-      title: 'Reluv',
+      title: 'Relove',
       links: [
         { label: 'About us', href: '/aboutUs' },
-        { label: 'Sustainability', href: '/ReluvGroup?view=sustainability' },
-        { label: 'Press', href: '/ReluvGroup?view=press' },
+        { label: 'Sustainability', href: '/ReloveGroup?view=sustainability' },
+        { label: 'Press', href: '/ReloveGroup?view=press' },
         { label: 'Advertising', href: '/advertisment' },
         { label: 'Accessibility', href: '/Accessibility' },
       ],
@@ -61,7 +61,7 @@ export default function Footer() {
               key={section.title} 
               className="flex flex-col items-center text-center md:items-start md:text-left"
             >
-              {section.title === 'Reluv' ? (
+              {section.title === 'Relove' ? (
                 <Link href="/" className="flex items-center gap-2 group mb-4 pr-6">
                   {/* <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center">
                     <ShoppingBag 
@@ -71,9 +71,9 @@ export default function Footer() {
                     />
                   </div>
                   <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#1a1816] tracking-tight">
-                    Reluv
+                    Relove
                   </h1> */}
-                  <Image src="/Relove_HD_Logo.png" alt="Reluv Logo" width={100} height={40} />
+                  <Image src="/Relove_HD_Logo.png" alt="Relove Logo" width={100} height={40} />
                 </Link>
               ) : (
                 <h4 className="mb-4 text-[16px] font-medium text-gray-500">

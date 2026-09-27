@@ -9,12 +9,12 @@ export default function AccessibilityPage() {
       {/* ================= HERO SECTION ================= */}
       <section className="text-center max-w-6xl mx-auto rounded-4xl pt-24 pb-40">
         <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          Accessibility at Reluv
+          Accessibility at Relove
         </h1>
 
         <p className="text-gray-600 text-xl leading-relaxed max-w-3xl mx-auto pb-5">
           Second-hand is for everyone. That's why we're committed to
-          making Reluv as accessible as possible, so more members can
+          making Relove as accessible as possible, so more members can
           earn, save, and enjoy a great experience.
         </p>
 <section className="container relative w-full h-[600px]">
@@ -52,7 +52,7 @@ export default function AccessibilityPage() {
                 <p className="text-gray-600 leading-relaxed text-lg">
                   In our testing lab, we use assistive technologies like
                   screen readers, alternative input devices, and speech
-                  recognition software to improve the Reluv website and
+                  recognition software to improve the Relove website and
                   app for members of all abilities.
                 </p>
               </div>
@@ -106,15 +106,15 @@ export default function AccessibilityPage() {
 
           <div className="space-y-4 text-xl leading-relaxed">
             <p>
-              To help shape Reluv with your story, email our support
+              To help shape Relove with your story, email our support
               team:
             </p>
 
             <a
-              href="mailto:accessibility@reluv.ie"
+              href="mailto:accessibility@Relove.ie"
               className="underline font-medium"
             >
-              accessibility@reluv.ie
+              accessibility@Relove.ie
             </a>
 
             <p>
@@ -130,7 +130,7 @@ export default function AccessibilityPage() {
         <p>
           When you send us an email, your personal data will be processed
           as described in our Privacy Policy. The related private
-          messages may be reviewed by Reluv community support in
+          messages may be reviewed by Relove community support in
           accordance with our Terms and Conditions.
         </p>
       </section>

@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const greatVibes = Great_Vibes({ variable: "--font-great-vibes", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
-  title: "Reluv - Ecommerce Platform",
-  description: "Reluv Ecommerce - Buy, Sell, Discover",
+  title: "Relove - Ecommerce Platform",
+  description: "Relove Ecommerce - Buy, Sell, Discover",
 };
 
 export default async function RootLayout({

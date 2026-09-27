@@ -412,7 +412,7 @@ const unreadMessagesCount = useMemo(() => {
               <div className="bg-[#fdfcfb] p-1 rounded-lg flex items-center justify-center" />
               <Image
                 src="/Relove_HD_Logo.png"
-                alt="Reluv Logo"
+                alt="Relove Logo"
                 width={510}
                 height={100}
                 className="pt-2 w-100 sm:w-30 md:w-32 lg:w-25 h-auto"

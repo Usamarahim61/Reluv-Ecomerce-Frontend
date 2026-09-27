@@ -2,7 +2,7 @@ import { ShieldCheck, RotateCcw } from 'lucide-react';
 import Image from 'next/image';
 import Footer from '../components/Footer';
 
-export default function ReluvHowItWorks() {
+export default function ReloveHowItWorks() {
   return (
     <>
     <div className="min-h-screen bg-white font-sans text-[#111111]">
@@ -14,7 +14,7 @@ export default function ReluvHowItWorks() {
         <div className=" right-0 top-0 h-full w-full md:w-[60%] z-0 opacity-80 md:opacity-100">
           <Image
             src="/how-is-it-works-header.png"
-            alt="Reluv Background"
+            alt="Relove Background"
             fill
             className="object-contain object-right"
             priority
@@ -25,8 +25,8 @@ export default function ReluvHowItWorks() {
         <div className="max-w-[1250px] mx-auto px-6 relative z-10 pt-16 pb-24">
           <div className="md:w-[50%] text-left">
 <h1 className="text-[50px] md:text-[48px] font-medium mb-6 leading-[1.3] tracking-normal text-[#111111]">
-  Reluv is your platform for <br/>
-  <span className="reluv-underline">
+  Relove is your platform for <br/>
+  <span className="Relove-underline">
     pre-owned pieces
   </span> you’ll love
 </h1>
@@ -51,7 +51,7 @@ export default function ReluvHowItWorks() {
           <Step 
             number="1" 
             title="List for free" 
-            desc="Download the Reluv app for free. Take photos of your item, describe it, and set your price. Tap 'Upload' and your listing is live."
+            desc="Download the Relove app for free. Take photos of your item, describe it, and set your price. Tap 'Upload' and your listing is live."
             img="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600"
           />
           <Step 
@@ -85,13 +85,13 @@ export default function ReluvHowItWorks() {
           <Step 
             number="1" 
             title="Find it" 
-            desc="Download the Reluv app for free. Browse millions of unique items, search thousands of brands, and find your favourites."
+            desc="Download the Relove app for free. Browse millions of unique items, search thousands of brands, and find your favourites."
             img="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600"
           />
           <Step 
             number="2" 
             title="Buy it" 
-            desc="Ask the seller any questions, then buy with the tap of a button. Pay securely via PayPal, bank card, Apple Pay or your Reluv Balance."
+            desc="Ask the seller any questions, then buy with the tap of a button. Pay securely via PayPal, bank card, Apple Pay or your Relove Balance."
             img="https://images.unsplash.com/photo-1601924990367-3660d456592a?w=600"
           />
           <Step 
@@ -128,7 +128,7 @@ export default function ReluvHowItWorks() {
               <div>
                 <h4 className="font-bold text-[20px] mb-2">Reliable refund policy</h4>
                 <p className="text-[18px] text-[#666666] leading-relaxed">
-                  Your order is protected when you pay through Reluv. You'll get a refund if your item doesn't arrive, was damaged in transit, or is significantly not as described.
+                  Your order is protected when you pay through Relove. You'll get a refund if your item doesn't arrive, was damaged in transit, or is significantly not as described.
                 </p>
                 <a href="#" className="text-[#08787c] text-sm mt-3 inline-block hover:underline">Learn more</a>
               </div>

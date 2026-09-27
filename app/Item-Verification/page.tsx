@@ -11,7 +11,7 @@ export default function ItemVerificationPage() {
         <div className="max-w-[850px] mx-auto px-6 text-center mb-12">
           <h1 className="text-[36px] md:text-[48px] font-bold mb-6 leading-tight text-[#111111]">
             Item Verification: <br /> 
-            <span className="reluv-underline">Shop with confidence</span>
+            <span className="Relove-underline">Shop with confidence</span>
           </h1>
           <p className="text-[20px] text-[#444444] max-w-[1200px] mx-auto mb-8 leading-relaxed">
             Our Item Verification service lets you have selected second-hand designer pieces checked for authenticity by our team of experts. They’ll personally verify your item to make sure you’re spending your money on the real thing.

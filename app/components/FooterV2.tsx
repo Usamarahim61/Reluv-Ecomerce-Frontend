@@ -12,7 +12,7 @@ export default function FooterV2() {
 
         {/* Copyright Text */}
         <span className="text-sm text-gray-500 font-normal">
-          © 2026 Reluv. Sustainable fashion marketplace.
+          © 2026 Relove. Sustainable fashion marketplace.
         </span>
       </div>
     </footer>

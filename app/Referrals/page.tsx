@@ -56,9 +56,9 @@ export default function Referrals(): JSX.Element {
     ? `${BASE_URL}/?ref=${referralCode}`
     : BASE_URL;
 
-  const shareTitle = "Join me on Reluv!";
+  const shareTitle = "Join me on Relove!";
   const shareText =
-    "Use my link to sign up, list items, and earn rewards on Reluv!";
+    "Use my link to sign up, list items, and earn rewards on Relove!";
 
   // ─── Fetch & derive referral data ─────────────────────────────────────────
 
@@ -257,7 +257,7 @@ export default function Referrals(): JSX.Element {
         <div className="relative h-[580px] md:h-[520px] w-full overflow-hidden">
           <img
             src="/referrals_updated_phones_2x.png"
-            alt="Friends sharing on Reluv"
+            alt="Friends sharing on Relove"
             className="w-full h-full object-cover"
           />
 
@@ -507,7 +507,7 @@ export default function Referrals(): JSX.Element {
               <div className="w-24 h-24 bg-[#f0f9f9] rounded-full flex items-center justify-center">
                 <Ticket className="w-10 h-10 text-[#cb6f4d]" />
               </div>
-              <h3 className="font-bold text-lg">Spend vouchers on Reluv</h3>
+              <h3 className="font-bold text-lg">Spend vouchers on Relove</h3>
               <p className="text-sm text-gray-500 leading-relaxed px-4">
                 Your voucher applies automatically to your next order of 15 THB or
                 more (excluding shipping and service fees).

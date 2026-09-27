@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import ReluvGroup from "../components/Reluv-Group-Navbar";
-import ReluvGroupFooter from "../components/Reluv-Group-Footer";
+import ReloveGroup from "../components/Relove-Group-Navbar";
+import ReloveGroupFooter from "../components/Relove-Group-Footer";
 
 import Footer from "../components/Footer";
 
@@ -19,57 +19,57 @@ const NEWS_DATA: NewsItem[] = [
   {
     id: "1",
     date: "September 16, 2025",
-    title: "Reluv partners with Oxfam and Jameela Jamil to put second-hand fashion on the main stage",
+    title: "Relove partners with Oxfam and Jameela Jamil to put second-hand fashion on the main stage",
     imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400",
   },
   {
     id: "2",
     date: "April 29, 2025",
-    title: "Reluv launches Reluv Ventures to accelerate the next generation of re-commerce start ups",
+    title: "Relove launches Relove Ventures to accelerate the next generation of re-commerce start ups",
     imageUrl: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400",
   },
   {
     id: "3",
     date: "April 29, 2025",
-    title: "Reluv delivers strong, profitable growth, while investing in Reluv Go and Reluv Pay",
+    title: "Relove delivers strong, profitable growth, while investing in Relove Go and Relove Pay",
     imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400",
   },
   // Row 2
   {
     id: "4",
     date: "April 22, 2025",
-    title: "Shop Alexa Chung's wardrobe on Reluv UK",
+    title: "Shop Alexa Chung's wardrobe on Relove UK",
     imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400",
   },
   {
     id: "5",
     date: "April 10, 2025",
-    title: "Reluv Go launches in Spain and Portugal",
+    title: "Relove Go launches in Spain and Portugal",
     imageUrl: "https://images.unsplash.com/photo-1566576721346-d4a3b4eaad5b?w=400",
   },
   {
     id: "6",
     date: "March 25, 2025",
-    title: "Reluv Launches 'House of Reluv' Luxury Fashion Wardrobe Online",
+    title: "Relove Launches 'House of Relove' Luxury Fashion Wardrobe Online",
     imageUrl: "https://images.unsplash.com/photo-1445205170230-053b830c6050?w=400",
   },
   // Row 3
   {
     id: "7",
     date: "February 18, 2025",
-    title: "Reluv Launches New Brand Platform 'New Again' with Its First Campaign",
+    title: "Relove Launches New Brand Platform 'New Again' with Its First Campaign",
     imageUrl: "https://images.unsplash.com/photo-1529392266961-9cc3830da2fc?w=400",
   },
   {
     id: "8",
     date: "February 3, 2025",
-    title: "Reluv Introduces 'Re-invinted', a Data-Powered Campaign that Reveals the Culture",
+    title: "Relove Introduces 'Re-invinted', a Data-Powered Campaign that Reveals the Culture",
     imageUrl: "https://images.unsplash.com/photo-1512428559083-a401c33c2b65?w=400",
   },
   {
     id: "9",
     date: "October 24, 2024",
-    title: "Reluv Secures TPG-Led Secondary Investment at Valuation of THB 5B",
+    title: "Relove Secures TPG-Led Secondary Investment at Valuation of THB 5B",
     imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
   },
 ];
@@ -85,7 +85,7 @@ const newsroom = () => {
           <div className="flex-1 order-2 md:order-1">
             <p className="text-sm text-slate-500 mb-2">January 22, 2026</p>
             <h1 className="text-3xl md:text-4xl font-bold mb-6">
-              Reluv has landed in New York
+              Relove has landed in New York
             </h1>
             <button className="bg-[#cb6f4d] text-white px-6 py-2 rounded font-medium hover:bg-[#005f68] transition-colors">
               Read more
@@ -151,7 +151,7 @@ const newsroom = () => {
         <section className="bg-slate-50 rounded-3xl p-10 md:p-20 text-center border border-slate-100">
           <h2 className="text-3xl font-bold mb-6">Press inquiries</h2>
           <p className="text-slate-600 max-w-xl mx-auto mb-10 leading-relaxed">
-            For more Reluv information, news and announcements, or editorial requests, 
+            For more Relove information, news and announcements, or editorial requests, 
             please contact our press office. We’d love to talk to you!
           </p>
           <button className="bg-[#cb6f4d] text-white px-10 py-3 rounded-lg font-bold hover:bg-[#005f68] transition-colors shadow-md">
