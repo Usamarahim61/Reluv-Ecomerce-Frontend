@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import ReloveGroup from "../components/Relove-Group-Navbar";
-import ReloveGroupFooter from "../components/Relove-Group-Footer";
+import ReloveGroup from "../components/Reluv-Group-Navbar";
+import ReloveGroupFooter from "../components/Reluv-Group-Footer";
 
 import Footer from "../components/Footer";
 
