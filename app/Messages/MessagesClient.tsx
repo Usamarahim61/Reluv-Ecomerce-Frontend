@@ -390,6 +390,16 @@ export default function MessagesClient() {
     if (!user?.id) return;
     const socket = getChatSocket();
 
+    // Rejoin all known conversation rooms after a reconnect so message:new
+    // events keep arriving for every thread, not just the selected one.
+    const rejoinAll = () => {
+      conversations.forEach((c) => {
+        if (c.id > 0) socket.emit("conversation:join", { conversationId: c.id });
+      });
+    };
+    if (socket.connected) rejoinAll();
+    socket.on("connect", rejoinAll);
+
     const handleConversationUpsert = (event: {
       conversation?: ConversationItem;
     }) => {
@@ -419,11 +429,12 @@ export default function MessagesClient() {
     socket.on("conversations:unread-count", handleUnreadCountChanged);
 
     return () => {
+      socket.off("connect", rejoinAll);
       socket.off("conversation:upsert", handleConversationUpsert);
       socket.off("conversation:deleted", handleConversationDeleted);
       socket.off("conversations:unread-count", handleUnreadCountChanged);
     };
-  }, [dispatch, router, selectedId, user?.id]);
+  }, [dispatch, router, selectedId, user?.id, conversations]);
 
   const activeMessages = selectedId
     ? (messagesByConversation[String(selectedId)] ?? [])

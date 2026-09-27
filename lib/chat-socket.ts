@@ -24,27 +24,29 @@ export const getChatSocket = (): Socket => {
   if (socket) return socket;
 
   socket = io(getSocketUrl(), {
-    // Allow Socket.IO polling during local development and behind proxies;
-    // it will upgrade to WebSocket automatically when available.
-    transports: ["polling", "websocket"],
+    // Prefer WebSocket for lower latency; fall back to polling on networks
+    // that block WebSocket upgrades.
+    transports: ["websocket", "polling"],
     auth: {
       token: token || "",
     },
     reconnection: true,
     reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
     timeout: 10000,
   });
 
-  socket.on('connect', () => {
-    console.log('[Socket] Connected to server');
+  socket.on("connect", () => {
+    console.log("[Socket] Connected to server");
   });
 
-  socket.on('disconnect', () => {
-    console.log('[Socket] Disconnected from server');
+  socket.on("disconnect", () => {
+    console.log("[Socket] Disconnected from server");
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('[Socket] Connection error:', error.message);
+  socket.on("connect_error", (error) => {
+    console.error("[Socket] Connection error:", error.message);
   });
 
   return socket;
