@@ -459,7 +459,7 @@ export default function SignUpLogin({
                 />
                 {/* Added Line Social Button */}
                 <SocialButton
-                  icon="https://www.svgrepo.com/show/354012/line.svg"
+                  icon="/line-logo.svg"
                   text="Continue with Line"
                   isLoading={loadingProvider === "line"}
                   isDisabled={isBusy && loadingProvider !== "line"}
