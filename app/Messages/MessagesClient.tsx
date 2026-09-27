@@ -792,7 +792,7 @@ export default function MessagesClient() {
 
   return (
     <div
-      className={`flex flex-col h-screen md:h-[calc(100vh-70px)] bg-linear-to-br from-[#faf9f7] via-white to-[#f0ede8] ${
+      className={`flex flex-col h-screen md:h-[calc(100vh-130px)] bg-linear-to-br from-[#faf9f7] via-white to-[#f0ede8] ${
         isAndroid ? "android-messages-shell" : ""
       }`}
     >
