@@ -95,7 +95,7 @@ const messagesSlice = createSlice({
       }>
     ) => {
       const { conversationId, lastMessagePreview, lastMessageAt } = action.payload;
-      state.conversations = state.conversations.map((c) =>
+      const updated = state.conversations.map((c) =>
         c.id === conversationId
           ? {
               ...c,
@@ -104,6 +104,11 @@ const messagesSlice = createSlice({
             }
           : c
       );
+      state.conversations = updated.sort((a, b) => {
+        const aTime = a.lastMessageAt ?? a.updatedAt ?? "";
+        const bTime = b.lastMessageAt ?? b.updatedAt ?? "";
+        return bTime.localeCompare(aTime);
+      });
     },
     setMessagesForConversation: (
       state,
@@ -157,7 +162,11 @@ const messagesSlice = createSlice({
       })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.conversationsStatus = "succeeded";
-        state.conversations = action.payload;
+        state.conversations = [...action.payload].sort((a, b) => {
+          const aTime = a.lastMessageAt ?? a.updatedAt ?? "";
+          const bTime = b.lastMessageAt ?? b.updatedAt ?? "";
+          return bTime.localeCompare(aTime);
+        });
       })
       .addCase(fetchConversations.rejected, (state, action) => {
         state.conversationsStatus = "failed";
