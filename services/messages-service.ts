@@ -32,8 +32,14 @@ export type ConversationItem = {
 };
 
 export type MessageAttachment = {
-  id: number;
+  id: number | string;
   url: string;
+  /**
+   * Browser object URL captured from the optimistic bubble before the server
+   * echo replaces it. Rendered until the remote copy is available so the
+   * image never goes blank mid-send.
+   */
+  localUrl?: string;
   name: string;
   ext: string;
   mime: string;

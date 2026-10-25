@@ -154,9 +154,19 @@ const messagesSlice = createSlice({
         if (optimisticIndex >= 0) {
           const copy = [...existing];
           const optimistic = existing[optimisticIndex];
+          // Server attachments win, but keep the sender's local object URL as a
+          // display fallback so the image never goes blank when the server
+          // echo replaces the optimistic bubble.
+          const resolvedAttachments = (message.attachments?.length
+            ? message.attachments
+            : optimistic.attachments
+          )?.map((att: any, index: number) => ({
+            ...att,
+            localUrl: optimistic.attachments?.[index]?.localUrl ?? undefined,
+          }));
           const updatedMessage = {
             ...message,
-            attachments: message.attachments?.length ? message.attachments : optimistic.attachments,
+            attachments: resolvedAttachments,
           };
           copy[optimisticIndex] = updatedMessage;
           state.messagesByConversation[key] = copy;
@@ -231,9 +241,19 @@ const messagesSlice = createSlice({
         const cachedMessages = state.messagesByConversation[key] ?? [];
         const merged = messages.map((message) => {
           const cached = cachedMessages.find((item) => String(item.id) === String(message.id));
-          return !message.attachments?.length && cached?.attachments?.length
-            ? { ...message, attachments: cached.attachments }
-            : message;
+          if (cached?.attachments?.length) {
+            // Keep the sender's local object URL for freshly-sent images so a
+            // background refetch never blanks them out mid-transfer.
+            return {
+              ...message,
+              attachments: (message.attachments?.length ? message.attachments : cached.attachments)
+                .map((att: any, index: number) => ({
+                  ...att,
+                  localUrl: att.localUrl ?? cached.attachments?.[index]?.localUrl,
+                })),
+            };
+          }
+          return message;
         });
         for (const message of duringFetch) {
           const optimisticIndex = message.clientMessageId
