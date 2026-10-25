@@ -173,8 +173,18 @@ const CheckOutContent: React.FC = () => {
       const result = await res.json();
 
       if (!res.ok) {
+        // The backend is authoritative: if another buyer completed the
+        // purchase first, tell the user clearly instead of a generic error.
+        if (result?.error?.code === "PRODUCT_SOLD" || res.status === 409) {
+          toast.error(
+            "This product has already been purchased and is no longer available.",
+            toastConfig,
+          );
+          setTimeout(() => { window.location.href = "/"; }, 2500);
+          return;
+        }
         toast.error(
-          result?.message || "Failed to place order. Please try again.",
+          result?.message || result?.error?.message || "Failed to place order. Please try again.",
           toastConfig,
         );
         return;
