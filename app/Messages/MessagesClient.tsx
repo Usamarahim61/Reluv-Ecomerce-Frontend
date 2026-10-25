@@ -30,6 +30,7 @@ import Link from "next/link";
 import {
   ConversationItem,
   MessageItem,
+  OfferStatus,
   blockUser,
   createOfferViaSocket,
   deleteConversation,
@@ -51,6 +52,7 @@ import {
   markConversationRead,
   removeConversation,
   setSelectedConversationId,
+  updateOfferStatus,
   updateConversationPreview,
   upsertMessage,
 } from "@/lib/features/messagesSlice";
@@ -89,6 +91,112 @@ const formatFullDateTime = (value?: string | null) => {
     return "";
   }
 };
+
+// Unified conversations: one conversation can reference many products.
+// Product references arrive as `product_ref` messages (metadata.productRef).
+type ProductRef = {
+  id: number;
+  documentId?: string | null;
+  title?: string | null;
+  price?: number | string | null;
+  image?: string | null;
+  productStatus?: string | null;
+};
+
+const getProductRefFromMessage = (msg: MessageItem): ProductRef | null => {
+  const ref = (msg.metadata as any)?.productRef;
+  return ref && Number.isInteger(Number(ref.id))
+    ? {
+        id: Number(ref.id),
+        documentId: ref.documentId ?? null,
+        title: ref.title ?? null,
+        price: ref.price ?? null,
+        image: ref.image ?? null,
+        productStatus: ref.productStatus ?? null,
+      }
+    : null;
+};
+
+/** All products referenced in a conversation's messages (primary product first). */
+const collectConversationProducts = (
+  conversation: ConversationItem | null,
+  messages: MessageItem[],
+): ProductRef[] => {
+  const products: ProductRef[] = [];
+  const seen = new Set<number>();
+  const push = (p: ProductRef | null) => {
+    if (!p || seen.has(p.id)) return;
+    seen.add(p.id);
+    products.push(p);
+  };
+  if (conversation?.product?.id) {
+    push({
+      id: Number(conversation.product.id),
+      documentId: (conversation.product as any).documentId ?? null,
+      title: conversation.product.title ?? null,
+      price: conversation.product.price ?? null,
+      image: getFirstImageUrl(conversation.product.images),
+      productStatus: (conversation.product as any).productStatus ?? null,
+    });
+  }
+  for (const msg of messages) {
+    push(getProductRefFromMessage(msg));
+    const offerProduct = msg.offer?.product;
+    if (offerProduct?.id != null && Number.isInteger(Number(offerProduct.id))) {
+      push({
+        id: Number(offerProduct.id),
+        documentId: offerProduct.documentId ?? null,
+        title: offerProduct.title ?? msg.offer?.productTitle ?? null,
+        price: offerProduct.price ?? msg.offer?.originalPrice ?? null,
+        image: msg.offer?.productImage ?? null,
+        productStatus: offerProduct.productStatus ?? null,
+      });
+    }
+  }
+  return products;
+};
+
+/** Inline product reference card shown for product_ref messages. */
+function ProductRefCard({ ref_ }: { ref_: ProductRef }) {
+  return (
+    <div className="flex flex-col max-w-xs">
+      <Link
+        href={`/products/${ref_.id}`}
+        className="flex gap-3 p-3 rounded-2xl bg-white border border-[#e0ddd8] shadow-sm hover:border-[#cb6f4d] transition-all"
+      >
+        <div className="w-14 h-14 rounded-xl bg-[#f0ede8] overflow-hidden flex items-center justify-center shrink-0">
+          {ref_.image ? (
+            <img
+              src={ref_.image.startsWith("http") ? ref_.image : `${API_BASE_URL}${ref_.image}`}
+              alt={ref_.title || "Product"}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <ImageIcon className="text-[#ccc]" size={20} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] uppercase tracking-wide text-[#cb6f4d] font-semibold">
+            Interested in
+          </p>
+          <p className="text-sm font-semibold text-[#1a1a1a] truncate">
+            {ref_.title || "Product"}
+          </p>
+          {ref_.price != null && (
+            <p className="text-xs text-[#888]">
+              TBH{ref_.price}
+              {ref_.productStatus && ref_.productStatus !== "active" && (
+                <span className="ml-2 text-[#b45309] capitalize">
+                  {ref_.productStatus}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
 
 export default function MessagesClient() {
   const { user } = useAuth();
@@ -130,6 +238,7 @@ export default function MessagesClient() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
+  const [counterOfferParentId, setCounterOfferParentId] = useState<number | null>(null);
   const [offerMessage, setOfferMessage] = useState("");
   const [offerError, setOfferError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -364,25 +473,36 @@ export default function MessagesClient() {
       dispatch(fetchConversations());
     };
 
-    const handleOfferChanged = () => {
-      if (selectedId) dispatch(fetchMessages(selectedId));
-      dispatch(fetchConversations());
+    const handleOfferResponded = (event: { conversationId?: number; offerId?: number; offer?: { id?: number; status?: OfferStatus } }) => {
+      const conversationId = Number(event.conversationId ?? selectedId);
+      const offerId = Number(event.offerId ?? event.offer?.id);
+      const status = event.offer?.status;
+      if (conversationId > 0 && offerId > 0 && status) {
+        dispatch(updateOfferStatus({ conversationId, offerId, status }));
+      }
+    };
+    const handleOfferInvalidated = (event: { conversationId?: number; offerId?: number }) => {
+      const conversationId = Number(event.conversationId ?? selectedId);
+      const offerId = Number(event.offerId);
+      if (conversationId > 0 && offerId > 0) {
+        dispatch(updateOfferStatus({ conversationId, offerId, status: "unavailable" }));
+      }
     };
 
     socket.on("message:new", handleNewMessage);
     socket.on("messages:read", handleMessagesRead);
     socket.on("block:changed", handleBlockChanged);
     socket.on("message:error", handleMessageError);
-    socket.on("offer:created", handleOfferChanged);
-    socket.on("offer:responded", handleOfferChanged);
+    socket.on("offer:responded", handleOfferResponded);
+    socket.on("offer:invalidated", handleOfferInvalidated);
     return () => {
       socket.off("connect", joinSelectedConversation);
       socket.off("message:new", handleNewMessage);
       socket.off("messages:read", handleMessagesRead);
       socket.off("block:changed", handleBlockChanged);
       socket.off("message:error", handleMessageError);
-      socket.off("offer:created", handleOfferChanged);
-      socket.off("offer:responded", handleOfferChanged);
+      socket.off("offer:responded", handleOfferResponded);
+      socket.off("offer:invalidated", handleOfferInvalidated);
     };
   }, [selectedId, user?.id, peerUser?.id, dispatch]);
 
@@ -445,6 +565,13 @@ export default function MessagesClient() {
   const messagesError = selectedId
     ? messagesErrorByConversation[String(selectedId)]
     : null;
+
+  // Unified conversations: all products discussed in this conversation.
+  const conversationProducts = useMemo(
+    () => collectConversationProducts(activeConversation, activeMessages),
+    [activeConversation, activeMessages],
+  );
+  const hasMultipleProducts = conversationProducts.length > 1;
 
   const filteredConversations = useMemo(
     () =>
@@ -589,8 +716,6 @@ export default function MessagesClient() {
         conversationId: selectedId,
       });
 
-      // Refresh messages to show the response message created by backend
-      dispatch(fetchMessages(selectedId));
       toast.success(`Offer ${action}!`);
     } catch (err: any) {
       console.error("Failed to respond to offer:", err);
@@ -604,19 +729,35 @@ export default function MessagesClient() {
   const handleBuyWithOffer = (offer: any) => {
     if (!offer || !activeConversation) return;
 
-    const product = activeConversation.product;
+    // Offers carry their own product — with unified conversations the offer's
+    // product is authoritative, never conversation.product.
+    const offerProductId = offer.product?.id
+      ? Number(offer.product.id)
+      : Number(offer.productId ?? 0);
+    const referenced = conversationProducts.find(
+      (p) => Number(p.id) === offerProductId,
+    );
+    const product = referenced
+      ? {
+          id: referenced.id,
+          documentId: referenced.documentId,
+          title: referenced.title,
+          images: referenced.image ? [{ url: referenced.image }] : [],
+        }
+      : activeConversation.product;
     const seller = activeConversation.seller;
     const imageUrl =
       offer.productImage ||
+      (referenced?.image ? referenced.image : "") ||
       (product?.images ? getFirstImageUrl(product.images) || "" : "");
 
     router.push(
       `/CheckOut?${new URLSearchParams({
-        productId: String(product?.id || ""),
-        documentId: String(product?.documentId || ""),
-        title: offer.productTitle || product?.title || "Product",
-        brand: product?.brand || "Reluv",
-        size: product?.size || "One Size",
+        productId: String(offerProductId || product?.id || ""),
+        documentId: String((offer.product as any)?.documentId || (product as any)?.documentId || ""),
+        title: offer.productTitle || offer.product?.title || product?.title || "Product",
+        brand: (offer.product as any)?.brand || "Reluv",
+        size: (offer.product as any)?.size || "One Size",
         price: String(offer.offerPrice),
         currency: "TBH",
         imageUrl: imageUrl,
@@ -639,14 +780,23 @@ export default function MessagesClient() {
     return "📎";
   };
 
-  const productPrice = activeConversation?.product?.price
-    ? parseFloat(String(activeConversation.product.price))
+  // Unified conversations: pick which product the offer applies to when the
+  // conversation references several products.
+  const [offerProductId, setOfferProductId] = useState<number | null>(null);
+  const offeredProduct =
+    conversationProducts.find((p) => p.id === offerProductId) ??
+    conversationProducts[0] ??
+    null;
+  const productPrice = offeredProduct?.price
+    ? parseFloat(String(offeredProduct.price))
     : 0;
   const minOffer = productPrice * 0.5;
   const maxOffer = productPrice * 1.5;
 
   const handleMakeOffer = () => {
     setShowPlusMenu(false);
+    setOfferProductId(conversationProducts[0]?.id ?? null);
+    setCounterOfferParentId(null);
     setShowOfferModal(true);
     setOfferAmount("");
     setOfferMessage("");
@@ -695,25 +845,23 @@ export default function MessagesClient() {
 
     setIsSendingOffer(true);
     try {
-      const product = activeConversation.product;
-      if (!product) {
+      if (!offeredProduct) {
         setOfferError("Product not found");
         return;
       }
 
       await createOfferViaSocket({
-          productId: product.id,
+          productId: offeredProduct.id,
           buyerId: Number(user?.id),
           sellerId: Number(peerUser?.id),
           offerPrice: amount,
           message: offerMessage || undefined,
           conversationId: selectedId,
+          ...(counterOfferParentId ? { parentOfferId: counterOfferParentId } : {}),
         });
 
-      // Refresh messages to show the offer message created by backend
-      dispatch(fetchMessages(selectedId));
-
       setShowOfferModal(false);
+      setCounterOfferParentId(null);
       setOfferAmount("");
       setOfferMessage("");
       setOfferError(null);
@@ -991,47 +1139,43 @@ export default function MessagesClient() {
                       ←
                     </button>
 
-                    {/* Product Image - Clickable */}
+                    {/* A conversation belongs to the two participants, not its
+                        legacy primary product. */}
                     <Link
-                      href={`/products/${activeConversation.product?.id}`}
-                      className="w-14 h-14 bg-[#f0ede8] rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8] hover:border-[#cb6f4d] transition-all cursor-pointer group"
+                      href={peerUser?.id ? `/member/${peerUser.id}` : "#"}
+                      className="w-12 h-12 bg-[#f0ede8] rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8] hover:border-[#cb6f4d] transition-colors"
+                      aria-label={`View ${peerUser?.username || "user"}'s profile`}
                     >
-                      {activeConversation.product?.images &&
-                      getFirstImageUrl(activeConversation.product.images) ? (
+                      {peerUser?.avatar?.url ? (
                         <img
-                          src={
-                            getFirstImageUrl(
-                              activeConversation.product.images,
-                            ) || ""
-                          }
-                          alt={activeConversation.product?.title || "Product"}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          src={peerUser.avatar.url.startsWith("http") ? peerUser.avatar.url : `${API_BASE_URL}${peerUser.avatar.url}`}
+                          alt={peerUser.username || "User"}
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        <ImageIcon
-                          className="text-[#ccc] group-hover:text-[#cb6f4d] transition-colors"
-                          size={24}
-                        />
+                        <span className="text-[#cb6f4d] font-semibold text-lg">
+                          {peerUser?.username?.[0]?.toUpperCase() || "U"}
+                        </span>
                       )}
                     </Link>
 
                     {/* Header Info - Clickable */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#1a1a1a] text-sm">
+                        <Link
+                          href={peerUser?.id ? `/member/${peerUser.id}` : "#"}
+                          className="font-semibold text-[#1a1a1a] text-sm truncate hover:text-[#cb6f4d]"
+                        >
                           {peerUser?.username || "User"}
-                        </span>
+                        </Link>
                         <CheckCircle2
                           size={14}
                           className="text-[#cb6f4d] shrink-0"
                         />
                       </div>
-                      <Link
-                        href={`/products/${activeConversation.product?.id}`}
-                        className="text-xs text-[#888] hover:text-[#cb6f4d] truncate block transition-colors cursor-pointer"
-                      >
-                        {activeConversation.product?.title || "Product"}
-                      </Link>
+                      <span className="text-xs text-[#888] truncate block">
+                        Buyer–seller conversation
+                      </span>
                     </div>
                   </div>
 
@@ -1320,6 +1464,9 @@ export default function MessagesClient() {
                       msg.offer?.status || msg.metadata?.status;
                     const originalPrice =
                       msg.offer?.originalPrice ||
+                      (msg.offer?.product?.price
+                        ? parseFloat(String(msg.offer.product.price))
+                        : 0) ||
                       (activeConversation?.product?.price
                         ? parseFloat(String(activeConversation.product.price))
                         : 0);
@@ -1329,6 +1476,10 @@ export default function MessagesClient() {
                         key={msg.id}
                         className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                       >
+                        {/* Product reference card (unified conversations) */}
+                        {getProductRefFromMessage(msg) ? (
+                          <ProductRefCard ref_={getProductRefFromMessage(msg)!} />
+                        ) : (
                         <div className="flex flex-col max-w-xs">
                           <div
                             className={`px-4 py-2.5 rounded-2xl text-sm transition-all ${
@@ -1377,6 +1528,21 @@ export default function MessagesClient() {
                                           ? offerAmount.toFixed(2)
                                           : offerAmount}
                                       </span>
+                                      {/* Identify the product this offer applies to */}
+                                      {(msg.offer?.product?.title ||
+                                        msg.offer?.productTitle) && (
+                                        <span
+                                          className={`text-xs truncate max-w-[120px] ${
+                                            isMine
+                                              ? "text-white/80"
+                                              : "text-[#888]"
+                                          }`}
+                                        >
+                                          for{" "}
+                                          {msg.offer?.product?.title ||
+                                            msg.offer?.productTitle}
+                                        </span>
+                                      )}
                                       {offerStatus === "pending" && (
                                         <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">
                                           Pending
@@ -1468,11 +1634,33 @@ export default function MessagesClient() {
                                             )}
                                           </button>
                                           <button
-                                            onClick={() => {
-                                              setOfferAmount(
-                                                String(offerAmount),
+                                            onClick={async () => {
+                                              const parentId = Number(offerId);
+                                              const parentProductId = Number(msg.offer?.product?.id ?? msg.metadata?.productId ?? 0);
+                                              const parentProduct = conversationProducts.find(
+                                                (product) => Number(product.id) === parentProductId,
                                               );
-                                              setShowOfferModal(true);
+                                              if (!parentId || !parentProduct || !selectedId || !user?.id) {
+                                                toast.error("The product for this offer could not be found.");
+                                                return;
+                                              }
+                                              if (!window.confirm("Decline this offer and continue to a counter offer?")) return;
+
+                                              try {
+                                                await respondToOfferViaSocket({
+                                                  offerId: parentId,
+                                                  action: "declined",
+                                                  sellerId: Number(user.id),
+                                                  conversationId: selectedId,
+                                                });
+                                                setOfferProductId(parentProduct.id);
+                                                setCounterOfferParentId(parentId);
+                                                setOfferAmount(String(msg.offer?.offerPrice ?? ""));
+                                                setOfferMessage("");
+                                                setShowOfferModal(true);
+                                              } catch (err: any) {
+                                                toast.error(err?.message || "Could not decline the original offer.");
+                                              }
                                             }}
                                             className="w-full px-3 py-2 bg-white border border-[#cb6f4d] text-[#cb6f4d] hover:bg-orange-50 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
                                           >
@@ -1588,6 +1776,7 @@ export default function MessagesClient() {
                             {formatFullDateTime(msg.createdAt)}
                           </span>
                         </div>
+                        )}
                       </div>
                     );
                   })
@@ -1883,6 +2072,7 @@ export default function MessagesClient() {
                 onClick={() => {
                   setShowOfferModal(false);
                   setOfferAmount("");
+                  setCounterOfferParentId(null);
                   setError(null);
                 }}
                 className="w-8 h-8 rounded-full hover:bg-[#f0ede8] flex items-center justify-center transition-colors"
@@ -1891,43 +2081,62 @@ export default function MessagesClient() {
               </button>
             </div>
 
-            {/* Product Info */}
-            {activeConversation?.product && (
-              <div className="mb-6 p-4 bg-[#faf9f7] rounded-xl border border-[#e0ddd8]">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-[#e0ddd8]">
-                    {activeConversation.product.images &&
-                    getFirstImageUrl(activeConversation.product.images) ? (
-                      <img
-                        src={
-                          getFirstImageUrl(activeConversation.product.images) ||
-                          ""
-                        }
-                        alt={activeConversation.product.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="text-[#ccc]" size={24} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1a1a1a] truncate">
-                      {activeConversation.product.title}
+            {/* Product Selector — unified conversations can hold many products */}
+            {hasMultipleProducts ? (
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-[#1a1a1a] mb-2">
+                  Product
+                </label>
+                <select
+                  value={offeredProduct?.id ?? ""}
+                  disabled={Boolean(counterOfferParentId)}
+                  onChange={(e) => setOfferProductId(Number(e.target.value))}
+                  className="w-full border border-[#e0ddd8] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] bg-white focus:outline-none focus:border-[#cb6f4d]"
+                >
+                  {conversationProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title || `Product #${p.id}`}
+                      {p.price != null ? ` — TBH${p.price}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : offeredProduct ? (
+            <div className="mb-6 p-4 bg-[#faf9f7] rounded-xl border border-[#e0ddd8]">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-[#e0ddd8]">
+                  {offeredProduct.image ? (
+                    <img
+                      src={
+                        offeredProduct.image.startsWith("http")
+                          ? offeredProduct.image
+                          : `${API_BASE_URL}${offeredProduct.image}`
+                      }
+                      alt={offeredProduct.title || "Product"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="text-[#ccc]" size={24} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#1a1a1a] truncate">
+                    {offeredProduct.title || "Product"}
+                  </p>
+                  {offeredProduct.price != null && (
+                    <p className="text-xs text-[#888] mt-1">
+                      Listed price:{" "}
+                      <span className="font-semibold text-[#cb6f4d]">
+                        TBH{offeredProduct.price}
+                      </span>
                     </p>
-                    {activeConversation.product.price && (
-                      <p className="text-xs text-[#888] mt-1">
-                        Listed price:{" "}
-                        <span className="font-semibold text-[#cb6f4d]">
-                          {activeConversation.product.price}
-                        </span>
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+            ) : null}
 
             {/* Offer Input */}
             <div className="mb-4">
@@ -1954,9 +2163,9 @@ export default function MessagesClient() {
                   {offerError}
                 </p>
               )}
-              {activeConversation?.product?.price && (
+              {offeredProduct?.price != null && (
                 <p className="text-xs text-[#888] mt-2">
-                  💡 Tip: Listed price is TBH{activeConversation.product.price}.
+                  💡 Tip: Listed price is TBH{offeredProduct.price}.
                   Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
                 </p>
               )}
@@ -1982,6 +2191,7 @@ export default function MessagesClient() {
                 onClick={() => {
                   setShowOfferModal(false);
                   setOfferAmount("");
+                  setCounterOfferParentId(null);
                   setError(null);
                 }}
                 className="flex-1 px-4 py-3 border border-[#e0ddd8] text-[#888] rounded-xl font-semibold hover:bg-[#f0ede8] transition-colors"

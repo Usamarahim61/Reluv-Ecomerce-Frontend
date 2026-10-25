@@ -40,6 +40,8 @@ export type MessageAttachment = {
   size: number;
 };
 
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'completed' | 'unavailable';
+
 export type MessageItem = {
   id: number | string;
   content: string;
@@ -49,6 +51,7 @@ export type MessageItem = {
   metadata?: {
     type?: string;
     offerId?: number;
+    productId?: number;
     amount?: number;
     status?: string;
   };
@@ -56,7 +59,7 @@ export type MessageItem = {
     id: number;
     offerPrice: number;
     originalPrice: number;
-    status: 'pending' | 'accepted' | 'declined' | 'expired' | 'completed';
+    status: OfferStatus;
     message?: string;
     expiresAt?: string;
     buyer?: ConversationUser | number;
@@ -70,7 +73,9 @@ export type MessageItem = {
       title?: string;
       brand?: string;
       size?: string;
-    };
+      price?: number | string;
+      productStatus?: string;
+    } | null;
     currency?: string; // e.g., "TBH"
     buyerProtectionFee?: number;
     shippingFee?: number;
@@ -208,6 +213,7 @@ export async function createOfferViaSocket(params: {
   offerPrice: number;
   message?: string;
   conversationId: number;
+  parentOfferId?: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
   const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -216,7 +222,7 @@ export async function createOfferViaSocket(params: {
     const timeout = globalThis.setTimeout(() => {
       cleanup();
       reject(new Error("offer:create timed out."));
-    }, 10000);
+    }, 20000);
 
     const cleanup = () => {
       globalThis.clearTimeout(timeout);
@@ -254,7 +260,7 @@ export async function respondToOfferViaSocket(params: {
     const timeout = globalThis.setTimeout(() => {
       cleanup();
       reject(new Error("offer:respond timed out."));
-    }, 10000);
+    }, 20000);
 
     const cleanup = () => {
       globalThis.clearTimeout(timeout);
@@ -262,9 +268,13 @@ export async function respondToOfferViaSocket(params: {
       socket.off("offer:error", handleError);
     };
 
-    const handleResponded = (event: { offerId?: number; offer?: unknown }) => {
+    const handleResponded = (event: { offerId?: number; offer?: unknown; conflict?: boolean; message?: string }) => {
       if (Number(event.offerId) !== Number(params.offerId)) return;
       cleanup();
+      if (event.conflict) {
+        reject(new Error(event.message || "This item is no longer available."));
+        return;
+      }
       resolve(event.offer);
     };
 
