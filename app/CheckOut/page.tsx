@@ -1,7 +1,6 @@
 "use client";
-import React, { useState, Suspense, useEffect, useRef } from "react";
+import React, { useState, Suspense, useEffect, useRef, useMemo } from "react";
 import {
-  CreditCard,
   MapPin,
   Home,
   ChevronRight,
@@ -14,7 +13,13 @@ import {
 } from "lucide-react";
 import { Lock as LockIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import CardDetailsModal from "../components/AddCard";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import PickupPointModal from "../components/PickupPointModal";
 import PhoneField from "../components/PhoneField";
 import { useAuth } from "@/context/AuthContext";
@@ -23,13 +28,46 @@ import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
 import { getUserAddress } from "@/services/auth-service";
-import { getGoogleAddress } from "@/lib/user-profile";
 import AddressModal, {
   type ThaiAddress,
   emptyThaiAddress,
   formatThaiAddress,
   hydrateThaiAddress,
 } from "../components/AddressModal";
+
+const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+// Only create the Stripe promise when a key exists, so a missing env var
+// produces a clear on-screen message instead of a silently empty form.
+const stripePromise = STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+// A valid PaymentIntent client secret looks like: pi_XXXX_secret_YYYY
+const CLIENT_SECRET_PATTERN = /^pi_[^_]+_secret_.+$/;
+
+// Pulls a readable message out of whatever shape the backend error takes.
+const extractApiError = async (res: Response, fallback: string) => {
+  try {
+    const body = await res.json();
+    const msg =
+      body?.error?.message ??
+      body?.message ??
+      (typeof body?.error === "string" ? body.error : null);
+    return (msg as string) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const toastConfig = {
+  position: "top-right" as const,
+  autoClose: 3000,
+  hideProgressBar: false,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: true,
+};
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -44,7 +82,7 @@ interface ProductData {
   currency: string;
 }
 
-// ── Main content ───────────────────────────────────────────────────────────────
+// ── Outer wrapper: owns address/delivery state + creates the PaymentIntent ─────
 
 const CheckOutContent: React.FC = () => {
   const { user } = useAuth();
@@ -52,16 +90,42 @@ const CheckOutContent: React.FC = () => {
 
   const [savedAddress, setSavedAddress] = useState<ThaiAddress>(emptyThaiAddress);
   const [openAddressModal, setOpenAddressModal] = useState(false);
-
-  const [openCardModal, setOpenCardModal] = useState(false);
   const [openPickupModal, setOpenPickupModal] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "home">("pickup");
-  const [cardDetails, setCardDetails] = useState<any>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [SameNumberForFutureOrders, setSameNumberForFutureOrders] = useState(false);
   const [pickupAddress, setPickupAddress] = useState("");
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [openBuyerProtectionModal, setOpenBuyerProtectionModal] = useState(false);
+
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [intentError, setIntentError] = useState<string | null>(null);
+  const [stripeLoadError, setStripeLoadError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  // Surfaces ad-blocker / network failures that stop Stripe.js from loading.
+  useEffect(() => {
+    if (!stripePromise) return;
+    stripePromise
+      .then((stripe) => {
+        if (!stripe) setStripeLoadError("Stripe.js could not be initialised.");
+      })
+      .catch((err) => {
+        console.error("Stripe.js failed to load:", err);
+        setStripeLoadError(
+          "Stripe.js failed to load. Check your connection and disable any ad blocker or extension that blocks js.stripe.com, then reload.",
+        );
+      });
+  }, []);
+  // Increments after every successful create/update so the Payment Element
+  // knows when to call elements.fetchUpdates().
+  const [syncCount, setSyncCount] = useState(0);
+
+  // Guards against creating more than one PaymentIntent (React Strict Mode
+  // runs effects twice in dev) and against overlapping sync requests.
+  const paymentIntentIdRef = useRef<string | null>(null);
+  const inFlight = useRef(false);
+  const needsResync = useRef(false);
 
   const searchParams = useSearchParams();
 
@@ -70,7 +134,7 @@ const CheckOutContent: React.FC = () => {
     brand: searchParams.get("brand") || "",
     size: searchParams.get("size") || "",
     price: Number(searchParams.get("price")) || 0,
-    currency: searchParams.get("currency") || "TBH",
+    currency: searchParams.get("currency") || "thb",
     imageUrl: searchParams.get("imageUrl") || "",
     buyerProtectionFee: Number(searchParams.get("buyerProtectionFee")) || 0,
     shippingFee: Number(searchParams.get("shippingFee")) || 0,
@@ -79,16 +143,11 @@ const CheckOutContent: React.FC = () => {
   const shippingCost = deliveryMethod === "home" ? 16.25 : (data?.shippingFee ?? 0);
   const totalToPay = data.price + data.buyerProtectionFee + shippingCost;
 
-  const toastConfig = {
-    position: "top-right" as const,
-    autoClose: 3000,
-    hideProgressBar: false,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: true,
-  };
+  // Always holds the latest shipping cost so a queued re-sync never uses a stale value.
+  const latestShipping = useRef(shippingCost);
+  latestShipping.current = shippingCost;
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch saved address ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user?.id || hasFetched.current) return;
@@ -107,61 +166,332 @@ const CheckOutContent: React.FC = () => {
     fetchData();
   }, [user?.id]);
 
-  // ── Place order ────────────────────────────────────────────────────────────
+  // ── Create / update the PaymentIntent ────────────────────────────────────
+  // First run creates the intent. Later runs (delivery method changed) update
+  // that same intent. Only one request is ever in flight; if the delivery
+  // method changes meanwhile, we run once more afterwards with the latest value.
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const syncPaymentIntent = async () => {
+      if (inFlight.current) {
+        needsResync.current = true;
+        return;
+      }
+      inFlight.current = true;
+
+      try {
+        do {
+          needsResync.current = false;
+
+          const body = {
+            productId: searchParams.get("productId"),
+            buyerId: user.id,
+            sellerId: searchParams.get("sellerId"),
+            buyerProtectionFee: data.buyerProtectionFee,
+            shippingFee: latestShipping.current,
+            currencyCode: data.currency,
+            paymentIntentId: paymentIntentIdRef.current ?? undefined,
+          };
+
+          const res = await fetch(`${API_BASE_URL}/api/orders/sync-payment-intent`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const message = await extractApiError(res, "Could not prepare payment.");
+            console.error("sync-payment-intent failed:", res.status, message);
+            throw new Error(message);
+          }
+
+          const result = await res.json();
+          console.log("sync-payment-intent response keys:", Object.keys(result ?? {}));
+
+          const newIntentId: string | undefined =
+            result?.paymentIntentId ?? result?.data?.paymentIntentId;
+          const newClientSecret: string | undefined =
+            result?.clientSecret ??
+            result?.client_secret ??
+            result?.data?.clientSecret;
+
+          if (!newIntentId) {
+            throw new Error("The server did not return a paymentIntentId.");
+          }
+
+          const isFirstCreate = !paymentIntentIdRef.current;
+          if (isFirstCreate) {
+            if (!newClientSecret || !CLIENT_SECRET_PATTERN.test(newClientSecret)) {
+              throw new Error(
+                "The server returned an invalid payment client secret. It must be the client_secret of a PaymentIntent (pi_..._secret_...).",
+              );
+            }
+            setClientSecret(newClientSecret);
+          }
+
+          paymentIntentIdRef.current = newIntentId;
+          setPaymentIntentId(newIntentId);
+          setSyncCount((c) => c + 1);
+        } while (needsResync.current);
+      } catch (error) {
+        console.error("Payment intent error:", error);
+        setIntentError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not initialize payment.",
+        );
+      } finally {
+        inFlight.current = false;
+      }
+    };
+
+    syncPaymentIntent();
+    // Only re-sync when the amount-affecting delivery method changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, deliveryMethod, retryKey]);
+
+  const elementsOptions = useMemo(
+    () => ({
+      clientSecret: clientSecret as string,
+      appearance: { theme: "stripe" as const },
+    }),
+    [clientSecret],
+  );
+
+  const handleRetry = () => {
+    paymentIntentIdRef.current = null;
+    inFlight.current = false;
+    needsResync.current = false;
+    setClientSecret(null);
+    setPaymentIntentId(null);
+    setIntentError(null);
+    setSyncCount(0);
+    setRetryKey((k) => k + 1);
+  };
+
+  if (!stripePromise) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center text-red-500">
+        Stripe is not configured: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing.
+        Add it to your .env file and restart the dev server.
+      </div>
+    );
+  }
+
+  if (stripeLoadError || intentError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-red-500 max-w-md">{stripeLoadError || intentError}</p>
+        <button
+          onClick={stripeLoadError ? () => window.location.reload() : handleRetry}
+          className="bg-[#cb6f4d] hover:bg-[#a85a3c] text-white font-medium px-5 py-2 rounded"
+        >
+          {stripeLoadError ? "Reload page" : "Try again"}
+        </button>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading checkout...
+      </div>
+    );
+  }
+
+  return (
+    <Elements stripe={stripePromise} options={elementsOptions}>
+      <CheckOutInner
+        data={data}
+        totalToPay={totalToPay}
+        shippingCost={shippingCost}
+        deliveryMethod={deliveryMethod}
+        setDeliveryMethod={setDeliveryMethod}
+        savedAddress={savedAddress}
+        setSavedAddress={setSavedAddress}
+        openAddressModal={openAddressModal}
+        setOpenAddressModal={setOpenAddressModal}
+        openPickupModal={openPickupModal}
+        setOpenPickupModal={setOpenPickupModal}
+        pickupAddress={pickupAddress}
+        setPickupAddress={setPickupAddress}
+        phoneNumber={phoneNumber}
+        setPhoneNumber={setPhoneNumber}
+        SameNumberForFutureOrders={SameNumberForFutureOrders}
+        setSameNumberForFutureOrders={setSameNumberForFutureOrders}
+        openBuyerProtectionModal={openBuyerProtectionModal}
+        setOpenBuyerProtectionModal={setOpenBuyerProtectionModal}
+        paymentIntentId={paymentIntentId}
+        syncCount={syncCount}
+        userId={user?.id}
+        username={user?.username}
+      />
+    </Elements>
+  );
+};
+
+// ── Inner component: rendered inside <Elements>, owns the Stripe confirm + submit ─
+
+interface InnerProps {
+  data: ProductData;
+  totalToPay: number;
+  shippingCost: number;
+  deliveryMethod: "pickup" | "home";
+  setDeliveryMethod: (m: "pickup" | "home") => void;
+  savedAddress: ThaiAddress;
+  setSavedAddress: (a: ThaiAddress) => void;
+  openAddressModal: boolean;
+  setOpenAddressModal: (v: boolean) => void;
+  openPickupModal: boolean;
+  setOpenPickupModal: (v: boolean) => void;
+  pickupAddress: string;
+  setPickupAddress: (v: string) => void;
+  phoneNumber: string;
+  setPhoneNumber: (v: string) => void;
+  SameNumberForFutureOrders: boolean;
+  setSameNumberForFutureOrders: (v: boolean) => void;
+  openBuyerProtectionModal: boolean;
+  setOpenBuyerProtectionModal: (v: boolean) => void;
+  paymentIntentId: string | null;
+  syncCount: number;
+  userId?: string | number;
+  username?: string;
+}
+
+const CheckOutInner: React.FC<InnerProps> = ({
+  data,
+  totalToPay,
+  shippingCost,
+  deliveryMethod,
+  setDeliveryMethod,
+  savedAddress,
+  setSavedAddress,
+  openAddressModal,
+  setOpenAddressModal,
+  openPickupModal,
+  setOpenPickupModal,
+  pickupAddress,
+  setPickupAddress,
+  phoneNumber,
+  setPhoneNumber,
+  SameNumberForFutureOrders,
+  setSameNumberForFutureOrders,
+  openBuyerProtectionModal,
+  setOpenBuyerProtectionModal,
+  paymentIntentId,
+  syncCount,
+  userId,
+  username,
+}) => {
+  const searchParams = useSearchParams();
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [paymentUiState, setPaymentUiState] = useState<"loading" | "ready" | "error">("loading");
+  const [paymentUiError, setPaymentUiError] = useState<string | null>(null);
+  const [slowLoad, setSlowLoad] = useState(false);
+
+  // If the Payment Element hasn't reported ready after 8s, warn the buyer.
+  useEffect(() => {
+    if (paymentUiState !== "loading") return;
+    const timer = setTimeout(() => setSlowLoad(true), 8000);
+    return () => clearTimeout(timer);
+  }, [paymentUiState]);
+
+  const displayedAddress = formatThaiAddress(savedAddress);
+
+  // After the server updates the PaymentIntent amount (delivery method changed),
+  // tell the Payment Element to pull the new amount. The first sync is the
+  // initial creation, so we skip it.
+  useEffect(() => {
+    if (syncCount > 1 && elements) {
+      elements.fetchUpdates().catch((err) => {
+        console.error("Failed to refresh Payment Element:", err);
+      });
+    }
+  }, [syncCount, elements]);
 
   const handlePlaceOrder = async () => {
+    if (isPlacingOrder || !stripe || !elements || !paymentIntentId) return;
+
+    if (paymentUiState !== "ready") {
+      toast.error(
+        "The payment form hasn't loaded. Please wait or reload the page.",
+        toastConfig,
+      );
+      return;
+    }
+
+    if (deliveryMethod === "pickup" && !pickupAddress) {
+      toast.error("Please select a pick-up point", toastConfig);
+      return;
+    }
+
+    if (deliveryMethod === "home" && !phoneNumber) {
+      toast.error("Phone number is required for home delivery", toastConfig);
+      return;
+    }
+
+    const formattedAddress = formatThaiAddress(savedAddress);
+    if (deliveryMethod === "home" && !formattedAddress) {
+      toast.error("Your address is missing. Please update your address.", toastConfig);
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    let paidIntentId: string | null = null;
+
     try {
-      if (isPlacingOrder) return;
-
-      if (!cardDetails) {
-        toast.error("Please add card details", toastConfig);
+      // Validates the Payment Element's fields before we attempt to confirm
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        toast.error(submitError.message || "Please check your payment details", toastConfig);
         return;
       }
 
-      if (deliveryMethod === "pickup" && !pickupAddress) {
-        toast.error("Please select a pick-up point", toastConfig);
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: `${window.location.origin}/Orders` },
+        redirect: "if_required",
+      });
+
+      if (confirmError) {
+        toast.error(confirmError.message || "Payment failed. Please try again.", toastConfig);
         return;
       }
 
-      if (deliveryMethod === "home" && !phoneNumber) {
-        toast.error("Phone number is required for home delivery", toastConfig);
-        return;
-      }
-
-      const formattedAddress = formatThaiAddress(savedAddress);
-      if (deliveryMethod === "home" && !formattedAddress) {
+      if (paymentIntent?.status !== "succeeded") {
         toast.error(
-          "Your address is missing. Please update your address.",
+          `Payment was not completed (status: ${paymentIntent?.status ?? "unknown"}).`,
           toastConfig,
         );
         return;
       }
 
-      setIsPlacingOrder(true);
+      paidIntentId = paymentIntent.id;
 
       const payload = {
         productId: searchParams.get("productId"),
-        buyerId: user?.id,
+        buyerId: userId,
         sellerId: searchParams.get("sellerId"),
         productImage: searchParams.get("imageUrl") || "",
         productPrice: data.price,
         productTitle: searchParams.get("title"),
+        username,
         deliveryMethod,
         ...(deliveryMethod === "home" && { address: formattedAddress }),
         ...(deliveryMethod === "pickup" && pickupAddress && { pickupAddress }),
         phoneNumber: deliveryMethod === "home" ? phoneNumber : null,
         SameNumberForFutureOrders,
         buyerProtectionFee: data.buyerProtectionFee,
-        shippingFee: deliveryMethod === "home" ? 16.25 : data.shippingFee,
+        shippingFee: shippingCost,
         OrderStatus: "placed",
         currencyCode: data.currency,
         total: totalToPay,
-        cardDetails: {
-          cardName: cardDetails.cardName,
-          cardNumber: cardDetails.cardNumber,
-          expiry: cardDetails.expiry,
-          cvv: cardDetails.cvv,
-        },
+        paymentIntentId: paymentIntent.id,
       };
 
       const res = await fetch(`${API_BASE_URL}/api/orders/place-order`, {
@@ -170,9 +500,10 @@ const CheckOutContent: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+<<<<<<< Updated upstream
         // The backend is authoritative: if another buyer completed the
         // purchase first, tell the user clearly instead of a generic error.
         if (result?.error?.code === "PRODUCT_SOLD" || res.status === 409) {
@@ -186,6 +517,12 @@ const CheckOutContent: React.FC = () => {
         toast.error(
           result?.message || result?.error?.message || "Failed to place order. Please try again.",
           toastConfig,
+=======
+        console.error("place-order failed after successful payment:", paymentIntent.id, result);
+        toast.error(
+          `Your payment went through but we couldn't create the order. Please contact support with reference ${paymentIntent.id}.`,
+          { ...toastConfig, autoClose: false },
+>>>>>>> Stashed changes
         );
         return;
       }
@@ -195,25 +532,28 @@ const CheckOutContent: React.FC = () => {
         await fetch(`${API_BASE_URL}/api/offers/${offerId}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: result.data.id, buyerId: user?.id }),
+          body: JSON.stringify({ orderId: result.data.id, buyerId: userId }),
         });
       }
 
       toast.success("Order placed successfully!", toastConfig);
-      setTimeout(() => { window.location.href = "/Orders"; }, 2000);
+      setTimeout(() => {
+        window.location.href = "/Orders";
+      }, 2000);
     } catch (error) {
       console.error("Order Error:", error);
-      toast.error("Something went wrong. Please try again.", toastConfig);
+      if (paidIntentId) {
+        toast.error(
+          `Your payment went through but we couldn't finish the order. Please contact support with reference ${paidIntentId}.`,
+          { ...toastConfig, autoClose: false },
+        );
+      } else {
+        toast.error("Something went wrong. Please try again.", toastConfig);
+      }
     } finally {
       setIsPlacingOrder(false);
     }
   };
-
-  // ── Derived display ────────────────────────────────────────────────────────
-
-  const displayedAddress = formatThaiAddress(savedAddress);
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -235,7 +575,7 @@ const CheckOutContent: React.FC = () => {
                 </h1>
                 <p className="text-gray-500 text-sm">{data.brand}</p>
                 <p className="text-gray-500 text-sm">{data.size}</p>
-                <p className="font-semibold mt-1">TBH {data.price.toFixed(2)}</p>
+                <p className="font-semibold mt-1">thb {data.price.toFixed(2)}</p>
               </div>
             </div>
 
@@ -244,7 +584,7 @@ const CheckOutContent: React.FC = () => {
               <h2 className="text-lg font-semibold mb-2">Address</h2>
               <div className="bg-white p-4 rounded-sm shadow-sm flex justify-between items-start border-l-4 border-[#cb6f4d]">
                 <div>
-                  <p className="font-bold text-gray-800">{user?.username}</p>
+                  <p className="font-bold text-gray-800">{username}</p>
                   <p className="text-gray-600 text-sm">
                     {displayedAddress || "No address on file"}
                   </p>
@@ -276,7 +616,7 @@ const CheckOutContent: React.FC = () => {
                     <div>
                       <p className="font-medium">Ship to pick-up point</p>
                       <p className="text-gray-500 text-sm">
-                        TBH {data.shippingFee.toFixed(2)}
+                        thb {data.shippingFee.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -302,7 +642,7 @@ const CheckOutContent: React.FC = () => {
                     <Home className="text-gray-500" />
                     <div>
                       <p className="font-medium">Ship to home</p>
-                      <p className="text-gray-500 text-sm">TBH 16.25</p>
+                      <p className="text-gray-500 text-sm">thb 16.25</p>
                     </div>
                   </div>
                   <input
@@ -352,7 +692,7 @@ const CheckOutContent: React.FC = () => {
                         </div>
                         <span className="font-medium text-sm">DHL Express</span>
                       </div>
-                      <p className="font-semibold text-sm">TBH 16.25</p>
+                      <p className="font-semibold text-sm">thb 16.25</p>
                       <div className="flex items-center gap-2 mt-2 text-gray-500">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -396,46 +736,44 @@ const CheckOutContent: React.FC = () => {
               )}
             </section>
 
-            {/* Payment Section */}
+            {/* Payment Section — Stripe Payment Element replaces manual card entry */}
             <section>
               <h2 className="text-lg font-semibold mb-2">Payment</h2>
-              <div
-                className="bg-white p-4 rounded-sm shadow-sm flex items-center justify-between cursor-pointer border border-gray-200"
-                onClick={() => setOpenCardModal(true)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 border border-gray-100 rounded">
-                    <CreditCard className="text-gray-400" />
+              <div className="bg-white p-4 rounded-sm shadow-sm border border-gray-200">
+                {paymentUiState === "error" && (
+                  <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <p className="font-medium">The payment form couldn't be loaded.</p>
+                    <p className="mt-1">{paymentUiError}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="mt-2 underline"
+                    >
+                      Reload page
+                    </button>
                   </div>
-                  <div>
-                    <p className="font-medium">Bank card</p>
-                    <p className="text-xs text-gray-500">Use a credit or debit card</p>
-                    {cardDetails ? (
-                      <p className="text-xs text-[#cb6f4d] mt-1 font-medium">
-                        •••• •••• •••• {String(cardDetails.cardNumber).slice(-4)}
-                      </p>
-                    ) : (
-                      <div className="flex gap-2 mt-1">
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center">
-                          <div className="flex -space-x-1">
-                            <div className="w-3 h-3 rounded-full bg-red-500 opacity-80" />
-                            <div className="w-3 h-3 rounded-full bg-orange-500 opacity-80" />
-                          </div>
-                        </div>
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center text-[10px] font-bold text-blue-800 italic">
-                          VISA
-                        </div>
-                        <div className="w-10 h-6 bg-gray-100 rounded border flex items-center justify-center">
-                          <div className="flex -space-x-1">
-                            <div className="w-3 h-3 rounded-full bg-red-500 opacity-80" />
-                            <div className="w-3 h-3 rounded-full bg-blue-500 opacity-80" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                )}
+                {paymentUiState === "loading" && slowLoad && (
+                  <div className="mb-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    The payment form is taking longer than expected. If it stays
+                    empty, check your connection, disable any ad blocker, and
+                    reload the page.
                   </div>
-                </div>
-                <ChevronRight className="text-gray-300" />
+                )}
+                <PaymentElement
+                  onReady={() => {
+                    setPaymentUiState("ready");
+                    setPaymentUiError(null);
+                  }}
+                  onLoadError={(e) => {
+                    console.error("Payment Element load error:", e.error);
+                    setPaymentUiError(
+                      e.error?.message ||
+                        "Stripe could not load the available payment methods.",
+                    );
+                    setPaymentUiState("error");
+                  }}
+                />
               </div>
             </section>
           </div>
@@ -449,7 +787,7 @@ const CheckOutContent: React.FC = () => {
               <div className="space-y-3 mb-6 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Order</span>
-                  <span>TBH {data.price.toFixed(2)}</span>
+                  <span>thb {data.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1 text-gray-600">
@@ -462,27 +800,21 @@ const CheckOutContent: React.FC = () => {
                       <HelpCircle size={14} />
                     </button>
                   </span>
-                  <span>TBH {data.buyerProtectionFee.toFixed(2)}</span>
+                  <span>thb {data.buyerProtectionFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
-                  <span>
-                    {deliveryMethod === "home"
-                      ? "16.25"
-                      : data?.shippingFee !== undefined
-                        ? data.shippingFee.toFixed(2)
-                        : "0.00"}
-                  </span>
+                  <span>{shippingCost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-4 border-t">
                   <span>Total to pay</span>
-                  <span>TBH {totalToPay.toFixed(2)}</span>
+                  <span>thb {totalToPay.toFixed(2)}</span>
                 </div>
               </div>
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={!cardDetails || isPlacingOrder}
+                disabled={!stripe || !elements || isPlacingOrder || paymentUiState !== "ready"}
                 className="w-full bg-[#cb6f4d] hover:bg-[#a85a3c] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-colors mb-4 flex items-center justify-center gap-2"
               >
                 {isPlacingOrder ? (
@@ -505,12 +837,6 @@ const CheckOutContent: React.FC = () => {
       </div>
 
       {/* ── Modals ── */}
-      <CardDetailsModal
-        isOpen={openCardModal}
-        onClose={() => setOpenCardModal(false)}
-        onSave={(card) => setCardDetails(card)}
-      />
-
       <PickupPointModal
         isOpen={openPickupModal}
         onClose={() => setOpenPickupModal(false)}
@@ -520,7 +846,6 @@ const CheckOutContent: React.FC = () => {
         }}
       />
 
-      {/* ── THAI ADDRESS MODAL ────────────────────────────────────────────────── */}
       <AddressModal
         isOpen={openAddressModal}
         onClose={() => setOpenAddressModal(false)}

@@ -95,13 +95,13 @@ const formatPrice = (value: unknown): string => {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (trimmed.length === 0) return "";
-    if (trimmed.includes("TBH")) return trimmed;
+    if (trimmed.includes("thb")) return trimmed;
     const numeric = Number(trimmed);
-    if (Number.isFinite(numeric)) return `TBH${numeric.toFixed(2)}`;
+    if (Number.isFinite(numeric)) return `thb${numeric.toFixed(2)}`;
     return trimmed;
   }
   if (typeof value === "number" && Number.isFinite(value)) {
-    return `TBH${value.toFixed(2)}`;
+    return `thb${value.toFixed(2)}`;
   }
   return "";
 };

@@ -230,7 +230,7 @@ export default function ProductCard({
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#aaa]">buyer protection Incl.</span>
               <div className="flex items-center gap-1 text-[#1a1a1a] font-semibold">
-                <span>{ (Number(buyerProtectionFee || 0)).toFixed(2)} TBH</span>
+                <span>{ (Number(buyerProtectionFee || 0)).toFixed(2)} thb</span>
                 <ShieldCheck size={12} className="text-[#cb6f4d]" />
               </div>
             </div>

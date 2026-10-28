@@ -427,7 +427,11 @@ export default function ProductDetailPage() {
   const name = toText(product?.title, "Product title");
   const brand = toText(product?.brand || product?.attributes?.find(item=> item?.code?.startsWith("brand_"))?.value, "No brand");
   const condition = toText(product?.condition, "Good");
+<<<<<<< Updated upstream
   const price = toText(product?.price, "THB 0.00");
+=======
+  const price = toText(product?.price, "thb 0.00");
+>>>>>>> Stashed changes
   const isVerified = Boolean(product?.isVerifiedLuxury);
   const isAiAssisted = Boolean(product?.aiAssisted);
   const description = toText(
@@ -461,7 +465,11 @@ export default function ProductDetailPage() {
 
     return Array.from(values);
   }, [product?.color, product?.attributes, product?.attributeValues]);
+<<<<<<< Updated upstream
   const shippingFromPrice = toText(product?.shippingFromPrice, "THB 100");
+=======
+  const shippingFromPrice = toText(product?.shippingFromPrice, "thb 100");
+>>>>>>> Stashed changes
   const seller = product?.user ?? {};
   const isOwnProduct =
     user?.id &&
@@ -492,7 +500,11 @@ export default function ProductDetailPage() {
     title: name,
     brand,
     price: getPriceValue(price) || 0,
+<<<<<<< Updated upstream
     currency: getCurrencyCode(price) || "THB",
+=======
+    currency: getCurrencyCode(price) || "thb",
+>>>>>>> Stashed changes
     imageUrl: productImages,
     buyerProtectionFee: buyerProtectionFee,
     shippingFee:  0,
@@ -585,7 +597,11 @@ export default function ProductDetailPage() {
     );
 
   const priceNum = parseFloat(price.replace(/[^\d.]/g, "")) || 0;
+<<<<<<< Updated upstream
   const currency = getCurrencyCode(price) || "THB";
+=======
+  const currency = getCurrencyCode(price) || "thb";
+>>>>>>> Stashed changes
 
   /* ─── MAIN RENDER ── */
   return (
@@ -1495,7 +1511,11 @@ export default function ProductDetailPage() {
           productDocumentId={String(product.documentId)}
           productTitle={name}
           originalPrice={parseFloat(getPriceValue(price) || "0")}
+<<<<<<< Updated upstream
           currency={getCurrencyCode(price) || "THB"}
+=======
+          currency={getCurrencyCode(price) || "thb"}
+>>>>>>> Stashed changes
           sellerId={Number(product.user?.id)}
           buyerId={Number(user.id)}
           conversationId={activeConversationId || undefined}

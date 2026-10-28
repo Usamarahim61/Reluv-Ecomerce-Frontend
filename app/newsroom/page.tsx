@@ -69,7 +69,11 @@ const NEWS_DATA: NewsItem[] = [
   {
     id: "9",
     date: "October 24, 2024",
+<<<<<<< Updated upstream
     title: "Relove Secures TPG-Led Secondary Investment at Valuation of THB 5B",
+=======
+    title: "Reluv Secures TPG-Led Secondary Investment at Valuation of thb 5B",
+>>>>>>> Stashed changes
     imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
   },
 ];

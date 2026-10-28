@@ -21,7 +21,7 @@ export default function PriceBreakdownDialog({
   if (!isOpen) return null;
 
   const priceNum = parseFloat(price.replace(/[^\d.]/g, "")) || 0;
-  const currency = price.match(/[^\d.\s]+/)?.[0] ?? "TBH";
+  const currency = price.match(/[^\d.\s]+/)?.[0] ?? "thb";
   const total = (priceNum + buyerProtectionFee).toFixed(2);
 
   return (

@@ -759,7 +759,7 @@ export default function MessagesClient() {
         brand: (offer.product as any)?.brand || "Reluv",
         size: (offer.product as any)?.size || "One Size",
         price: String(offer.offerPrice),
-        currency: "TBH",
+        currency: "thb",
         imageUrl: imageUrl,
         buyerProtectionFee: "100",
         shippingFee: "100",
@@ -831,13 +831,13 @@ export default function MessagesClient() {
     }
 
     if (amount < minOffer) {
-      const msg = `Offer is too low. Minimum offer is TBH${minOffer.toFixed(2)}.`;
+      const msg = `Offer is too low. Minimum offer is thb${minOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
     if (amount > maxOffer) {
-      const msg = `Offer is too high. Maximum offer is TBH${maxOffer.toFixed(2)}.`;
+      const msg = `Offer is too high. Maximum offer is thb${maxOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
@@ -1523,7 +1523,7 @@ export default function MessagesClient() {
                                             : "text-[#1a1a1a]"
                                         }`}
                                       >
-                                        Offer: TBH
+                                        Offer: thb
                                         {typeof offerAmount === "number"
                                           ? offerAmount.toFixed(2)
                                           : offerAmount}
@@ -1562,7 +1562,7 @@ export default function MessagesClient() {
                                     <p
                                       className={`text-xs ${isMine ? "text-white/70" : "text-[#888]"}`}
                                     >
-                                      Original Price: TBH{originalPrice}
+                                      Original Price: thb{originalPrice}
                                     </p>
 
                                     {/* Offer Actions - Show to the person who should respond */}
@@ -2145,7 +2145,7 @@ export default function MessagesClient() {
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888] font-semibold">
-                  TBH
+                  thb
                 </span>
                 <input
                   type="number"
@@ -2165,8 +2165,13 @@ export default function MessagesClient() {
               )}
               {offeredProduct?.price != null && (
                 <p className="text-xs text-[#888] mt-2">
+<<<<<<< Updated upstream
                   💡 Tip: Listed price is TBH{offeredProduct.price}.
                   Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
+=======
+                  💡 Tip: Listed price is thb{activeConversation.product.price}.
+                  Range: thb{minOffer.toFixed(2)} - thb{maxOffer.toFixed(2)}.
+>>>>>>> Stashed changes
                 </p>
               )}
             </div>

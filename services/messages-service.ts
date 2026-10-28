@@ -79,10 +79,15 @@ export type MessageItem = {
       title?: string;
       brand?: string;
       size?: string;
+<<<<<<< Updated upstream
       price?: number | string;
       productStatus?: string;
     } | null;
     currency?: string; // e.g., "TBH"
+=======
+    };
+    currency?: string; // e.g., "thb"
+>>>>>>> Stashed changes
     buyerProtectionFee?: number;
     shippingFee?: number;
   };
