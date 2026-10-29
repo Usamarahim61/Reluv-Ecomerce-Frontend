@@ -141,6 +141,7 @@ const CheckOutContent: React.FC = () => {
 
       const payload = {
         productId: searchParams.get("productId"),
+        offerId: searchParams.get("offerId"),
         buyerId: user?.id,
         sellerId: searchParams.get("sellerId"),
         productImage: searchParams.get("imageUrl") || "",
@@ -166,7 +167,12 @@ const CheckOutContent: React.FC = () => {
 
       const res = await fetch(`${API_BASE_URL}/api/orders/place-order`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(localStorage.getItem("jwt")
+            ? { Authorization: `Bearer ${localStorage.getItem("jwt")}` }
+            : {}),
+        },
         body: JSON.stringify(payload),
       });
 

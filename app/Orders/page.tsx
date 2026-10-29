@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Shield,
   ChevronDown,
+  MessageCircle,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -1085,8 +1086,8 @@ function OrdersInner() {
       try {
         const opts = { headers: getAuthHeaders() };
         const [sellerRes, buyerRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/offers/seller/${user.id}`, opts),
-          fetch(`${API_BASE_URL}/api/offers/buyer/${user.id}`, opts),
+          fetch(`${API_BASE_URL}/api/offers/seller/${user.id}?populate=conversation`, opts),
+          fetch(`${API_BASE_URL}/api/offers/buyer/${user.id}?populate=conversation`, opts),
         ]);
         const sellerData = sellerRes.ok ? await sellerRes.json() : { data: [] };
         const buyerData = buyerRes.ok ? await buyerRes.json() : { data: [] };
@@ -1579,35 +1580,19 @@ function OrdersInner() {
                   </div>
                 )}
 
-                {/* Seller: Accept / Decline buttons in brand colors */}
-                {isSeller && isPending && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleRespondToOffer(offer.id, "accepted")}
-                      disabled={isResponding}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#cb6f4d] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#b85a38] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-[#cb6f4d]/25"
-                    >
-                      {isResponding ? (
-                        <BrandSpinner size={16} className="text-white" />
-                      ) : (
-                        <Check size={14} />
-                      )}
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleRespondToOffer(offer.id, "declined")}
-                      disabled={isResponding}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8c4b0] bg-white px-4 py-2.5 text-sm font-semibold text-[#cb6f4d] transition-all hover:border-[#cb6f4d] hover:bg-[#fff7f4] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isResponding ? (
-                        <BrandSpinner size={16} />
-                      ) : (
-                        <X size={14} />
-                      )}
-                      Decline
-                    </button>
-                  </div>
-                )}
+                {/* Offer actions: open chat instead of accept/decline */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const cid = offer.conversation?.id ?? offer.conversationId ?? offer.conversation;
+                      window.location.href = cid ? `/Messages?conversationId=${cid}` : `/Messages`;
+                    }}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8c4b0] bg-white px-4 py-2.5 text-sm font-semibold text-[#cb6f4d] transition-all hover:border-[#cb6f4d] hover:bg-[#fff7f4] active:scale-95"
+                  >
+                    <MessageCircle size={14} />
+                    Chat
+                  </button>
+                </div>
 
                 {/* Buyer: timer + buy button — hidden once order placed */}
                 {canBuyAcceptedOffer && (

@@ -48,7 +48,7 @@ export const fetchMessages = createAsyncThunk(
   async (conversationId: number, { rejectWithValue }) => {
     try {
       const list = await fetchMessagesByConversation(conversationId);
-      return { conversationId, messages: list };
+      return { conversationId: Number(list.conversationId ?? conversationId), requestedConversationId: conversationId, messages: list };
     } catch (error) {
       return rejectWithValue({
         conversationId,
@@ -135,6 +135,25 @@ const messagesSlice = createSlice({
         if (!duringFetch.some((item) => String(item.id) === String(message.id))) {
           state.messagesDuringFetchByConversation[key] = [...duringFetch, message];
         }
+      }
+    },
+    removeMessage: (
+      state,
+      action: PayloadAction<{ conversationId: number; messageId: string | number }>
+    ) => {
+      const { conversationId, messageId } = action.payload;
+      const key = String(conversationId);
+      const existing = state.messagesByConversation[key];
+      if (existing) {
+        state.messagesByConversation[key] = existing.filter(
+          (message) => String(message.id) !== String(messageId),
+        );
+      }
+      const duringFetch = state.messagesDuringFetchByConversation[key];
+      if (duringFetch) {
+        state.messagesDuringFetchByConversation[key] = duringFetch.filter(
+          (message) => String(message.id) !== String(messageId),
+        );
       }
     },
     upsertMessage: (
@@ -235,7 +254,15 @@ const messagesSlice = createSlice({
         state.messagesDuringFetchByConversation[String(conversationId)] = [];
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        const { conversationId, messages } = action.payload;
+        const { conversationId, requestedConversationId, messages } = action.payload;
+        if (state.selectedConversationId === requestedConversationId && conversationId !== requestedConversationId) {
+          state.selectedConversationId = conversationId;
+        }
+        if (conversationId !== requestedConversationId) {
+          delete state.messagesStatusByConversation[String(requestedConversationId)];
+          delete state.messagesErrorByConversation[String(requestedConversationId)];
+          delete state.messagesDuringFetchByConversation[String(requestedConversationId)];
+        }
         const key = String(conversationId);
         const duringFetch = state.messagesDuringFetchByConversation[key] ?? [];
         const cachedMessages = state.messagesByConversation[key] ?? [];
@@ -294,6 +321,7 @@ export const {
   updateConversationPreview,
   setMessagesForConversation,
   addOptimisticMessage,
+  removeMessage,
   upsertMessage,
   updateOfferStatus,
 } = messagesSlice.actions;

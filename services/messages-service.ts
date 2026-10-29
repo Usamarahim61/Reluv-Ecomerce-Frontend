@@ -116,6 +116,31 @@ async function socketRequest<T>(
   });
 }
 
+async function waitForChatSocket(socket: ReturnType<typeof getChatSocket>, timeoutMs = 10000) {
+  if (socket.connected) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      globalThis.clearTimeout(timeout);
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onError);
+    };
+    const onConnect = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Could not connect to chat. Please try again."));
+    };
+    const timeout = globalThis.setTimeout(() => {
+      cleanup();
+      reject(new Error("Chat connection timed out. Please try again."));
+    }, timeoutMs);
+    socket.once("connect", onConnect);
+    socket.once("connect_error", onError);
+  });
+}
+
 export async function fetchMyConversations(): Promise<ConversationItem[]> {
   try {
     const payload = await socketRequest<{ conversations?: ConversationItem[] }>("conversations:list");
@@ -149,19 +174,25 @@ export async function createConversationForProduct(params: {
   return payload?.conversation ?? null;
 }
 
-export async function fetchMessagesByConversation(conversationId: number): Promise<MessageItem[]> {
+export type MessageList = MessageItem[] & { conversationId?: number };
+
+export async function fetchMessagesByConversation(conversationId: number): Promise<MessageList> {
   try {
-    const payload = await socketRequest<{ messages?: MessageItem[] }>("messages:list", {
+    const payload = await socketRequest<{ messages?: MessageItem[]; conversationId?: number }>("messages:list", {
       conversationId,
     });
-    return Array.isArray(payload?.messages) ? payload.messages : [];
+    return Object.assign(Array.isArray(payload?.messages) ? payload.messages : [], {
+      conversationId: Number(payload?.conversationId ?? conversationId),
+    });
   } catch {
     // HTTP fallback keeps the web app compatible with older backend deployments.
   }
 
   const payload = await apiRequest(`/messages/by-conversation/${conversationId}`);
   console.log('Raw API response for messages:', payload);
-  return Array.isArray(payload?.messages) ? payload.messages : [];
+  return Object.assign(Array.isArray(payload?.messages) ? payload.messages : [], {
+    conversationId: Number(payload?.conversationId ?? conversationId),
+  });
 }
 
 export async function sendMessage(params: {
@@ -216,6 +247,7 @@ export async function createOfferViaSocket(params: {
   productId: number;
   buyerId: number;
   sellerId: number;
+  initiatorId?: number;
   offerPrice: number;
   message?: string;
   conversationId: number;
@@ -223,8 +255,9 @@ export async function createOfferViaSocket(params: {
 }): Promise<unknown> {
   const socket = getChatSocket();
   const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-  return new Promise((resolve, reject) => {
+  try {
+    await waitForChatSocket(socket);
+    return await new Promise((resolve, reject) => {
     const timeout = globalThis.setTimeout(() => {
       cleanup();
       reject(new Error("offer:create timed out."));
@@ -251,7 +284,14 @@ export async function createOfferViaSocket(params: {
     socket.on("offer:created", handleCreated);
     socket.on("offer:error", handleError);
     socket.emit("offer:create", { ...params, clientOfferId });
-  });
+    });
+  } catch {
+    const payload = await apiRequest("/offers/make", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    return payload?.data ?? payload;
+  }
 }
 
 export async function respondToOfferViaSocket(params: {
@@ -261,8 +301,9 @@ export async function respondToOfferViaSocket(params: {
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-
-  return new Promise((resolve, reject) => {
+  try {
+    await waitForChatSocket(socket);
+    return await new Promise((resolve, reject) => {
     const timeout = globalThis.setTimeout(() => {
       cleanup();
       reject(new Error("offer:respond timed out."));
@@ -274,11 +315,15 @@ export async function respondToOfferViaSocket(params: {
       socket.off("offer:error", handleError);
     };
 
-    const handleResponded = (event: { offerId?: number; offer?: unknown; conflict?: boolean; message?: string }) => {
+    const handleResponded = (event: { offerId?: number; offer?: { status?: string }; conflict?: boolean; message?: string }) => {
       if (Number(event.offerId) !== Number(params.offerId)) return;
       cleanup();
       if (event.conflict) {
         reject(new Error(event.message || "This item is no longer available."));
+        return;
+      }
+      if (event.offer?.status !== params.action) {
+        reject(new Error(event.message || `Offer is already ${event.offer?.status || "not pending"}.`));
         return;
       }
       resolve(event.offer);
@@ -293,7 +338,17 @@ export async function respondToOfferViaSocket(params: {
     socket.on("offer:responded", handleResponded);
     socket.on("offer:error", handleError);
     socket.emit("offer:respond", params);
-  });
+    });
+  } catch {
+    const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: params.action, sellerId: params.sellerId, conversationId: params.conversationId }),
+    });
+    if (payload?.conflict) throw new Error(payload?.message || "This item is no longer available.");
+    const offer = payload?.data ?? payload;
+    if (offer?.status !== params.action) throw new Error(`Offer is already ${offer?.status || "not pending"}.`);
+    return offer;
+  }
 }
 
 export async function deleteConversation(conversationId: number): Promise<void> {

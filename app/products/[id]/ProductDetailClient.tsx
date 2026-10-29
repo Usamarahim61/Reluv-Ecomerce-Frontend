@@ -542,14 +542,17 @@ export default function ProductDetailPage() {
         productId: Number(product.id),
         otherUserId: Number(product.user.id),
       });
-      if (conversation?.id) {
-        setActiveConversationId(conversation.id);
+      if (!conversation?.id) {
+        throw new Error("Unable to start a conversation for this offer.");
       }
+      setActiveConversationId(conversation.id);
+      setShowOfferModal(true);
     } catch (err) {
       console.error("Failed to pre-fetch conversation for offer", err);
+      toast.error(err instanceof Error ? err.message : "Unable to start a conversation for this offer.");
+    } finally {
+      setIsFetchingConvForOffer(false);
     }
-    setShowOfferModal(true);
-    setIsFetchingConvForOffer(false);
   };
 
   // ── wishlist handler for main product heart button ─────────────────────────
