@@ -214,13 +214,8 @@ const ProfilePage = () => {
       brand: entry.brand ?? "",
       size: entry.size ?? "",
       condition: entry.condition ?? "",
-<<<<<<< Updated upstream
       price: entry.price ? `THB ${entry.price}` : "N/A",
       totalPrice: entry.price ? `THB ${entry.price}` : "N/A",
-=======
-      price: entry.price ? `thb ${entry.price}` : "N/A",
-      totalPrice: entry.price ? `thb ${entry.price}` : "N/A",
->>>>>>> Stashed changes
       imageUrl: getFirstImageUrl(entry.images),
       likes: Number(entry.likeCount ?? 0),
       description: entry.description ?? "",

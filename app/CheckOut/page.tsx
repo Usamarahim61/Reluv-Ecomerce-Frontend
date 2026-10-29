@@ -28,6 +28,7 @@ import { toast, ToastContainer } from "react-toastify";
 // @ts-ignore
 import "react-toastify/dist/ReactToastify.css";
 import { getUserAddress } from "@/services/auth-service";
+import { NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as FALLBACK_STRIPE_KEY } from "@/constants";
 import AddressModal, {
   type ThaiAddress,
   emptyThaiAddress,
@@ -35,7 +36,7 @@ import AddressModal, {
   hydrateThaiAddress,
 } from "../components/AddressModal";
 
-const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || FALLBACK_STRIPE_KEY;
 
 // Only create the Stripe promise when a key exists, so a missing env var
 // produces a clear on-screen message instead of a silently empty form.
@@ -503,7 +504,6 @@ const CheckOutInner: React.FC<InnerProps> = ({
       const result = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-<<<<<<< Updated upstream
         // The backend is authoritative: if another buyer completed the
         // purchase first, tell the user clearly instead of a generic error.
         if (result?.error?.code === "PRODUCT_SOLD" || res.status === 409) {
@@ -514,15 +514,10 @@ const CheckOutInner: React.FC<InnerProps> = ({
           setTimeout(() => { window.location.href = "/"; }, 2500);
           return;
         }
-        toast.error(
-          result?.message || result?.error?.message || "Failed to place order. Please try again.",
-          toastConfig,
-=======
         console.error("place-order failed after successful payment:", paymentIntent.id, result);
         toast.error(
-          `Your payment went through but we couldn't create the order. Please contact support with reference ${paymentIntent.id}.`,
+          result?.message || result?.error?.message || `Your payment went through but we couldn't create the order. Please contact support with reference ${paymentIntent.id}.`,
           { ...toastConfig, autoClose: false },
->>>>>>> Stashed changes
         );
         return;
       }

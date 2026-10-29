@@ -219,11 +219,7 @@ export default function Referrals(): JSX.Element {
             <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
           ),
           label: "Made a sale",
-<<<<<<< Updated upstream
           reward: "+15 THB",
-=======
-          reward: "+15 thb",
->>>>>>> Stashed changes
           color: "text-green-600",
           pill: "bg-green-50 text-green-600",
         };
@@ -231,11 +227,7 @@ export default function Referrals(): JSX.Element {
         return {
           icon: <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />,
           label: "Listed 3 items",
-<<<<<<< Updated upstream
           reward: "+5 THB",
-=======
-          reward: "+5 thb",
->>>>>>> Stashed changes
           color: "text-amber-600",
           pill: "bg-amber-50 text-amber-600",
         };
@@ -276,15 +268,9 @@ export default function Referrals(): JSX.Element {
                 Tell a friend—help them sell!
               </h1>
               <p className="text-gray-500 text-[13px] leading-relaxed mt-2">
-<<<<<<< Updated upstream
                 Get <span className="text-[#cb6f4d] font-semibold">5 THB</span>{" "}
                 when your friend lists 3 items within 7 days, and{" "}
                 <span className="text-[#cb6f4d] font-semibold">10 THB</span> more
-=======
-                Get <span className="text-[#cb6f4d] font-semibold">5 thb</span>{" "}
-                when your friend lists 3 items within 7 days, and{" "}
-                <span className="text-[#cb6f4d] font-semibold">10 thb</span> more
->>>>>>> Stashed changes
                 when they sell within 30 days.
               </p>
               <p className="text-[11px] text-gray-400 mt-1">
@@ -396,11 +382,7 @@ export default function Referrals(): JSX.Element {
                     )}
                     {rewardEarned > 0 && (
                       <span className="text-[#cb6f4d] text-xs font-medium">
-<<<<<<< Updated upstream
                         · {rewardEarned} THB earned
-=======
-                        · {rewardEarned} thb earned
->>>>>>> Stashed changes
                       </span>
                     )}
                   </div>
@@ -515,13 +497,8 @@ export default function Referrals(): JSX.Element {
               </div>
               <h3 className="font-bold text-lg">Wait for friends to list</h3>
               <p className="text-sm text-gray-500 leading-relaxed px-4">
-<<<<<<< Updated upstream
                 You'll receive a <strong>5 THB voucher</strong> when your friend
                 lists 3 items within 7 days, and <strong>10 THB more</strong> when
-=======
-                You'll receive a <strong>5 thb voucher</strong> when your friend
-                lists 3 items within 7 days, and <strong>10 thb more</strong> when
->>>>>>> Stashed changes
                 they make their first sale within 30 days.
               </p>
             </div>
@@ -532,11 +509,7 @@ export default function Referrals(): JSX.Element {
               </div>
               <h3 className="font-bold text-lg">Spend vouchers on Relove</h3>
               <p className="text-sm text-gray-500 leading-relaxed px-4">
-<<<<<<< Updated upstream
                 Your voucher applies automatically to your next order of 15 THB or
-=======
-                Your voucher applies automatically to your next order of 15 thb or
->>>>>>> Stashed changes
                 more (excluding shipping and service fees).
               </p>
             </div>

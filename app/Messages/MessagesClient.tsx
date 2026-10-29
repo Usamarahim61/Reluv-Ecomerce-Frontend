@@ -2165,13 +2165,8 @@ export default function MessagesClient() {
               )}
               {offeredProduct?.price != null && (
                 <p className="text-xs text-[#888] mt-2">
-<<<<<<< Updated upstream
                   💡 Tip: Listed price is TBH{offeredProduct.price}.
                   Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
-=======
-                  💡 Tip: Listed price is thb{activeConversation.product.price}.
-                  Range: thb{minOffer.toFixed(2)} - thb{maxOffer.toFixed(2)}.
->>>>>>> Stashed changes
                 </p>
               )}
             </div>

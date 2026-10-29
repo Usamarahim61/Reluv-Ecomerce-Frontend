@@ -1223,11 +1223,7 @@ function OrdersInner() {
         brand: product?.brand || "",
         size: product?.size || "",
         price: String(offer.offerPrice),
-<<<<<<< Updated upstream
         currency: "THB",
-=======
-        currency: "thb",
->>>>>>> Stashed changes
         imageUrl: offer.productImage || "",
         buyerProtectionFee: "100",
         shippingFee: "100",
@@ -1281,11 +1277,7 @@ function OrdersInner() {
           title: order.product?.title || "No title",
           type: order.type,
           status: mappedStatus,
-<<<<<<< Updated upstream
           price: `${order.totalAmount} THB`,
-=======
-          price: `${order.totalAmount} thb`,
->>>>>>> Stashed changes
           imageUrl: order.productImage || "",
           username: order.buyer?.username || "",
           date: new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -1314,11 +1306,7 @@ function OrdersInner() {
       imageUrl: product.images?.[0]?.url
         ? `${API_BASE_URL}${product.images[0].url}`
         : order.productImage || "",
-<<<<<<< Updated upstream
       price: order.totalAmount ? `${order.totalAmount} THB` : "—",
-=======
-      price: order.totalAmount ? `${order.totalAmount} thb` : "—",
->>>>>>> Stashed changes
       date: new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
@@ -1580,13 +1568,8 @@ function OrdersInner() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end">
                     <span className="text-xs text-[#aaa]">Offer</span>
-<<<<<<< Updated upstream
                     <span className="text-base font-bold text-[#cb6f4d]">{offer.offerPrice} THB</span>
                     <span className="text-xs text-[#bbb] line-through">{offer.originalPrice} THB</span>
-=======
-                    <span className="text-base font-bold text-[#cb6f4d]">{offer.offerPrice} thb</span>
-                    <span className="text-xs text-[#bbb] line-through">{offer.originalPrice} thb</span>
->>>>>>> Stashed changes
                   </div>
                 </div>
 
