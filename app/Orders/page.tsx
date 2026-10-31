@@ -15,10 +15,21 @@ import {
   AlertTriangle,
   Shield,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "../constants/api";
+import BuyerOrderDetailModal, {
+  mapToStandardOrderStatus,
+  mapToStandardPaymentStatus,
+  formatDateTime,
+  useDisputeCountdown,
+} from "../components/BuyerOrderDetailModal";
+import RaiseDisputeModal from "../components/RaiseDisputeModal";
+import RequestRefundModal from "../components/RequestRefundModal";
+import { useNotifications } from "@/context/NotificationContext";
+import { toast } from "react-toastify";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -33,6 +44,9 @@ type OfferStatus = "All" | "pending" | "accepted" | "declined";
 type DisputeStatus =
   | "OPEN"
   | "UNDER_REVIEW"
+  | "AWAITING_INFORMATION"
+  | "RESOLVED_REFUND"
+  | "RESOLVED_RELEASE"
   | "RESOLVED"
   | "REJECTED"
   | "CLOSED";
@@ -72,6 +86,21 @@ const DISPUTE_STATUS_STYLES: Record<
     pill: "bg-[#f0f4ff] text-[#3b5bdb] border border-[#c5d0fa]",
     dot: "bg-[#3b5bdb]",
     label: "Under Review",
+  },
+  AWAITING_INFORMATION: {
+    pill: "bg-[#fffbeb] text-[#d97706] border border-[#fde68a]",
+    dot: "bg-[#d97706]",
+    label: "Awaiting Info",
+  },
+  RESOLVED_REFUND: {
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
+    dot: "bg-[#2e7d4f]",
+    label: "Refund Approved",
+  },
+  RESOLVED_RELEASE: {
+    pill: "bg-[#f0f4ff] text-[#3b5bdb] border border-[#c5d0fa]",
+    dot: "bg-[#3b5bdb]",
+    label: "Funds Released",
   },
   RESOLVED: {
     pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
@@ -940,6 +969,23 @@ function isWithin48Hours(completedAt: string | undefined | null): boolean {
   return diff <= 48 * 60 * 60 * 1000;
 }
 
+function CardCountdownPill({ deadline }: { deadline: string | null | undefined }) {
+  const cd = useDisputeCountdown(deadline);
+  if (cd.isExpired) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
+        Dispute window expired
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#fff5ef] border border-[#f5d5c0] px-2.5 py-0.5 text-[10px] font-bold text-[#cb6f4d]">
+      <Clock size={11} className="text-[#cb6f4d]" />
+      {cd.hours}h {cd.minutes}m left to dispute
+    </span>
+  );
+}
+
 // ── Loading Skeleton ──────────────────────────────────────────────────────────
 function OrdersSkeleton() {
   return (
@@ -975,6 +1021,12 @@ function OrdersInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  let refreshNotifications = () => {};
+  try {
+    const notif = useNotifications();
+    refreshNotifications = notif.refresh;
+  } catch {}
+
   // ── Auth helper ─────────────────────────────────────────────────────────────
   const getAuthHeaders = () => ({
     "Content-Type": "application/json",
@@ -1005,6 +1057,8 @@ function OrdersInner() {
   const [timeLeft, setTimeLeft] = useState<Record<number, string>>({});
 
   const [disputeOrder, setDisputeOrder] = useState<any | null>(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
+  const [refundOrder, setRefundOrder] = useState<any | null>(null);
   const [viewDisputeData, setViewDisputeData] = useState<{ order: any; dispute: any } | null>(null);
 
   const categories: Category[] = ["Sold", "Bought", "Offers", "Disputes_Recieved", "Disputes_Raised"];
@@ -1015,7 +1069,20 @@ function OrdersInner() {
   useEffect(() => {
     const tab = searchParams?.get("tab");
     if (tab === "offers") setActiveCategory("Offers");
-  }, [searchParams]);
+    else if (tab === "disputes" || tab === "Disputes_Raised") setActiveCategory("Disputes_Raised");
+
+    const orderId = searchParams?.get("orderId");
+    if (orderId && ordersData.length > 0) {
+      const match = ordersData.find(
+        (o) => String(o.id) === String(orderId) || o.documentId === orderId
+      );
+      if (match) {
+        setSelectedOrderDetail(match);
+        if (match.type === "Bought") setActiveCategory("Bought");
+        else if (match.type === "Sold") setActiveCategory("Sold");
+      }
+    }
+  }, [searchParams, ordersData]);
 
   // ── Offer timer — suppressed when a matching order exists ──────────────────
   useEffect(() => {
@@ -1238,10 +1305,27 @@ function OrdersInner() {
     router.push(`/products/${encodeURIComponent(String(productId))}`);
   };
 
-  const handleDisputeSubmit = async (order: any, reason: string, details: string) => {
+  const handleDisputeSubmit = async (
+    order: any,
+    reason: string,
+    details: string,
+    evidenceUrl?: string,
+  ) => {
     if (!user?.id) return;
     try {
-      const sellerID = ordersData.find((o) => o.id === order.id)?.seller?.id;
+      const targetOrder = ordersData.find((o) => o.id === order.id) || order;
+      const sellerID = targetOrder?.seller?.id || targetOrder?.sellerId;
+
+      let backendReason = "PAYMENT_ISSUE";
+      const rLower = reason.toLowerCase();
+      if (rLower.includes("not received")) backendReason = "ITEM_NOT_RECEIVED";
+      else if (rLower.includes("damaged")) backendReason = "DAMAGED_PRODUCT";
+      else if (rLower.includes("wrong") || rLower.includes("not as described")) backendReason = "WRONG_ITEM";
+
+      const formattedDetails = `[Reason: ${reason}]\n\n${details}${
+        evidenceUrl ? `\n\n[Evidence]: ${evidenceUrl}` : ""
+      }`;
+
       const res = await fetch(`${API_BASE_URL}/api/disputes/file-dispute`, {
         method: "POST",
         headers: getAuthHeaders(),
@@ -1250,14 +1334,79 @@ function OrdersInner() {
             order: order?.id,
             raisedBy: Number(user.id),
             sellerId: Number(sellerID),
-            reason,
-            details,
+            reason: backendReason,
+            details: formattedDetails,
           },
         }),
       });
-      if (res.ok) await fetchDisputesRaised();
-    } catch (err) {
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || errData?.message || "Failed to file dispute");
+      }
+
+      toast.success("Dispute submitted successfully! Our team will review it within 24–48 hours.");
+      await fetchDisputesRaised();
+      try {
+        refreshNotifications();
+      } catch {}
+    } catch (err: any) {
       console.error("Dispute submission failed:", err);
+      toast.error(err.message || "Failed to submit dispute. Please try again.");
+      throw err;
+    }
+  };
+
+  const handleRefundSubmit = async (
+    order: any,
+    reason: string,
+    details: string,
+    evidenceUrl?: string,
+  ) => {
+    if (!user?.id) return;
+    try {
+      const targetOrder = ordersData.find((o) => o.id === order.id) || order;
+      const sellerID = targetOrder?.seller?.id || targetOrder?.sellerId;
+
+      let backendReason = "PAYMENT_ISSUE";
+      const rLower = reason.toLowerCase();
+      if (rLower.includes("not received")) backendReason = "ITEM_NOT_RECEIVED";
+      else if (rLower.includes("damaged")) backendReason = "DAMAGED_PRODUCT";
+      else if (rLower.includes("wrong") || rLower.includes("not as described")) backendReason = "WRONG_ITEM";
+
+      const formattedDetails = `[Type: Refund Request]\n[Reason: ${reason}]\n\n${details}${
+        evidenceUrl ? `\n\n[Evidence]: ${evidenceUrl}` : ""
+      }`;
+
+      const res = await fetch(`${API_BASE_URL}/api/disputes/file-dispute`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          data: {
+            order: order?.id,
+            raisedBy: Number(user.id),
+            sellerId: Number(sellerID),
+            reason: backendReason,
+            details: formattedDetails,
+            refundAmount: targetOrder?.totalAmount || targetOrder?.productPrice,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || errData?.message || "Failed to submit refund request");
+      }
+
+      toast.success("Your refund request has been submitted and is awaiting admin review.");
+      await fetchDisputesRaised();
+      try {
+        refreshNotifications();
+      } catch {}
+    } catch (err: any) {
+      console.error("Refund submission failed:", err);
+      toast.error(err.message || "Failed to submit refund request. Please try again.");
+      throw err;
     }
   };
 
@@ -1270,23 +1419,46 @@ function OrdersInner() {
         else if (order.orderStatus === "in progress" || order.orderStatus === "shipped") mappedStatus = "In Progress";
         else if (order.orderStatus === "delivered") mappedStatus = "Completed";
         else if (order.orderStatus === "cancelled") mappedStatus = "Cancelled";
+
+        const deliveredDate = order.deliveryDate || order.deliveredAt || (order.orderStatus === "delivered" ? order.updatedAt : null);
+        const disputeDeadline = order.disputeDeadline || (order.orderStatus === "delivered" && (order.deliveredAt || order.updatedAt)
+          ? new Date(new Date(order.deliveredAt || order.updatedAt).getTime() + 48 * 60 * 60 * 1000).toISOString()
+          : null);
+
         return {
           id: order.id,
           documentId: order.documentId,
           productId: order.product?.id || order.product?.documentId || null,
-          title: order.product?.title || "No title",
+          title: order.product?.title || order.productTitle || "No title",
           type: order.type,
           status: mappedStatus,
+          rawOrderStatus: order.orderStatus,
+          rawPaymentStatus: order.paymentStatus,
           price: `${order.totalAmount} THB`,
+          totalAmount: order.totalAmount,
+          productPrice: order.productPrice,
+          buyerProtectionFee: order.buyerProtectionFee,
+          shippingFee: order.shippingFee,
           imageUrl: order.productImage || "",
-          username: order.buyer?.username || "",
+          username: order.type === "Bought" ? (order.seller?.username || "") : (order.buyer?.username || ""),
+          seller: order.seller,
+          buyer: order.buyer,
+          product: order.product,
+          deliveryMethod: order.deliveryMethod,
+          address: order.address,
+          phoneNumber: order.phoneNumber,
           date: new Date(order.createdAt).toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
             year: "numeric",
           }),
+          createdAt: order.createdAt,
+          deliveredAt: deliveredDate,
+          disputeDeadline: disputeDeadline,
           completedAt: mappedStatus === "Completed" ? order.updatedAt || order.completedAt || null : null,
           buyerId: order.buyer?.id || null,
+          sellerId: order.seller?.id || null,
+          raw: order,
         };
       })
       .filter(
@@ -1348,6 +1520,9 @@ function OrdersInner() {
 
   const orderHasDispute = (orderId: any) =>
     disputesData.some((d) => d.order?.id === orderId || d.order === orderId);
+
+  const getOrderDispute = (orderId: any) =>
+    disputesData.find((d) => d.order?.id === orderId || d.order === orderId);
 
   const openViewDisputeModal = (card: any) =>
     setViewDisputeData({
@@ -1668,11 +1843,9 @@ function OrdersInner() {
           const ss = STATUS_STYLES[order.status as Exclude<Status, "All">];
           const isPlacedSold = order.status === "Placed" && activeCategory === "Sold";
           const hasDispute = orderHasDispute(order.id);
-          const showDisputeBtn =
-            activeCategory === "Bought" &&
-            order.status === "Completed" &&
-            isWithin48Hours(order.completedAt) &&
-            !hasDispute;
+          const orderDispute = getOrderDispute(order.id);
+          const isDelivered = order.status === "Completed" || order.rawOrderStatus === "delivered";
+          const isDeadlineActive = isDelivered && order.disputeDeadline && new Date(order.disputeDeadline).getTime() > Date.now();
 
           return (
             <div
@@ -1681,13 +1854,20 @@ function OrdersInner() {
             >
               <div
                 className="flex cursor-pointer items-center gap-4"
-                onClick={() => handleViewProduct(order.productId)}
+                onClick={() => {
+                  if (activeCategory === "Bought") {
+                    setSelectedOrderDetail(order);
+                  } else {
+                    handleViewProduct(order.productId);
+                  }
+                }}
                 role="link"
                 tabIndex={0}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    handleViewProduct(order.productId);
+                    if (activeCategory === "Bought") setSelectedOrderDetail(order);
+                    else handleViewProduct(order.productId);
                   }
                 }}
               >
@@ -1709,8 +1889,15 @@ function OrdersInner() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#1a1a1a] md:text-[15px]">{order.title}</p>
-                  {order.username && <p className="mt-0.5 text-xs text-[#bbb]">@{order.username}</p>}
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-[#cb6f4d]">#{order.id}</span>
+                    <p className="truncate text-sm font-semibold text-[#1a1a1a] md:text-[15px]">{order.title}</p>
+                  </div>
+                  {order.username && (
+                    <p className="mt-0.5 text-xs text-[#bbb]">
+                      {activeCategory === "Bought" ? "Seller" : "Buyer"}: @{order.username}
+                    </p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {ss && (
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ss.pill}`}>
@@ -1718,6 +1905,18 @@ function OrdersInner() {
                       </span>
                     )}
                     <span className="text-xs text-[#c8bfb5]">{order.date}</span>
+
+                    {/* Delivery & countdown pill for bought orders */}
+                    {activeCategory === "Bought" && isDelivered && (
+                      <CardCountdownPill deadline={order.disputeDeadline} />
+                    )}
+
+                    {activeCategory === "Bought" && hasDispute && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f0f4ff] border border-[#c5d0fa] px-2 py-0.5 text-[10px] font-bold text-[#3b5bdb]">
+                        <Shield size={10} />
+                        Dispute: {(orderDispute?.status || "UNDER REVIEW").toUpperCase()}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1728,6 +1927,63 @@ function OrdersInner() {
                   </div>
                 </div>
               </div>
+
+              {/* Action Buttons for Bought Orders */}
+              {activeCategory === "Bought" && (
+                <div className="mt-2 pt-2 border-t border-[#f0ebe4] flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedOrderDetail(order)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#d8d0c7] bg-white px-3 py-1.5 text-xs font-semibold text-[#555] transition-all hover:border-[#cb6f4d] hover:text-[#cb6f4d]"
+                    >
+                      <FileText size={12} />
+                      View Order Details
+                    </button>
+                    {order.productId && (
+                      <button
+                        onClick={() => handleViewProduct(order.productId)}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#888] hover:text-[#444] transition-colors"
+                      >
+                        Listing <ChevronRight size={10} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isDelivered && !hasDispute && isDeadlineActive && (
+                      <>
+                        <button
+                          onClick={() => setDisputeOrder(order)}
+                          className="inline-flex items-center gap-1 rounded-full border border-[#b33333] bg-white px-3 py-1.5 text-xs font-bold text-[#b33333] transition-all hover:bg-red-50 shadow-sm"
+                        >
+                          <AlertTriangle size={12} />
+                          Raise Dispute
+                        </button>
+                        <button
+                          onClick={() => setRefundOrder(order)}
+                          className="inline-flex items-center gap-1 rounded-full bg-[#cb6f4d] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#b85a38] shadow-sm shadow-[#cb6f4d]/20"
+                        >
+                          <RotateCcw size={12} />
+                          Request Refund
+                        </button>
+                      </>
+                    )}
+
+                    {hasDispute && (
+                      <button
+                        onClick={() => {
+                          const card = mapDisputeToCard(orderDispute);
+                          openViewDisputeModal(card);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full bg-[#3b5bdb] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#2f49b0] shadow-sm"
+                      >
+                        <Shield size={12} />
+                        Track Dispute
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {isPlacedSold && (
                 <div className="flex flex-col sm:flex-row gap-3 mt-4">
@@ -1762,30 +2018,6 @@ function OrdersInner() {
                       <><X size={16} /> Reject Order</>
                     )}
                   </button>
-                </div>
-              )}
-
-              {showDisputeBtn && (
-                <div className="mt-1">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="h-px flex-1 bg-[#f0ebe4]" />
-                    <span className="text-[10px] uppercase tracking-wider text-[#ccc] font-medium">Issue with this order?</span>
-                    <div className="h-px flex-1 bg-[#f0ebe4]" />
-                  </div>
-                  <button
-                    onClick={() => setDisputeOrder(order)}
-                    className="flex w-full items-center justify-center gap-2 rounded-full border border-[#cb6f4d] px-4 py-2.5 text-sm font-semibold text-[#cb6f4d] transition-all hover:bg-[#fff7f4] hover:shadow-[0_2px_12px_rgba(203,111,77,0.12)] active:scale-95"
-                  >
-                    <AlertTriangle size={14} />
-                    File a Dispute
-                  </button>
-                </div>
-              )}
-
-              {activeCategory === "Bought" && order.status === "Completed" && hasDispute && (
-                <div className="mt-1 flex items-center justify-center gap-2 rounded-full bg-[#fff7f0] border border-[#f5d5c0] px-4 py-2 text-xs font-semibold text-[#cb6f4d]">
-                  <AlertTriangle size={12} />
-                  Dispute already filed for this order
                 </div>
               )}
             </div>
