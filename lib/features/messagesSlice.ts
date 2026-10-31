@@ -228,6 +228,52 @@ const messagesSlice = createSlice({
         if (message.metadata) message.metadata.status = status;
       }
     },
+    updateOfferPrice: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offerId: number;
+        offerPrice: number;
+        editedAt?: string | null;
+        editCount?: number;
+      }>
+    ) => {
+      const { conversationId, offerId, offerPrice, editedAt, editCount } = action.payload;
+      const messages = state.messagesByConversation[String(conversationId)] ?? [];
+      for (const message of messages) {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
+        if (message.offer) {
+          message.offer.offerPrice = offerPrice;
+          if (editedAt) message.offer.editedAt = editedAt;
+          if (editCount != null) message.offer.editCount = editCount;
+        }
+        if (message.metadata) {
+          message.metadata.amount = offerPrice;
+        }
+        if (message.content?.startsWith("Made an offer:")) {
+          const suffixIndex = message.content.indexOf(' - "');
+          const suffix = suffixIndex !== -1 ? message.content.slice(suffixIndex) : '';
+          message.content = `Made an offer: THB${offerPrice}${suffix}`;
+        }
+      }
+    },
+    updateOfferSeen: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offerId: number;
+        seenAt: string;
+      }>
+    ) => {
+      const { conversationId, offerId, seenAt } = action.payload;
+      const messages = state.messagesByConversation[String(conversationId)] ?? [];
+      for (const message of messages) {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
+        if (message.offer) {
+          message.offer.seenAt = seenAt;
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -324,6 +370,8 @@ export const {
   removeMessage,
   upsertMessage,
   updateOfferStatus,
+  updateOfferPrice,
+  updateOfferSeen,
 } = messagesSlice.actions;
 
 export default messagesSlice.reducer;

@@ -1,3 +1,4 @@
+import EditOfferModal from "@/app/components/EditOfferModal";
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,7 @@ import {
   MessageItem,
   blockUser,
   createOfferViaSocket,
+  markOfferSeenViaSocket,
   deleteConversation,
   fetchBlockStatus,
   respondToOfferViaSocket,
@@ -55,6 +57,8 @@ import {
   setSelectedConversationId,
   updateConversationPreview,
   updateOfferStatus,
+  updateOfferPrice,
+  updateOfferSeen,
   upsertMessage,
 } from "@/lib/features/messagesSlice";
 
@@ -186,6 +190,52 @@ function ProductRefCard({ ref_ }: { ref_: ProductRef }) {
   );
 }
 
+
+function OfferVisibilityTracker({
+  offerId,
+  conversationId,
+  isRecipient,
+  isPending,
+  isSeen,
+}: {
+  offerId: number;
+  conversationId: number;
+  isRecipient: boolean;
+  isPending: boolean;
+  isSeen: boolean;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isRecipient || !isPending || isSeen || !offerId || !conversationId) return;
+    const el = ref.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      markOfferSeenViaSocket({ offerId, conversationId });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            markOfferSeenViaSocket({ offerId, conversationId });
+            observer.disconnect();
+            break;
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [offerId, conversationId, isRecipient, isPending, isSeen]);
+
+  return <div ref={ref} className="w-full h-0 pointer-events-none" />;
+}
+
 export default function MessagesClient() {
   const { user } = useAuth();
   const { isAndroid } = useAndroidNative();
@@ -233,6 +283,7 @@ export default function MessagesClient() {
     null,
   );
   const [isSendingOffer, setIsSendingOffer] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageModal, setImageModal] = useState<{
     url: string;
@@ -548,6 +599,54 @@ export default function MessagesClient() {
     socket.on("message:error", handleMessageError);
     socket.on("offer:created", handleOfferChanged);
     socket.on("offer:responded", handleOfferChanged);
+    const handleOfferUpdated = (event?: {
+      conversationId?: number;
+      offerId?: number;
+      price?: number;
+      offerPrice?: number;
+      editedAt?: string | null;
+      editCount?: number;
+      offer?: any;
+    }) => {
+      const eventOfferId = Number(event?.offerId ?? event?.offer?.id);
+      const eventConversationId = Number(event?.conversationId ?? selectedId);
+      const newPrice = Number(event?.offerPrice ?? event?.price ?? event?.offer?.offerPrice);
+
+      if (eventOfferId > 0 && eventConversationId > 0 && Number.isFinite(newPrice)) {
+        dispatch(
+          updateOfferPrice({
+            conversationId: eventConversationId,
+            offerId: eventOfferId,
+            offerPrice: newPrice,
+            editedAt: event?.editedAt ?? event?.offer?.editedAt ?? new Date().toISOString(),
+            editCount: event?.editCount ?? event?.offer?.editCount,
+          }),
+        );
+      }
+      if (selectedId) dispatch(fetchMessages(selectedId));
+      dispatch(fetchConversations());
+    };
+
+    const handleOfferSeen = (event?: {
+      conversationId?: number;
+      offerId?: number;
+      seenAt?: string;
+    }) => {
+      const eventOfferId = Number(event?.offerId);
+      const eventConversationId = Number(event?.conversationId ?? selectedId);
+      if (eventOfferId > 0 && eventConversationId > 0) {
+        dispatch(
+          updateOfferSeen({
+            conversationId: eventConversationId,
+            offerId: eventOfferId,
+            seenAt: event?.seenAt || new Date().toISOString(),
+          }),
+        );
+      }
+    };
+
+    socket.on("offer:updated", handleOfferUpdated);
+    socket.on("offer:seen", handleOfferSeen);
     socket.on("offer:invalidated", handleOfferInvalidated);
     return () => {
       socket.off("connect", joinSelectedConversation);
@@ -558,6 +657,8 @@ export default function MessagesClient() {
       socket.off("offer:created", handleOfferChanged);
       socket.off("offer:responded", handleOfferChanged);
       socket.off("offer:invalidated", handleOfferInvalidated);
+      socket.off("offer:updated", handleOfferUpdated);
+      socket.off("offer:seen", handleOfferSeen);
     };
   }, [selectedId, user?.id, peerUser?.id, dispatch]);
 
@@ -2312,6 +2413,23 @@ export default function MessagesClient() {
       )}
 
       {/* Make an Offer Modal */}
+      {editingOffer && (
+        <EditOfferModal
+          isOpen={!!editingOffer}
+          onClose={() => setEditingOffer(null)}
+          offerId={editingOffer.offerId}
+          currentOfferPrice={editingOffer.currentOfferPrice}
+          originalPrice={editingOffer.originalPrice}
+          currency={editingOffer.currency}
+          productTitle={editingOffer.productTitle}
+          conversationId={editingOffer.conversationId}
+          onSuccess={() => {
+            if (selectedId) dispatch(fetchMessages(selectedId));
+            dispatch(fetchConversations());
+          }}
+        />
+      )}
+
       {showOfferModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">

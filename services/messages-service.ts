@@ -66,6 +66,10 @@ export type MessageItem = {
     offerPrice: number;
     originalPrice: number;
     status: OfferStatus;
+    editedAt?: string;
+    editCount?: number;
+    seenAt?: string;
+    sender?: ConversationUser | number;
     message?: string;
     expiresAt?: string;
     buyer?: ConversationUser | number;
@@ -348,6 +352,71 @@ export async function respondToOfferViaSocket(params: {
     const offer = payload?.data ?? payload;
     if (offer?.status !== params.action) throw new Error(`Offer is already ${offer?.status || "not pending"}.`);
     return offer;
+  }
+}
+
+
+export async function editOfferViaSocket(params: {
+  offerId: number;
+  offerPrice: number;
+  conversationId: number;
+}): Promise<unknown> {
+  const socket = getChatSocket();
+  const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    await waitForChatSocket(socket);
+    return await new Promise((resolve, reject) => {
+      const timeout = globalThis.setTimeout(() => {
+        cleanup();
+        reject(new Error("offer:edit timed out."));
+      }, 20000);
+
+      const cleanup = () => {
+        globalThis.clearTimeout(timeout);
+        socket.off("offer:edited", handleEdited);
+        socket.off("offer:error", handleError);
+      };
+
+      const handleEdited = (event: { clientOfferId?: string; offerId?: number; offer?: unknown }) => {
+        if (event.clientOfferId !== clientOfferId && Number(event.offerId) !== Number(params.offerId)) return;
+        cleanup();
+        resolve(event.offer);
+      };
+
+      const handleError = (event: { clientOfferId?: string; offerId?: number; message?: string }) => {
+        if (event.clientOfferId !== clientOfferId && event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
+        cleanup();
+        reject(new Error(event.message || "Failed to edit offer."));
+      };
+
+      socket.on("offer:edited", handleEdited);
+      socket.on("offer:error", handleError);
+      socket.emit("offer:edit", { ...params, clientOfferId });
+    });
+  } catch (socketErr: any) {
+    if (socketErr?.message && !socketErr.message.includes("timed out") && !socketErr.message.includes("Could not connect")) {
+      throw socketErr;
+    }
+    const payload = await apiRequest(`/offers/${params.offerId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ offerPrice: params.offerPrice, conversationId: params.conversationId }),
+    });
+    return payload?.data ?? payload;
+  }
+}
+
+export async function markOfferSeenViaSocket(params: {
+  offerId: number;
+  conversationId: number;
+}): Promise<void> {
+  const socket = getChatSocket();
+  try {
+    socket.emit("offer:seen", params);
+  } catch {
+    apiRequest(`/offers/${params.offerId}/seen`, {
+      method: "PATCH",
+      body: JSON.stringify({ conversationId: params.conversationId }),
+    }).catch(() => {});
   }
 }
 
