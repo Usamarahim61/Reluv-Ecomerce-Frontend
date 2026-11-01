@@ -260,7 +260,6 @@ export async function createOfferViaSocket(params: {
   parentOfferId?: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
     await waitForChatSocket(socket);
     return await new Promise((resolve, reject) => {
@@ -275,26 +274,26 @@ export async function createOfferViaSocket(params: {
       socket.off("offer:error", handleError);
     };
 
-    const handleCreated = (event: { clientOfferId?: string; offer?: unknown }) => {
-      if (event.clientOfferId !== clientOfferId) return;
+    const handleCreated = (event: { offer?: unknown; conversationId?: number }) => {
+      if (event.conversationId && Number(event.conversationId) !== Number(params.conversationId)) return;
       cleanup();
       resolve(event.offer);
     };
 
-    const handleError = (event: { clientOfferId?: string; message?: string }) => {
-      if (event.clientOfferId !== clientOfferId) return;
+    const handleError = (event: { conversationId?: number; message?: string }) => {
+      if (event.conversationId && Number(event.conversationId) !== Number(params.conversationId)) return;
       cleanup();
       reject(new Error(event.message || "Failed to send offer."));
     };
 
     socket.on("offer:created", handleCreated);
     socket.on("offer:error", handleError);
-    socket.emit("offer:create", { ...params, clientOfferId });
+    socket.emit("offer:create", params);
     });
   } catch {
     const payload = await apiRequest("/offers/make", {
       method: "POST",
-      body: JSON.stringify({ ...params, clientOfferId }),
+      body: JSON.stringify(params),
     });
     return payload?.data ?? payload;
   }
@@ -368,7 +367,6 @@ export async function editOfferViaSocket(params: {
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
     await waitForChatSocket(socket);
     return await new Promise((resolve, reject) => {
@@ -383,21 +381,21 @@ export async function editOfferViaSocket(params: {
         socket.off("offer:error", handleError);
       };
 
-      const handleEdited = (event: { clientOfferId?: string; offerId?: number; offer?: unknown }) => {
-        if (event.clientOfferId !== clientOfferId && Number(event.offerId) !== Number(params.offerId)) return;
+      const handleEdited = (event: { offerId?: number; offer?: unknown }) => {
+        if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
         cleanup();
         resolve(event.offer);
       };
 
-      const handleError = (event: { clientOfferId?: string; offerId?: number; message?: string }) => {
-        if (event.clientOfferId !== clientOfferId && event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
+      const handleError = (event: { offerId?: number; message?: string }) => {
+        if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
         cleanup();
         reject(new Error(event.message || "Failed to edit offer."));
       };
 
       socket.on("offer:edited", handleEdited);
       socket.on("offer:error", handleError);
-      socket.emit("offer:edit", { ...params, clientOfferId });
+      socket.emit("offer:edit", params);
     });
   } catch (socketErr: any) {
     if (socketErr?.message && !socketErr.message.includes("timed out") && !socketErr.message.includes("Could not connect")) {
