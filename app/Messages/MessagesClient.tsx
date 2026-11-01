@@ -102,6 +102,16 @@ const formatFullDateTime = (value?: string | null) => {
   }
 };
 
+const resolveAvatarUrl = (avatar?: any) => {
+  if (!avatar) return null;
+  const raw = typeof avatar === "string" ? avatar : avatar?.url;
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("blob:") || raw.startsWith("data:")) {
+    return raw;
+  }
+  return `${API_BASE_URL}${raw.startsWith("/") ? "" : "/"}${raw}`;
+};
+
 type ProductRef = {
   id: number;
   documentId?: string | null;
@@ -1870,11 +1880,41 @@ export default function MessagesClient() {
                         ? parseFloat(String(activeConversation.product.price))
                         : 0);
 
+                    const isOfferSender = hasOfferSender ? offerSenderId === Number(user?.id) : isMine;
+                    const senderIsMe = isOffer ? isOfferSender : isMine;
+                    const peerAvatarUrl = resolveAvatarUrl(peerUser?.avatar || (msg.sender && !senderIsMe ? (msg.sender as any).avatar : null));
+                    const myAvatarUrl = resolveAvatarUrl(user?.avatar || (msg.sender && senderIsMe ? (msg.sender as any).avatar : null));
+                    const peerInitial = (peerUser?.username?.[0] || msg.sender?.username?.[0] || "U").toUpperCase();
+                    const myInitial = (user?.username?.[0] || "Y").toUpperCase();
+                    const senderDisplayName = senderIsMe ? "You" : null;
+
                     return (
                       <div
                         key={msg.id}
-                        className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                        className={`flex items-end gap-2.5 my-2.5 ${senderIsMe ? "justify-end" : "justify-start"}`}
                       >
+                        {/* Peer Avatar (left side for incoming message) */}
+                        {!senderIsMe && (
+                          <div
+                            className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white text-xs bg-linear-to-br from-[#cb6f4d] to-[#a55840] mb-5 shadow-xs border border-[#e0ddd8]"
+                            title={peerUser?.username || "Other user"}
+                          >
+                            {peerAvatarUrl ? (
+                              <img
+                                src={peerAvatarUrl}
+                                alt={peerUser?.username || "User"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span>{peerInitial}</span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className={`flex flex-col max-w-xs md:max-w-md ${senderIsMe ? "items-end" : "items-start"}`}>
+                          <span className={`text-[11px] font-semibold mb-1 px-1 ${senderIsMe ? "text-[#cb6f4d]" : "text-[#777]"}`}>
+                            {senderDisplayName}
+                          </span>
                         {/* Offer response bubble — matches mobile's compact
                             accepted/declined card instead of a chat bubble. */}
                         {msg.metadata?.type === "offer_response" && offerId ? (
@@ -2097,11 +2137,30 @@ export default function MessagesClient() {
                             )}
                           </div>
                           <span
-                            className={`text-xs mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}
+                            className={`text-xs mt-1 ${senderIsMe ? "text-right" : "text-left"} text-[#aaa]`}
                           >
                             {formatFullDateTime(msg.createdAt)}
                           </span>
                         </div>
+                        )}
+                        </div>
+
+                        {/* My Avatar (right side for current user) */}
+                        {senderIsMe && (
+                          <div
+                            className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white text-xs bg-[#2e7d4f] mb-5 shadow-xs border border-white"
+                            title="You"
+                          >
+                            {myAvatarUrl ? (
+                              <img
+                                src={myAvatarUrl}
+                                alt="You"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span>{myInitial}</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
