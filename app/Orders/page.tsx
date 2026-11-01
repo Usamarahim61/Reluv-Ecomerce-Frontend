@@ -141,6 +141,14 @@ const getProductOwnerId = (offer: unknown) => {
 };
 
 const getOfferSellerId = (offer: unknown) => getEntityId(getRecordValue(offer, "seller"));
+const getActualOfferBuyerId = (offer: unknown) => {
+  const sellerId = getProductOwnerId(offer) ?? getOfferSellerId(offer);
+  const participants = [
+    getEntityId(getRecordValue(offer, "buyer")),
+    getOfferSellerId(offer),
+  ].filter((id): id is string | number => id != null);
+  return participants.find((id) => String(id) !== String(sellerId)) ?? getEntityId(getRecordValue(offer, "buyer"));
+};
 
 function BrandSpinner({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
@@ -1275,10 +1283,10 @@ function OrdersInner() {
   };
 
   const handleBuyWithOffer = (offer: any) => {
-    if (sameId(getProductOwnerId(offer), user?.id)) return;
+    if (!sameId(getActualOfferBuyerId(offer), user?.id)) return;
 
     const product = offer.product;
-    const checkoutSellerId = getProductOwnerId(offer) ?? getOfferSellerId(offer);
+    const checkoutSellerId = getOfferSellerId(offer) ?? getProductOwnerId(offer);
     router.push(
       `/CheckOut?${new URLSearchParams({
         productId: String(product?.id || offer.product),
@@ -1612,16 +1620,22 @@ function OrdersInner() {
             const productOwnerId = getProductOwnerId(offer);
             const hasProductOwner = productOwnerId != null;
             const isProductOwner = sameId(productOwnerId, user?.id);
-            const isSeller = hasProductOwner
+            const isSeller = getOfferSellerId(offer) != null
+              ? sameId(getOfferSellerId(offer), user?.id)
+              : hasProductOwner
               ? isProductOwner
               : offer.role === "seller" ||
                 (offer.role !== "buyer" && sameId(offer.seller, user?.id));
+            const offerBuyerId = getActualOfferBuyerId(offer);
+            const isBuyer = offerBuyerId != null
+              ? sameId(offerBuyerId, user?.id)
+              : !isSeller;
             const isPending = offer.status === "pending";
             const isResponding = respondingTo === offer.id;
             // For buyer: hide timer/buy if order already placed for this product
-            const hasOrderedAlready = !isSeller && offerHasOrder(offer);
+            const hasOrderedAlready = isBuyer && offerHasOrder(offer);
             const canBuyAcceptedOffer =
-              (hasProductOwner ? !isProductOwner : !isSeller) &&
+              isBuyer &&
               offer.status === "accepted" &&
               !hasOrderedAlready;
 
@@ -1730,7 +1744,7 @@ function OrdersInner() {
                 )}
 
                 {/* Buyer: order already placed against this offer's product */}
-                {(hasProductOwner ? !isProductOwner : !isSeller) && offer.status === "accepted" && hasOrderedAlready && (
+                {isBuyer && offer.status === "accepted" && hasOrderedAlready && (
                   <div className="flex items-center justify-center gap-2 rounded-full bg-[#edf7f0] border border-[#b8e0c8] px-4 py-2 text-xs font-semibold text-[#2e7d4f]">
                     <Check size={13} strokeWidth={2.5} />
                     Order placed â€” offer fulfilled

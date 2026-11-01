@@ -902,16 +902,13 @@ export default function MessagesClient() {
 
     try {
       setRespondingToOfferId(offerId);
-      // Use the offer's actual seller id, not the current user: on counter-offer
-      // threads the responding party can be the buyer of the original offer.
-      const offerSellerId =
-        typeof offer?.seller === "number"
-          ? offer.seller
-          : Number(offer?.seller?.id) || user.id;
       await respondToOfferViaSocket({
         offerId,
         action,
-        sellerId: offerSellerId,
+        sellerId:
+          typeof offer?.seller === "number"
+            ? offer.seller
+            : Number(offer?.seller?.id) || user.id,
         conversationId: selectedId,
       });
 
@@ -946,6 +943,16 @@ export default function MessagesClient() {
 
   const handleBuyWithOffer = (offer: any) => {
     if (!offer || !activeConversation) return;
+    const offerSellerId = Number(offer.product?.sellerId) ||
+      (typeof offer.seller === "number" ? Number(offer.seller) : Number(offer.seller?.id));
+    const buyerCandidates = [
+      typeof offer.buyer === "number" ? Number(offer.buyer) : Number(offer.buyer?.id),
+      typeof offer.seller === "number" ? Number(offer.seller) : Number(offer.seller?.id),
+      Number(activeConversation.buyer?.id),
+      Number(activeConversation.seller?.id),
+    ];
+    const buyerId = buyerCandidates.find((id) => Number.isInteger(id) && id > 0 && id !== offerSellerId);
+    if (!user?.id || buyerId !== Number(user.id)) return;
 
     // Offers carry their own product — with unified conversations the offer's
     // product is authoritative, never conversation.product.
@@ -963,7 +970,11 @@ export default function MessagesClient() {
           images: referenced.image ? [{ url: referenced.image }] : [],
         }
       : activeConversation.product;
-    const seller = activeConversation.seller;
+    const sellerId = offerSellerId;
+    if (!sellerId) {
+      toast.error("Could not identify the seller for this offer.");
+      return;
+    }
     const imageUrl =
       offer.productImage ||
       (referenced?.image ? referenced.image : "") ||
@@ -981,7 +992,7 @@ export default function MessagesClient() {
         imageUrl: imageUrl,
         buyerProtectionFee: "100",
         shippingFee: "100",
-        sellerId: String(seller?.id || ""),
+        sellerId: String(sellerId),
         offerId: String(offer.id),
       }).toString()}`,
     );
@@ -1004,7 +1015,7 @@ export default function MessagesClient() {
   // Counter-offer context: the parent offer being countered, plus its seller id
   // (roles reverse — the counterer becomes the "buyer" of the new offer).
   const [counterOfferParentId, setCounterOfferParentId] = useState<number | null>(null);
-  const [counterOfferSellerId, setCounterOfferSellerId] = useState<number | null>(null);
+  const [counterOfferParentBuyerId, setCounterOfferParentBuyerId] = useState<number | null>(null);
   const [counterOfferParentSellerId, setCounterOfferParentSellerId] = useState<number | null>(null);
   const offeredProduct =
     conversationProducts.find((p) => p.id === offerProductId) ??
@@ -1020,7 +1031,7 @@ export default function MessagesClient() {
     if (!activeConversation) return;
     setShowPlusMenu(false);
     setCounterOfferParentId(null);
-    setCounterOfferSellerId(null);
+    setCounterOfferParentBuyerId(null);
     setCounterOfferParentSellerId(null);
     setOfferProductId(conversationProducts[0]?.id ?? null);
     setShowOfferModal(true);
@@ -1049,8 +1060,7 @@ export default function MessagesClient() {
     setShowCounterOfferConfirm(false);
     setShowPlusMenu(false);
     setCounterOfferParentId(Number(offer?.id) || null);
-    // Determine the other participant (counter offer goes to the other party)
-    const currentUserId = Number(user?.id);
+    // Counter offers keep the original product buyer and seller roles.
     const offerBuyerId =
       typeof offer?.buyer === "number"
         ? offer.buyer
@@ -1059,12 +1069,8 @@ export default function MessagesClient() {
       typeof offer?.seller === "number"
         ? offer.seller
         : Number(offer?.seller?.id);
+    setCounterOfferParentBuyerId(offerBuyerId || null);
     setCounterOfferParentSellerId(offerSellerId || null);
-    // Counter offer: counterer becomes the buyer of the new offer
-    // Seller of counter offer is the other party (original offer's buyer if counterer was seller, or original offer's seller if counterer was buyer)
-    const counterOfferTargetSellerId =
-      offerBuyerId === currentUserId ? offerSellerId : offerBuyerId;
-    setCounterOfferSellerId(counterOfferTargetSellerId || null);
     const counterProductId = offer?.product?.id
       ? Number(offer.product.id)
       : Number(offer?.productId ?? 0) || null;
@@ -1131,8 +1137,10 @@ export default function MessagesClient() {
 
       // Resolve the product's actual seller from the backend so the offer
       // matches the product owner (important for unified conversations).
-      let resolvedSellerId = counterOfferSellerId || Number(activeConversation?.seller?.id ?? peerUser?.id);
-      if (!counterOfferSellerId) {
+      let resolvedSellerId = counterOfferParentId
+        ? counterOfferParentSellerId || 0
+        : Number(activeConversation?.seller?.id ?? peerUser?.id);
+      if (!counterOfferParentId) {
         try {
           const productPayload: any = await (await fetch(
             `${API_BASE_URL}/api/products/getProductById/${encodeURIComponent(String(offeredProduct.id))}`,
@@ -1150,17 +1158,17 @@ export default function MessagesClient() {
         }
       }
 
-      if (counterOfferParentId && !counterOfferParentSellerId) {
-        throw new Error("Could not identify the seller of the offer being countered.");
+      if (counterOfferParentId && (!counterOfferParentBuyerId || !counterOfferParentSellerId)) {
+        throw new Error("Could not identify the buyer and seller of the offer being countered.");
       }
 
       const productOwnerId = resolvedSellerId || Number(activeConversation?.seller?.id);
       const isUserOwner = productOwnerId === Number(user?.id);
       const targetBuyerId = counterOfferParentId
-        ? Number(user?.id)
+        ? counterOfferParentBuyerId!
         : (isUserOwner ? Number(peerUser?.id) : Number(user?.id));
       const targetSellerId = counterOfferParentId
-        ? (counterOfferSellerId || productOwnerId)
+        ? counterOfferParentSellerId!
         : productOwnerId;
 
       await createOfferViaSocket({
@@ -1195,7 +1203,7 @@ export default function MessagesClient() {
       setOfferError(null);
       setError(null);
       setCounterOfferParentId(null);
-      setCounterOfferSellerId(null);
+      setCounterOfferParentBuyerId(null);
       setCounterOfferParentSellerId(null);
       toast.success("Offer sent successfully!");
     } catch (err: any) {
@@ -1209,7 +1217,7 @@ export default function MessagesClient() {
         setOfferAmount("");
         setOfferMessage("");
         setCounterOfferParentId(null);
-        setCounterOfferSellerId(null);
+        setCounterOfferParentBuyerId(null);
         setCounterOfferParentSellerId(null);
         return;
       }
@@ -1787,7 +1795,39 @@ export default function MessagesClient() {
                   </div>
                 ) : (
                   activeMessages.map((msg, idx) => {
-                    const isMine = Number(msg.sender?.id) === Number(user?.id);
+                    const messageSenderId = Number(msg.sender?.id);
+                    const offerSenderId =
+                      typeof msg.offer?.sender === "number"
+                        ? Number(msg.offer.sender)
+                        : Number(msg.offer?.sender?.id);
+                    const offerBuyerId =
+                      typeof msg.offer?.buyer === "number"
+                        ? Number(msg.offer.buyer)
+                        : Number(msg.offer?.buyer?.id);
+                    const offerSellerId =
+                      typeof msg.offer?.seller === "number"
+                        ? Number(msg.offer.seller)
+                        : Number(msg.offer?.seller?.id);
+                    const productOwnerId = Number(msg.offer?.product?.sellerId);
+                    const actualSellerId = Number.isInteger(productOwnerId) && productOwnerId > 0
+                      ? productOwnerId
+                      : offerSellerId;
+                    const buyerCandidates = [
+                      offerBuyerId,
+                      offerSellerId,
+                      Number(activeConversation?.buyer?.id),
+                      Number(activeConversation?.seller?.id),
+                    ];
+                    const actualBuyerId = buyerCandidates.find(
+                      (id) => Number.isInteger(id) && id > 0 && id !== actualSellerId,
+                    );
+                    const hasOfferSender = Number.isInteger(offerSenderId) && offerSenderId > 0;
+                    // The offer record is authoritative for offer ownership.
+                    // Chat sender data can be absent on older or partial payloads.
+                    const isMine =
+                      msg.metadata?.type !== "offer_response" && offerSenderId
+                        ? offerSenderId === Number(user?.id)
+                        : messageSenderId === Number(user?.id);
 
                     // Unified offer data extraction
                     const isOffer =
@@ -1799,6 +1839,15 @@ export default function MessagesClient() {
                       msg.offer?.offerPrice ?? msg.metadata?.amount;
                     const offerStatus =
                       msg.offer?.status || msg.metadata?.status;
+                    const isOfferParticipant =
+                      actualBuyerId === Number(user?.id) ||
+                      actualSellerId === Number(user?.id);
+                    const canRespondToOffer =
+                      msg.metadata?.type !== "offer_response" &&
+                      offerStatus === "pending" &&
+                      isOfferParticipant &&
+                      (hasOfferSender ? offerSenderId : messageSenderId) !== Number(user?.id) &&
+                      (hasOfferSender || Number.isInteger(messageSenderId));
                     const originalPrice =
                       msg.offer?.originalPrice ||
                       (msg.offer?.product?.price
@@ -1989,28 +2038,13 @@ export default function MessagesClient() {
                                     <OfferVisibilityTracker
                                       offerId={Number(offerId)}
                                       conversationId={Number(selectedId || activeConversation?.id)}
-                                      isRecipient={!isMine}
+                                      isRecipient={canRespondToOffer}
                                       isPending={offerStatus === "pending"}
                                       isSeen={!!msg.offer?.seenAt}
                                     />
 
                                     {/* Offer Actions - Show to the person who should respond */}
-                                    {!isMine &&
-                                      offerStatus === "pending" && (() => {
-                                        // Check if current user is the offer seller
-                                        // (who should respond to the offer)
-                                        const offerSellerId = typeof msg.offer?.seller === 'number' ? msg.offer.seller : msg.offer?.seller?.id;
-                                        const offerBuyerId = typeof msg.offer?.buyer === 'number' ? msg.offer.buyer : msg.offer?.buyer?.id;
-                                        const isOfferSeller = offerSellerId && Number(offerSellerId) === Number(user?.id);
-                                        const isOfferBuyer = offerBuyerId && Number(offerBuyerId) === Number(user?.id);
-                                        
-                                        // If offer has full data, use it directly
-                                        if (offerSellerId) {
-                                          return isOfferSeller;
-                                        }
-                                        // Fallback: receiver of the message should respond
-                                        return !isMine;
-                                      })() && (
+                                    {canRespondToOffer && (
                                         <div className="flex flex-wrap gap-2 mt-3">
                                           <button
                                             onClick={() =>
@@ -2078,8 +2112,8 @@ export default function MessagesClient() {
 
                                     {/* Checkout button for accepted offers */}
                                     {offerStatus === "accepted" &&
-                                      Number(activeConversation?.buyer?.id) ===
-                                        Number(user?.id) && (
+                                      actualBuyerId === Number(user?.id) &&
+                                      actualSellerId > 0 && (
                                         <button
                                           onClick={() =>
                                             handleBuyWithOffer(msg.offer)

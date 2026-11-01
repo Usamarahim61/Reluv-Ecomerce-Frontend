@@ -86,6 +86,7 @@ export type MessageItem = {
       size?: string;
       price?: number | string;
       productStatus?: string;
+      sellerId?: number | string | null;
     } | null;
     currency?: string; // e.g., "TBH"
     buyerProtectionFee?: number;
@@ -293,7 +294,7 @@ export async function createOfferViaSocket(params: {
   } catch {
     const payload = await apiRequest("/offers/make", {
       method: "POST",
-      body: JSON.stringify(params),
+      body: JSON.stringify({ ...params, clientOfferId }),
     });
     return payload?.data ?? payload;
   }
@@ -302,7 +303,7 @@ export async function createOfferViaSocket(params: {
 export async function respondToOfferViaSocket(params: {
   offerId: number;
   action: "accepted" | "declined";
-  sellerId: number;
+  sellerId?: number;
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
@@ -347,7 +348,11 @@ export async function respondToOfferViaSocket(params: {
   } catch {
     const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
       method: "PATCH",
-      body: JSON.stringify({ action: params.action, sellerId: params.sellerId, conversationId: params.conversationId }),
+      body: JSON.stringify({
+        action: params.action,
+        sellerId: params.sellerId,
+        conversationId: params.conversationId,
+      }),
     });
     if (payload?.conflict) throw new Error(payload?.message || "This item is no longer available.");
     const offer = payload?.data ?? payload;
