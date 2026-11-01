@@ -48,6 +48,7 @@ import { getChatContentRejection } from "@/lib/chat-content-validation";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { useAndroidNative } from "@/app/components/useAndroidNative";
+import OfferCard from "@/app/components/OfferCard";
 import { API_BASE_URL } from "@/app/constants/api";
 import {
   addOptimisticMessage,
@@ -61,6 +62,8 @@ import {
   updateOfferStatus,
   updateOfferPrice,
   updateOfferSeen,
+  updateOfferInMessages,
+  markMessagesRead,
   upsertMessage,
 } from "@/lib/features/messagesSlice";
 
@@ -193,51 +196,6 @@ function ProductRefCard({ ref_ }: { ref_: ProductRef }) {
 }
 
 
-function OfferVisibilityTracker({
-  offerId,
-  conversationId,
-  isRecipient,
-  isPending,
-  isSeen,
-}: {
-  offerId: number;
-  conversationId: number;
-  isRecipient: boolean;
-  isPending: boolean;
-  isSeen: boolean;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isRecipient || !isPending || isSeen || !offerId || !conversationId) return;
-    const el = ref.current;
-    if (!el) return;
-
-    if (typeof IntersectionObserver === "undefined") {
-      markOfferSeenViaSocket({ offerId, conversationId });
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            markOfferSeenViaSocket({ offerId, conversationId });
-            observer.disconnect();
-            break;
-          }
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [offerId, conversationId, isRecipient, isPending, isSeen]);
-
-  return <div ref={ref} className="w-full h-0 pointer-events-none" />;
-}
-
 export default function MessagesClient() {
   const { user } = useAuth();
   const { isAndroid } = useAndroidNative();
@@ -285,6 +243,7 @@ export default function MessagesClient() {
     null,
   );
   const [isSendingOffer, setIsSendingOffer] = useState(false);
+  const isSendingOfferRef = useRef(false);
   const [editingOffer, setEditingOffer] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageModal, setImageModal] = useState<{
@@ -483,9 +442,9 @@ export default function MessagesClient() {
     };
 
     const handleMessagesRead = () => {
-      dispatch(markConversationRead(selectedId));
       if (selectedId) {
-        dispatch(fetchMessages(selectedId));
+        dispatch(markConversationRead(selectedId));
+        dispatch(markMessagesRead({ conversationId: selectedId }));
       }
     };
 
@@ -555,19 +514,24 @@ export default function MessagesClient() {
     };
 
     const handleOfferChanged = (
-      event?: { conversationId?: number; offerId?: number; offer?: { id?: number; status?: string } },
+      event?: { conversationId?: number; offerId?: number; offer?: any },
     ) => {
-      // Cheap in-place status update when the event carries the new status —
-      // avoids the refetch flashing every bubble for a single status change.
       const eventOfferId = Number(event?.offerId ?? event?.offer?.id);
       const eventConversationId = Number(
         event?.conversationId ?? selectedId,
       );
+      if (event?.offer && eventConversationId > 0) {
+        dispatch(
+          updateOfferInMessages({
+            conversationId: eventConversationId,
+            offer: event.offer,
+          }),
+        );
+      }
       if (
         event?.offer?.status &&
         eventOfferId > 0 &&
-        eventConversationId > 0 &&
-        eventConversationId === selectedId
+        eventConversationId > 0
       ) {
         dispatch(
           updateOfferStatus({
@@ -577,7 +541,6 @@ export default function MessagesClient() {
           }),
         );
       }
-      if (selectedId) dispatch(fetchMessages(selectedId));
       dispatch(fetchConversations());
     };
 
@@ -617,6 +580,15 @@ export default function MessagesClient() {
       const eventConversationId = Number(event?.conversationId ?? selectedId);
       const newPrice = Number(event?.offerPrice ?? event?.price ?? event?.offer?.offerPrice);
 
+      if (event?.offer && eventConversationId > 0) {
+        dispatch(
+          updateOfferInMessages({
+            conversationId: eventConversationId,
+            offer: event.offer,
+          }),
+        );
+      }
+
       if (eventOfferId > 0 && eventConversationId > 0 && Number.isFinite(newPrice)) {
         dispatch(
           updateOfferPrice({
@@ -628,7 +600,6 @@ export default function MessagesClient() {
           }),
         );
       }
-      if (selectedId) dispatch(fetchMessages(selectedId));
       dispatch(fetchConversations());
     };
 
@@ -912,8 +883,14 @@ export default function MessagesClient() {
         conversationId: selectedId,
       });
 
-      // Refresh messages to show the response message created by backend
-      dispatch(fetchMessages(selectedId));
+      // Update offer status immediately in Redux; backend emits offer:responded & message:new
+      dispatch(
+        updateOfferStatus({
+          conversationId: selectedId,
+          offerId,
+          status: action,
+        }),
+      );
       toast.success(`Offer ${action}!`);
     } catch (err: any) {
       console.error("Failed to respond to offer:", err);
@@ -1093,6 +1070,7 @@ export default function MessagesClient() {
   };
 
   const handleSendOffer = async () => {
+    if (isSendingOfferRef.current) return;
     const amount = parseFloat(offerAmount);
     setOfferError(null);
 
@@ -1115,18 +1093,19 @@ export default function MessagesClient() {
     }
 
     if (amount < minOffer) {
-      const msg = `Offer is too low. Minimum offer is TBH${minOffer.toFixed(2)}.`;
+      const msg = `Offer is too low. Minimum offer is THB ${minOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
     if (amount > maxOffer) {
-      const msg = `Offer is too high. Maximum offer is TBH${maxOffer.toFixed(2)}.`;
+      const msg = `Offer is too high. Maximum offer is THB ${maxOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
 
+    isSendingOfferRef.current = true;
     setIsSendingOffer(true);
     let counterOfferCreated = false;
     try {
@@ -1183,20 +1162,21 @@ export default function MessagesClient() {
       });
       counterOfferCreated = true;
 
-      // Keep the existing pending offer if the new counter fails validation or
-      // cannot be persisted. Only close it after the counter is confirmed.
+      // Close the parent offer if not already closed atomically by the backend
       if (counterOfferParentId) {
-        await respondToOfferViaSocket({
-          offerId: counterOfferParentId,
-          action: "declined",
-          sellerId: counterOfferParentSellerId!,
-          conversationId: selectedId!,
-        });
+        try {
+          await respondToOfferViaSocket({
+            offerId: counterOfferParentId,
+            action: "declined",
+            sellerId: counterOfferParentSellerId!,
+            conversationId: selectedId!,
+          });
+        } catch {
+          // Already marked declined on backend or responded
+        }
       }
 
-      // Refresh messages to show the offer message created by backend
-      dispatch(fetchMessages(selectedId));
-
+      // Real-time updates delivered via socket message:new and offer:created
       setShowOfferModal(false);
       setOfferAmount("");
       setOfferMessage("");
@@ -1210,9 +1190,6 @@ export default function MessagesClient() {
       console.error("Failed to make offer:", err);
       const msg = err.message || "Failed to send offer";
       if (counterOfferCreated) {
-        toast.warning("Counter offer sent, but the previous offer could not be closed. Refresh the conversation to check its status.");
-        dispatch(fetchMessages(selectedId));
-        dispatch(fetchConversations());
         setShowOfferModal(false);
         setOfferAmount("");
         setOfferMessage("");
@@ -1224,6 +1201,7 @@ export default function MessagesClient() {
       setOfferError(msg);
       toast.error(msg);
     } finally {
+      isSendingOfferRef.current = false;
       setIsSendingOffer(false);
     }
   };
@@ -1891,7 +1869,7 @@ export default function MessagesClient() {
                                     : "Offer declined"}
                                 </p>
                                 <p className="text-[11px] text-[#888] truncate">
-                                  {offerAmount != null && `TBH${offerAmount}`}
+                                  {offerAmount != null && `THB ${Number(offerAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                   {msg.offer?.productTitle && ` for ${msg.offer.productTitle}`}
                                   {((msg.metadata as any)?.action || msg.metadata?.status) === "accepted"
                                     ? ". Buyer can continue to checkout."
@@ -1905,6 +1883,82 @@ export default function MessagesClient() {
                           </div>
                         ) : getProductRefFromMessage(msg) ? (
                           <ProductRefCard ref_={getProductRefFromMessage(msg)!} />
+                        ) : (isOffer && offerId) || msg.offer ? (
+                          <div className={`flex flex-col max-w-xs ${isMine ? "items-end" : "items-start"}`}>
+                            <OfferCard
+                              offer={{
+                                ...(msg.offer || {}),
+                                id: offerId,
+                                offerPrice: offerAmount,
+                                status: offerStatus,
+                                originalPrice,
+                                message:
+                                  msg.offer?.message ||
+                                  (msg.metadata as any)?.message ||
+                                  (msg.metadata as any)?.offerMessage ||
+                                  (msg.content && msg.content.includes(' - "')
+                                    ? msg.content.substring(msg.content.indexOf(' - "') + 4).replace(/"$/, "").trim()
+                                    : undefined),
+                                productTitle: msg.offer?.productTitle || activeConversation?.product?.title,
+                                product: msg.offer?.product || activeConversation?.product,
+                                seller: actualSellerId,
+                                buyer: actualBuyerId,
+                                sender: offerSenderId,
+                              }}
+                              isRecipient={canRespondToOffer}
+                              isOfferSender={isMine}
+                              conversationId={Number(selectedId || activeConversation?.id)}
+                              currency="THB"
+                              onOfferUpdate={(updatedOffer) => {
+                                dispatch(
+                                  updateOfferInMessages({
+                                    conversationId: Number(selectedId || activeConversation?.id),
+                                    offer: updatedOffer,
+                                  }),
+                                );
+                                if (updatedOffer.status) {
+                                  dispatch(
+                                    updateOfferStatus({
+                                      conversationId: Number(selectedId || activeConversation?.id),
+                                      offerId: Number(updatedOffer.id),
+                                      status: updatedOffer.status,
+                                    }),
+                                  );
+                                }
+                              }}
+                              onOfferResponded={(action) => {
+                                dispatch(
+                                  updateOfferStatus({
+                                    conversationId: Number(selectedId || activeConversation?.id),
+                                    offerId: Number(offerId),
+                                    status: action,
+                                  }),
+                                );
+                              }}
+                              onCounterOffer={(off) => handleCounterOffer(off)}
+                              canCheckout={actualBuyerId === Number(user?.id) && actualSellerId > 0}
+                              onCheckout={(off) => handleBuyWithOffer(off)}
+                              onEditOffer={(off) => {
+                                setEditingOffer({
+                                  offerId: Number(off.id),
+                                  currentOfferPrice: Number(off.offerPrice),
+                                  originalPrice: Number(off.originalPrice || originalPrice),
+                                  currency: "THB",
+                                  productTitle:
+                                    off.productTitle ||
+                                    (msg.offer as any)?.productTitle ||
+                                    (msg.offer as any)?.product?.title,
+                                  conversationId: Number(selectedId || activeConversation?.id),
+                                });
+                              }}
+                              readAt={msg.readAt}
+                            />
+                            <span
+                              className={`text-[11px] mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}
+                            >
+                              {formatFullDateTime(msg.createdAt)}
+                            </span>
+                          </div>
                         ) : (
                         <div className="flex flex-col max-w-xs">
                           <div
@@ -1918,214 +1972,6 @@ export default function MessagesClient() {
                               <p className="wrap-break-word mb-1">
                                 {msg.content}
                               </p>
-                            )}
-
-                            {/* Offer Card */}
-                            {isOffer && offerId && (
-                              <div
-                                className={`mt-2 p-3 rounded-xl ${
-                                  isMine ? "bg-white/10" : "bg-[#faf9f7]"
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                      isMine ? "bg-white/20" : "bg-[#cb6f4d]/10"
-                                    }`}
-                                  >
-                                    <Coins
-                                      size={20}
-                                      className={
-                                        isMine ? "text-white" : "text-[#cb6f4d]"
-                                      }
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span
-                                        className={`text-xs font-bold ${
-                                          isMine
-                                            ? "text-white"
-                                            : "text-[#1a1a1a]"
-                                        }`}
-                                      >
-                                        Offer: TBH
-                                        {typeof offerAmount === "number"
-                                          ? offerAmount.toFixed(2)
-                                          : offerAmount}
-                                      </span>
-                                      {/* Identify the product this offer applies to */}
-                                      {(msg.offer?.product?.title ||
-                                        msg.offer?.productTitle) && (
-                                        <span
-                                          className={`text-xs truncate max-w-[120px] ${
-                                            isMine
-                                              ? "text-white/80"
-                                              : "text-[#888]"
-                                          }`}
-                                        >
-                                          for{" "}
-                                          {msg.offer?.product?.title ||
-                                            msg.offer?.productTitle}
-                                        </span>
-                                      )}
-                                      {offerStatus === "pending" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">
-                                          Pending
-                                        </span>
-                                      )}
-                                      {(msg.offer?.editedAt || (msg.offer?.editCount ?? 0) > 0) && (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
-                                          Edited
-                                        </span>
-                                      )}
-                                      {offerStatus === "accepted" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
-                                          Accepted
-                                        </span>
-                                      )}
-                                      {offerStatus === "declined" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-semibold">
-                                          Declined
-                                        </span>
-                                      )}
-                                      {(offerStatus === "expired" ||
-                                        offerStatus === "completed" ||
-                                        offerStatus === "unavailable") && (
-                                        <span
-                                          className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
-                                            offerStatus === "completed"
-                                              ? "bg-green-100 text-green-800"
-                                              : "bg-gray-200 text-gray-700"
-                                          }`}
-                                        >
-                                          {offerStatus}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p
-                                      className={`text-xs ${isMine ? "text-white/70" : "text-[#888]"}`}
-                                    >
-                                      Original Price: TBH{originalPrice}
-                                    </p>
-
-                                    {/* Edit Offer button for sender if offer is pending and not seen */}
-                                    {isMine &&
-                                      offerStatus === "pending" &&
-                                      !msg.offer?.seenAt &&
-                                      !msg.readAt && (
-                                        <div className="mt-2.5 pt-2 border-t border-white/10 flex justify-end">
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setEditingOffer({
-                                                offerId: Number(offerId),
-                                                currentOfferPrice: Number(offerAmount),
-                                                originalPrice: Number(originalPrice),
-                                                currency: "THB",
-                                                productTitle: msg.offer?.productTitle || msg.offer?.product?.title,
-                                                conversationId: Number(selectedId || activeConversation?.id),
-                                              })
-                                            }
-                                            className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-                                          >
-                                            <Pencil size={12} /> Edit Offer
-                                          </button>
-                                        </div>
-                                      )}
-
-                                    {/* Visibility tracker for recipient */}
-                                    <OfferVisibilityTracker
-                                      offerId={Number(offerId)}
-                                      conversationId={Number(selectedId || activeConversation?.id)}
-                                      isRecipient={canRespondToOffer}
-                                      isPending={offerStatus === "pending"}
-                                      isSeen={!!msg.offer?.seenAt}
-                                    />
-
-                                    {/* Offer Actions - Show to the person who should respond */}
-                                    {canRespondToOffer && (
-                                        <div className="flex flex-wrap gap-2 mt-3">
-                                          <button
-                                            onClick={() =>
-                                              handleOfferResponse(
-                                                Number(offerId),
-                                                "accepted",
-                                                msg.offer,
-                                              )
-                                            }
-                                            disabled={
-                                              respondingToOfferId ===
-                                              Number(offerId)
-                                            }
-                                            className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            {respondingToOfferId ===
-                                            Number(offerId) ? (
-                                              <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                              />
-                                            ) : (
-                                              <>
-                                                <CheckCircle size={14} /> Accept
-                                              </>
-                                            )}
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              handleOfferResponse(
-                                                Number(offerId),
-                                                "declined",
-                                                msg.offer,
-                                              )
-                                            }
-                                            disabled={
-                                              respondingToOfferId ===
-                                              Number(offerId)
-                                            }
-                                            className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            {respondingToOfferId ===
-                                            Number(offerId) ? (
-                                              <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                              />
-                                            ) : (
-                                              <>
-                                                <XCircle size={14} /> Decline
-                                              </>
-                                            )}
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              handleCounterOffer(msg.offer)
-                                            }
-                                            className="w-full px-3 py-2 bg-white border border-[#cb6f4d] text-[#cb6f4d] hover:bg-orange-50 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            <Tag size={14} />
-                                            Counter Offer
-                                          </button>
-                                        </div>
-                                      )}
-
-                                    {/* Checkout button for accepted offers */}
-                                    {offerStatus === "accepted" &&
-                                      actualBuyerId === Number(user?.id) &&
-                                      actualSellerId > 0 && (
-                                        <button
-                                          onClick={() =>
-                                            handleBuyWithOffer(msg.offer)
-                                          }
-                                          className="block w-full mt-3 px-3 py-2 bg-[#cb6f4d] hover:bg-[#b85f3d] text-white rounded-lg text-xs font-semibold transition-colors text-center cursor-pointer"
-                                        >
-                                          Proceed to Checkout
-                                        </button>
-                                      )}
-                                  </div>
-                                </div>
-                              </div>
                             )}
 
                             {/* Display Attachments */}
@@ -2507,7 +2353,6 @@ export default function MessagesClient() {
           productTitle={editingOffer.productTitle}
           conversationId={editingOffer.conversationId}
           onSuccess={() => {
-            if (selectedId) dispatch(fetchMessages(selectedId));
             dispatch(fetchConversations());
           }}
         />
@@ -2588,7 +2433,7 @@ export default function MessagesClient() {
                     <p className="text-xs text-[#888] mt-1">
                       Listed price:{" "}
                       <span className="font-semibold text-[#cb6f4d]">
-                        TBH{offeredProduct.price}
+                        THB {offeredProduct.price}
                       </span>
                     </p>
                   )}
@@ -2604,7 +2449,7 @@ export default function MessagesClient() {
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888] font-semibold">
-                  TBH
+                  THB
                 </span>
                 <input
                   type="number"
@@ -2624,8 +2469,8 @@ export default function MessagesClient() {
               )}
               {offeredProduct?.price != null && (
                 <p className="text-xs text-[#888] mt-2">
-                  💡 Tip: Listed price is TBH{offeredProduct.price}.
-                  Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
+                  💡 Tip: Listed price is THB {offeredProduct.price}.
+                  Range: THB {minOffer.toFixed(2)} - THB {maxOffer.toFixed(2)}.
                 </p>
               )}
             </div>

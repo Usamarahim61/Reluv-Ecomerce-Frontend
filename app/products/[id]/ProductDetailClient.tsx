@@ -555,6 +555,15 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleOfferSuccess = (createdConvId?: number) => {
+    setShowOfferModal(false);
+    const targetConvId = createdConvId || activeConversationId;
+    if (targetConvId) {
+      dispatch(fetchConversations());
+      router.push(`/Messages?conversationId=${targetConvId}`);
+    }
+  };
+
   // ── wishlist handler for main product heart button ─────────────────────────
   const handleWishlist = async () => {
     if (!product?.id || !user?.id) return;
@@ -1502,6 +1511,7 @@ export default function ProductDetailPage() {
           sellerId={Number(product.user?.id || (product as any)?.users_permissions_user?.id || (product as any)?.userId?.id || (product as any)?.owner?.id)}
           buyerId={Number(user.id)}
           conversationId={activeConversationId || undefined}
+          onSuccess={handleOfferSuccess}
         />
       )}
 

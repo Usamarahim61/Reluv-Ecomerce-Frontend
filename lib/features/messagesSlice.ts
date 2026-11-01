@@ -221,12 +221,18 @@ const messagesSlice = createSlice({
       }>
     ) => {
       const { conversationId, offerId, status } = action.payload;
-      const messages = state.messagesByConversation[String(conversationId)] ?? [];
-      for (const message of messages) {
-        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
-        if (message.offer) message.offer.status = status;
-        if (message.metadata) message.metadata.status = status;
-      }
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
+        }
+        return {
+          ...message,
+          offer: message.offer ? { ...message.offer, status } : undefined,
+          metadata: message.metadata ? { ...message.metadata, status } : undefined,
+        };
+      });
     },
     updateOfferPrice: (
       state,
@@ -239,23 +245,39 @@ const messagesSlice = createSlice({
       }>
     ) => {
       const { conversationId, offerId, offerPrice, editedAt, editCount } = action.payload;
-      const messages = state.messagesByConversation[String(conversationId)] ?? [];
-      for (const message of messages) {
-        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
-        if (message.offer) {
-          message.offer.offerPrice = offerPrice;
-          if (editedAt) message.offer.editedAt = editedAt;
-          if (editCount != null) message.offer.editCount = editCount;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
         }
-        if (message.metadata) {
-          message.metadata.amount = offerPrice;
+        let content = message.content;
+        if (content?.startsWith("Made an offer:")) {
+          const suffixIndex = content.indexOf(' - "');
+          const suffix = suffixIndex !== -1 ? content.slice(suffixIndex) : '';
+          content = `Made an offer: THB${offerPrice}${suffix}`;
         }
-        if (message.content?.startsWith("Made an offer:")) {
-          const suffixIndex = message.content.indexOf(' - "');
-          const suffix = suffixIndex !== -1 ? message.content.slice(suffixIndex) : '';
-          message.content = `Made an offer: THB${offerPrice}${suffix}`;
-        }
-      }
+        return {
+          ...message,
+          content,
+          offer: message.offer
+            ? {
+                ...message.offer,
+                offerPrice,
+                editedAt: editedAt ?? message.offer.editedAt,
+                editCount: editCount != null ? editCount : message.offer.editCount,
+              }
+            : undefined,
+          metadata: message.metadata
+            ? {
+                ...message.metadata,
+                amount: offerPrice,
+                offerPrice,
+                editedAt: editedAt ?? (message.metadata as any).editedAt,
+              }
+            : undefined,
+        };
+      });
     },
     updateOfferSeen: (
       state,
@@ -266,12 +288,52 @@ const messagesSlice = createSlice({
       }>
     ) => {
       const { conversationId, offerId, seenAt } = action.payload;
-      const messages = state.messagesByConversation[String(conversationId)] ?? [];
-      for (const message of messages) {
-        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
-        if (message.offer) {
-          message.offer.seenAt = seenAt;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
         }
+        return {
+          ...message,
+          offer: message.offer ? { ...message.offer, seenAt } : undefined,
+        };
+      });
+    },
+    updateOfferInMessages: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offer: any;
+      }>
+    ) => {
+      const { conversationId, offer } = action.payload;
+      if (!offer?.id) return;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offer.id)) {
+          return message;
+        }
+        return {
+          ...message,
+          offer: { ...(message.offer || {}), ...offer },
+          metadata: { ...(message.metadata || {}), offerId: offer.id, amount: offer.offerPrice, status: offer.status },
+        };
+      });
+    },
+    markMessagesRead: (
+      state,
+      action: PayloadAction<{ conversationId: number; readAt?: string }>
+    ) => {
+      const { conversationId, readAt } = action.payload;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key];
+      if (messages) {
+        const timestamp = readAt || new Date().toISOString();
+        state.messagesByConversation[key] = messages.map((m) =>
+          m.readAt ? m : { ...m, readAt: timestamp }
+        );
       }
     },
   },
@@ -372,6 +434,8 @@ export const {
   updateOfferStatus,
   updateOfferPrice,
   updateOfferSeen,
+  updateOfferInMessages,
+  markMessagesRead,
 } = messagesSlice.actions;
 
 export default messagesSlice.reducer;

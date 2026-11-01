@@ -15,6 +15,7 @@ interface MakeOfferModalProps {
   sellerId: number;
   buyerId: number;
   conversationId?: number;
+  onSuccess?: (conversationId?: number) => void;
 }
 
 const MIN_RATIO = 0.5;
@@ -30,6 +31,7 @@ export default function MakeOfferModal({
   sellerId,
   buyerId,
   conversationId,
+  onSuccess,
 }: MakeOfferModalProps) {
   const [offerPrice, setOfferPrice] = useState("");
   const [message, setMessage] = useState("");
@@ -70,6 +72,9 @@ export default function MakeOfferModal({
         conversationId,
       });
       setSuccess(true);
+      if (onSuccess) {
+        setTimeout(() => onSuccess(conversationId), 1200);
+      }
     } catch (err: any) {
       setError(err?.name === "AbortError" ? "Request timed out. The server may be waking up — please try again." : "Network error. Please try again.");
     } finally {
@@ -78,11 +83,15 @@ export default function MakeOfferModal({
   };
 
   const handleClose = () => {
+    const wasSuccess = success;
     setOfferPrice("");
     setMessage("");
     setError(null);
     setSuccess(false);
     onClose();
+    if (wasSuccess && onSuccess) {
+      onSuccess(conversationId);
+    }
   };
 
   if (!isOpen) return null;

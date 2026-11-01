@@ -260,6 +260,7 @@ export async function createOfferViaSocket(params: {
   parentOfferId?: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
+  let emitted = false;
   try {
     await waitForChatSocket(socket);
     return await new Promise((resolve, reject) => {
@@ -288,9 +289,14 @@ export async function createOfferViaSocket(params: {
 
     socket.on("offer:created", handleCreated);
     socket.on("offer:error", handleError);
+    emitted = true;
     socket.emit("offer:create", params);
     });
-  } catch {
+  } catch (err: any) {
+    if (emitted) {
+      // Socket already delivered message to server; avoid duplicate creation via REST retry
+      throw err;
+    }
     const payload = await apiRequest("/offers/make", {
       method: "POST",
       body: JSON.stringify(params),
@@ -306,6 +312,7 @@ export async function respondToOfferViaSocket(params: {
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
+  let emitted = false;
   try {
     await waitForChatSocket(socket);
     return await new Promise((resolve, reject) => {
@@ -327,7 +334,7 @@ export async function respondToOfferViaSocket(params: {
         reject(new Error(event.message || "This item is no longer available."));
         return;
       }
-      if (event.offer?.status !== params.action) {
+      if (event.offer?.status !== params.action && event.offer?.status !== "declined") {
         reject(new Error(event.message || `Offer is already ${event.offer?.status || "not pending"}.`));
         return;
       }
@@ -342,9 +349,13 @@ export async function respondToOfferViaSocket(params: {
 
     socket.on("offer:responded", handleResponded);
     socket.on("offer:error", handleError);
+    emitted = true;
     socket.emit("offer:respond", params);
     });
-  } catch {
+  } catch (err: any) {
+    if (emitted) {
+      throw err;
+    }
     const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
       method: "PATCH",
       body: JSON.stringify({
