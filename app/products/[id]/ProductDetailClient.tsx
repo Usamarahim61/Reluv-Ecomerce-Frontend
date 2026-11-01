@@ -1499,7 +1499,7 @@ export default function ProductDetailPage() {
           productTitle={name}
           originalPrice={parseFloat(getPriceValue(price) || "0")}
           currency={getCurrencyCode(price) || "THB"}
-          sellerId={Number(product.user?.id)}
+          sellerId={Number(product.user?.id || (product as any)?.users_permissions_user?.id || (product as any)?.userId?.id || (product as any)?.owner?.id)}
           buyerId={Number(user.id)}
           conversationId={activeConversationId || undefined}
         />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import {
@@ -35,6 +35,8 @@ type DisputeStatus =
   | "OPEN"
   | "UNDER_REVIEW"
   | "RESOLVED"
+  | "RESOLVED_REFUND"
+  | "RESOLVED_RELEASE"
   | "REJECTED"
   | "CLOSED";
 
@@ -79,6 +81,16 @@ const DISPUTE_STATUS_STYLES: Record<
     dot: "bg-[#2e7d4f]",
     label: "Resolved",
   },
+  RESOLVED_REFUND: {
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
+    dot: "bg-[#2e7d4f]",
+    label: "Resolved with Refund",
+  },
+  RESOLVED_RELEASE: {
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
+    dot: "bg-[#2e7d4f]",
+    label: "Resolved (Release)",
+  },
   REJECTED: {
     pill: "bg-[#fdf2f2] text-[#b33333] border border-[#f0c8c8]",
     dot: "bg-[#b33333]",
@@ -99,7 +111,7 @@ const CATEGORY_ICONS: Record<Category, React.ElementType> = {
   Disputes_Raised: Shield,
 };
 
-// ── Brand spinner ─────────────────────────────────────────────────────────────
+// â”€â”€ Brand spinner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getEntityId = (entity: unknown) => {
   if (entity && typeof entity === "object" && "id" in entity) {
     return (entity as { id?: string | number }).id;
@@ -145,7 +157,7 @@ function BrandSpinner({ size = 16, className = "" }: { size?: number; className?
   );
 }
 
-// ── Sidebar category loading dot ──────────────────────────────────────────────
+// â”€â”€ Sidebar category loading dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SidebarLoader() {
   return (
     <span className="flex items-center justify-center h-5 w-5">
@@ -154,7 +166,7 @@ function SidebarLoader() {
   );
 }
 
-// ── Dispute Modal ─────────────────────────────────────────────────────────────
+// â”€â”€ Dispute Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface DisputeModalProps {
   order: any;
   onClose: () => void;
@@ -166,6 +178,7 @@ const DISPUTE_REASONS = [
   "DAMAGED_PRODUCT",
   "WRONG_ITEM",
   "PAYMENT_ISSUE",
+  "OTHER",
 ];
 
 function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
@@ -220,7 +233,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
               </h3>
               <p className="mt-2 max-w-[260px] text-sm leading-relaxed text-[#888]">
                 Your dispute has been submitted. Our team will review it within
-                24–48 hours and contact you.
+                24â€“48 hours and contact you.
               </p>
               <button
                 onClick={onClose}
@@ -264,7 +277,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
                     {order.title}
                   </p>
                   <p className="mt-0.5 text-xs text-[#bbb]">
-                    Order · {order.date}
+                    Order Â· {order.date}
                   </p>
                 </div>
                 <span className="shrink-0 text-sm font-bold text-[#1a1a1a]">
@@ -306,7 +319,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
                   onChange={(e) => setDetails(e.target.value)}
                   rows={4}
                   maxLength={500}
-                  placeholder="Describe the issue in as much detail as possible…"
+                  placeholder="Describe the issue in as much detail as possibleâ€¦"
                   className="w-full resize-none rounded-2xl border border-[#ece9e4] bg-[#fdfbf9] px-4 py-3 text-sm text-[#333] placeholder:text-[#ccc] focus:border-[#cb6f4d] focus:outline-none focus:ring-2 focus:ring-[#cb6f4d]/15 transition-all"
                 />
                 <p className="mt-1 text-right text-[10px] text-[#ccc]">
@@ -318,7 +331,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
                 <Shield size={14} className="mt-0.5 shrink-0 text-[#3b5bdb]" />
                 <p className="text-xs leading-relaxed text-[#3b5bdb]">
                   Your purchase is protected. Disputes are reviewed by our team
-                  within 24–48 hours.
+                  within 24â€“48 hours.
                 </p>
               </div>
 
@@ -337,7 +350,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
                   {submitting ? (
                     <>
                       <BrandSpinner size={16} className="text-white" />
-                      Submitting…
+                      Submittingâ€¦
                     </>
                   ) : (
                     <>
@@ -355,7 +368,7 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
   );
 }
 
-// ── Dispute Status Modal ──────────────────────────────────────────────────────
+// â”€â”€ Dispute Status Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface DisputeStatusModalProps {
   order: any;
   dispute: any;
@@ -400,6 +413,24 @@ const DISPUTE_STATUS_CONFIG: Record<
     bg: "from-[#edf7f0] to-[#d4f0e0]",
     border: "border-[#b8e0c8]",
     desc: "Your dispute has been resolved. Please check your email for the outcome details.",
+  },
+  RESOLVED_REFUND: {
+    label: "Resolved with Refund",
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border-[#b8e0c8]",
+    icon: Check,
+    iconColor: "text-[#2e7d4f]",
+    bg: "from-[#edf7f0] to-[#d4f0e0]",
+    border: "border-[#b8e0c8]",
+    desc: "Your dispute was resolved with a refund.",
+  },
+  RESOLVED_RELEASE: {
+    label: "Resolved (Release)",
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border-[#b8e0c8]",
+    icon: Check,
+    iconColor: "text-[#2e7d4f]",
+    bg: "from-[#edf7f0] to-[#d4f0e0]",
+    border: "border-[#b8e0c8]",
+    desc: "Your dispute was resolved with the release outcome.",
   },
   REJECTED: {
     label: "Rejected",
@@ -447,18 +478,18 @@ function DisputeStatusModal({
         month: "short",
         year: "numeric",
       })
-    : "—";
+    : "â€”";
 
   const timelineSteps = [
     { label: "Dispute submitted", done: true, date: submittedOn },
     {
       label: "Under review by support team",
-      done: ["UNDER_REVIEW", "RESOLVED", "REJECTED", "CLOSED"].includes(statusKey),
+      done: ["UNDER_REVIEW", "RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"].includes(statusKey),
       date: null,
     },
     {
       label: "Resolution reached",
-      done: ["RESOLVED", "REJECTED", "CLOSED"].includes(statusKey),
+      done: ["RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"].includes(statusKey),
       date: null,
     },
   ];
@@ -514,14 +545,14 @@ function DisputeStatusModal({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[#1a1a1a]">
-                {order?.title || "—"}
+                {order?.title || "â€”"}
               </p>
               <p className="mt-0.5 text-xs text-[#bbb]">
-                Order · {order?.date || "—"}
+                Order Â· {order?.date || "â€”"}
               </p>
             </div>
             <span className="shrink-0 text-sm font-bold text-[#1a1a1a]">
-              {order?.price || "—"}
+              {order?.price || "â€”"}
             </span>
           </div>
 
@@ -558,7 +589,7 @@ function DisputeStatusModal({
                 Reason
               </p>
               <p className="text-sm font-medium text-[#333]">
-                {dispute?.reason || "—"}
+                {dispute?.reason || "â€”"}
               </p>
             </div>
             {dispute?.details && (
@@ -623,11 +654,13 @@ function DisputeStatusModal({
   );
 }
 
-// ── Dispute Status Update Modal (Seller) ──────────────────────────────────────
+// â”€â”€ Dispute Status Update Modal (Seller) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const STATUS_OPTIONS: { value: DisputeStatus; label: string; desc: string }[] = [
   { value: "OPEN", label: "Open", desc: "Dispute is awaiting initial response" },
   { value: "UNDER_REVIEW", label: "Under Review", desc: "You are actively reviewing this case" },
   { value: "RESOLVED", label: "Resolved", desc: "Dispute has been settled in buyer's favour" },
+  { value: "RESOLVED_REFUND", label: "Resolved with Refund", desc: "Dispute was resolved and a refund was issued" },
+  { value: "RESOLVED_RELEASE", label: "Resolved (Release)", desc: "Dispute was resolved with the release outcome" },
   { value: "REJECTED", label: "Rejected", desc: "Dispute claim was not upheld" },
   { value: "CLOSED", label: "Closed", desc: "Close this dispute" },
 ];
@@ -790,7 +823,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
                   onChange={(e) => setAdminNote(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  placeholder="Add a message for the buyer about this dispute…"
+                  placeholder="Add a message for the buyer about this disputeâ€¦"
                   className="w-full resize-none rounded-2xl border border-[#ece9e4] bg-[#fdfbf9] px-4 py-3 text-sm text-[#333] placeholder:text-[#ccc] focus:border-[#cb6f4d] focus:outline-none focus:ring-2 focus:ring-[#cb6f4d]/15 transition-all"
                 />
                 <p className="mt-1 text-right text-[10px] text-[#ccc]">{adminNote.length}/500</p>
@@ -811,7 +844,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
                   {saving ? (
                     <>
                       <BrandSpinner size={16} className="text-white" />
-                      Saving…
+                      Savingâ€¦
                     </>
                   ) : (
                     <>
@@ -829,7 +862,7 @@ function StatusUpdateModal({ card, onClose, onUpdated }: StatusUpdateModalProps)
   );
 }
 
-// ── DisputeReceivedCard ───────────────────────────────────────────────────────
+// â”€â”€ DisputeReceivedCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface DisputeReceivedCardProps {
   card: any;
   showManageButton?: boolean;
@@ -934,14 +967,14 @@ function DisputeReceivedCard({
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function isWithin48Hours(completedAt: string | undefined | null): boolean {
   if (!completedAt) return false;
   const diff = Date.now() - new Date(completedAt).getTime();
   return diff <= 48 * 60 * 60 * 1000;
 }
 
-// ── Loading Skeleton ──────────────────────────────────────────────────────────
+// â”€â”€ Loading Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function OrdersSkeleton() {
   return (
     <div className="space-y-3">
@@ -962,7 +995,7 @@ function OrdersSkeleton() {
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// â”€â”€ Main export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Orders() {
   return (
     <Suspense fallback={null}>
@@ -976,17 +1009,27 @@ function OrdersInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ── Auth helper ─────────────────────────────────────────────────────────────
+  // â”€â”€ Auth helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getAuthHeaders = () => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
   });
 
-  // ── State ───────────────────────────────────────────────────────────────────
+  // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [ordersData, setOrdersData] = useState<any[]>([]);
   const [offersData, setOffersData] = useState<any[]>([]);
   const [disputesData, setDisputesData] = useState<any[]>([]);
   const [disputesReceivedData, setDisputesReceivedData] = useState<any[]>([]);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [offersPage, setOffersPage] = useState(1);
+  const [ordersPageCount, setOrdersPageCount] = useState(1);
+  const [offersPageCount, setOffersPageCount] = useState(1);
+  const [ordersRefreshVersion, setOrdersRefreshVersion] = useState(0);
+  const [offersRefreshVersion, setOffersRefreshVersion] = useState(0);
+  const [ordersTotal, setOrdersTotal] = useState(0);
+  const [offersTotal, setOffersTotal] = useState(0);
+  const [offersFilteredTotal, setOffersFilteredTotal] = useState(0);
+  const [orderCounts, setOrderCounts] = useState({ bought: 0, sold: 0 });
 
   // Per-section loading states
   const [loading, setLoading] = useState(true);
@@ -1011,21 +1054,31 @@ function OrdersInner() {
   const categories: Category[] = ["Sold", "Bought", "Offers", "Disputes_Recieved", "Disputes_Raised"];
   const statuses: Status[] = ["All", "Placed", "In Progress", "Completed", "Cancelled"];
   const offerStatuses: OfferStatus[] = ["All", "pending", "accepted", "declined"];
-  const disputeStatuses: (DisputeStatus | "All")[] = ["All", "OPEN", "UNDER_REVIEW", "RESOLVED", "REJECTED", "CLOSED"];
+  const disputeStatuses: (DisputeStatus | "All")[] = ["All", "OPEN", "UNDER_REVIEW", "RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"];
+
+  const changeCategory = (category: Category) => {
+    setActiveCategory(category);
+    setOrdersPage(1);
+    setOffersPage(1);
+  };
 
   useEffect(() => {
     const tab = searchParams?.get("tab");
-    if (tab === "offers") setActiveCategory("Offers");
+    if (tab === "offers") {
+      setActiveCategory("Offers");
+      setOrdersPage(1);
+      setOffersPage(1);
+    }
   }, [searchParams]);
 
-  // ── Offer timer — suppressed when a matching order exists ──────────────────
+  // â”€â”€ Offer timer â€” suppressed when a matching order exists â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     // Only track accepted offers that don't already have a placed order
     const acceptedOffers = offersData.filter((o) => {
       if (o.status !== "accepted" || !o.expiresAt) return false;
       if (sameId(getProductOwnerId(o), user?.id)) return false;
       // Hide timer if buyer already placed an order for this product
-      const alreadyOrdered = ordersData.some(
+      const alreadyOrdered = Boolean(o.order && o.order.orderStatus !== "cancelled") || ordersData.some(
         (ord) =>
           sameId(ord.buyer, o.buyer) &&
           (sameId(ord.product, o.product) ||
@@ -1058,57 +1111,65 @@ function OrdersInner() {
     return () => clearInterval(interval);
   }, [offersData, ordersData, user?.id]);
 
-  // ── Fetches ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Fetches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
+    if (!user?.id) return;
+    const controller = new AbortController();
     const fetchData = async () => {
-      if (!user?.id) return;
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/api/orders/fetch-orders-by-user`, {
           method: "POST",
           headers: getAuthHeaders(),
-          body: JSON.stringify({ userId: Number(user.id) }),
+          body: JSON.stringify({
+            userId: Number(user.id),
+            page: ordersPage,
+            pageSize: 10,
+            type: activeCategory === "Sold" || activeCategory === "Bought" ? activeCategory.toLowerCase() : "all",
+            status: activeCategory === "Sold" || activeCategory === "Bought" ? activeStatus.toLowerCase() : "all",
+          }),
+          signal: controller.signal,
         });
         if (!res.ok) return;
         const data = await res.json();
         setOrdersData(Array.isArray(data) ? data : data?.data || []);
-      } catch { /* silent */ } finally {
-        setLoading(false);
+        setOrdersPageCount(Math.max(1, Number(data?.meta?.pagination?.pageCount) || 1));
+        setOrdersPage(Math.max(1, Number(data?.meta?.pagination?.page) || ordersPage));
+        setOrdersTotal(Math.max(0, Number(data?.meta?.pagination?.total) || 0));
+        if (data?.meta?.counts) setOrderCounts(data.meta.counts);
+      } catch { /* silent; aborted requests are stale */ } finally {
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     fetchData();
-  }, [user?.id]);
+    return () => controller.abort();
+  }, [user?.id, activeCategory, activeStatus, ordersPage, ordersRefreshVersion]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    const controller = new AbortController();
     const fetchOffers = async () => {
-      if (!user?.id) return;
       setOffersLoading(true);
       try {
-        const opts = { headers: getAuthHeaders() };
-        const [sellerRes, buyerRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/offers/seller/${user.id}?populate=conversation`, opts),
-          fetch(`${API_BASE_URL}/api/offers/buyer/${user.id}?populate=conversation`, opts),
-        ]);
-        const sellerData = sellerRes.ok ? await sellerRes.json() : { data: [] };
-        const buyerData = buyerRes.ok ? await buyerRes.json() : { data: [] };
-        const sellerOffers = (sellerData.data || []).map((o: any) => ({ ...o, role: "seller" }));
-        const buyerOffers = (buyerData.data || [])
-          .filter((o: any) => sameId(o.buyer, user.id))
-          .map((o: any) => ({ ...o, role: "buyer" }));
-        // Merge: if same offer appears in both (e.g. user is both buyer and seller on platform),
-        // keep the seller entry separately and the buyer entry separately — don't deduplicate by ID
-        const merged = [
-          ...sellerOffers,
-          ...buyerOffers.filter((bo: any) => !sellerOffers.some((so: any) => sameId(so.id, bo.id) && sameId(so.seller, user.id))),
-        ];
-        setOffersData(merged);
-      } catch { /* silent */ } finally {
-        setOffersLoading(false);
+        const query = new URLSearchParams({ page: String(offersPage), pageSize: "10", status: offerStatus.toLowerCase() });
+        const response = await fetch(`${API_BASE_URL}/api/offers/user/${user.id}?${query}`, {
+          headers: getAuthHeaders(),
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        setOffersData(Array.isArray(data?.data) ? data.data : []);
+        setOffersPageCount(Math.max(1, Number(data?.meta?.pagination?.pageCount) || 1));
+        setOffersPage(Math.max(1, Number(data?.meta?.pagination?.page) || offersPage));
+        setOffersTotal(Math.max(0, Number(data?.meta?.counts?.all ?? data?.meta?.pagination?.total) || 0));
+        setOffersFilteredTotal(Math.max(0, Number(data?.meta?.pagination?.total) || 0));
+      } catch { /* silent; aborted requests are stale */ } finally {
+        if (!controller.signal.aborted) setOffersLoading(false);
       }
     };
     fetchOffers();
-  }, [user?.id]);
-
+    return () => controller.abort();
+  }, [user?.id, offersPage, offerStatus, offersRefreshVersion]);
   const fetchDisputesRaised = async () => {
     if (!user?.id) return;
     setDisputesRaisedLoading(true);
@@ -1146,7 +1207,7 @@ function OrdersInner() {
     fetchDisputesReceived();
   }, [user?.id]);
 
-  // ── Mutation handlers ────────────────────────────────────────────────────────
+  // â”€â”€ Mutation handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleRespondToOffer = async (offerId: number, action: "accepted" | "declined") => {
     if (!user?.id || respondingTo === offerId) return;
     setRespondingTo(offerId);
@@ -1161,7 +1222,7 @@ function OrdersInner() {
       if (!res.ok) {
         // Revert optimistic update on failure
         setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: "pending" } : o)));
-      }
+      } else setOffersRefreshVersion((version) => version + 1);
     } catch {
       setOffersData((prev) => prev.map((o) => (o.id === offerId ? { ...o, status: "pending" } : o)));
     } finally {
@@ -1182,6 +1243,7 @@ function OrdersInner() {
         setOrdersData((prev) =>
           prev.map((o) => o.documentId === orderId ? { ...o, orderStatus: "in progress" } : o),
         );
+        setOrdersRefreshVersion((version) => version + 1);
       }
     } catch (err) {
       console.error("Update failed:", err);
@@ -1203,6 +1265,7 @@ function OrdersInner() {
         setOrdersData((prev) =>
           prev.map((o) => o.documentId === orderId ? { ...o, orderStatus: "cancelled" } : o),
         );
+        setOrdersRefreshVersion((version) => version + 1);
       }
     } catch (err) {
       console.error("Update failed:", err);
@@ -1262,7 +1325,7 @@ function OrdersInner() {
     }
   };
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
+  // â”€â”€ Derived data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredOrders = useMemo(() => {
     return ordersData
       .map((order) => {
@@ -1307,14 +1370,14 @@ function OrdersInner() {
       imageUrl: product.images?.[0]?.url
         ? `${API_BASE_URL}${product.images[0].url}`
         : order.productImage || "",
-      price: order.totalAmount ? `${order.totalAmount} THB` : "—",
+      price: order.totalAmount ? `${order.totalAmount} THB` : "â€”",
       date: new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
       }),
       status,
-      reason: dispute.reason || "—",
+      reason: dispute.reason || "â€”",
       details: dispute.details || "",
       adminNote: dispute.adminNote || "",
       raisedBy: dispute.raisedBy,
@@ -1341,9 +1404,9 @@ function OrdersInner() {
     [offersData, offerStatus],
   );
 
-  const soldCount = useMemo(() => ordersData.filter((o) => o.type === "Sold").length, [ordersData]);
-  const boughtCount = useMemo(() => ordersData.filter((o) => o.type === "Bought").length, [ordersData]);
-  const offersCount = useMemo(() => offersData.length, [offersData]);
+  const soldCount = orderCounts.sold;
+  const boughtCount = orderCounts.bought;
+  const offersCount = offersTotal;
   const disputesRaisedCount = useMemo(() => disputesData.length, [disputesData]);
   const disputesReceivedCount = useMemo(() => disputesReceivedData.length, [disputesReceivedData]);
 
@@ -1363,9 +1426,9 @@ function OrdersInner() {
       },
     });
 
-  // ── Helper: is this offer's product already ordered by the buyer? ───────────
+  // â”€â”€ Helper: is this offer's product already ordered by the buyer? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const offerHasOrder = (offer: any): boolean => {
-    return ordersData.some(
+    return Boolean(offer.order && offer.order.orderStatus !== "cancelled") || ordersData.some(
       (ord) =>
         sameId(ord.buyer, offer.buyer) &&
         (sameId(ord.product, offer.product) ||
@@ -1374,13 +1437,13 @@ function OrdersInner() {
     );
   };
 
-  // ── Render tabs ───────────────────────────────────────────────────────────────
+  // â”€â”€ Render tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const renderStatusTabs = () => {
     if (activeCategory === "Offers") {
       return offerStatuses.map((status) => (
         <button
           key={status}
-          onClick={() => setOfferStatus(status)}
+          onClick={() => { setOfferStatus(status); setOffersPage(1); }}
           className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-all capitalize
             ${offerStatus === status
               ? "border-[#cb6f4d] bg-[#cb6f4d] text-white shadow-md shadow-[#cb6f4d]/25"
@@ -1424,7 +1487,7 @@ function OrdersInner() {
     return statuses.map((status) => (
       <button
         key={status}
-        onClick={() => setActiveStatus(status)}
+        onClick={() => { setActiveStatus(status); setOrdersPage(1); }}
         className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium transition-all
           ${activeStatus === status
             ? "border-[#cb6f4d] bg-[#cb6f4d] text-white shadow-md shadow-[#cb6f4d]/25"
@@ -1439,7 +1502,48 @@ function OrdersInner() {
     ));
   };
 
-  // ── Render list ───────────────────────────────────────────────────────────────
+  // â”€â”€ Render list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const renderPagination = (section: "orders" | "offers") => {
+    const page = section === "offers" ? offersPage : ordersPage;
+    const pageCount = section === "offers" ? offersPageCount : ordersPageCount;
+    const total = section === "offers" ? offersFilteredTotal : ordersTotal;
+    if (pageCount <= 1) return null;
+
+    const firstPage = Math.max(1, Math.min(page - 2, pageCount - 4));
+    const visiblePages = Array.from({ length: Math.min(5, pageCount) }, (_, index) => firstPage + index);
+    const navigate = (nextPage: number) => {
+      if (section === "offers") setOffersPage(nextPage);
+      else setOrdersPage(nextPage);
+    };
+
+    return (
+      <nav aria-label={`${section} pages`} className="flex flex-wrap items-center justify-center gap-1 pt-4">
+        <button
+          type="button"
+          onClick={() => navigate(Math.max(1, page - 1))}
+          disabled={page <= 1}
+          className="rounded-lg border border-[#eadfd6] px-3 py-2 text-sm text-[#6b625d] transition hover:border-[#cb6f4d] hover:text-[#cb6f4d] disabled:cursor-not-allowed disabled:opacity-40"
+        >Previous</button>
+        {visiblePages.map((number) => (
+          <button
+            key={number}
+            type="button"
+            onClick={() => navigate(number)}
+            aria-current={number === page ? "page" : undefined}
+            className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition ${number === page ? "border-[#cb6f4d] bg-[#cb6f4d] text-white" : "border-[#eadfd6] bg-white text-[#6b625d] hover:border-[#cb6f4d] hover:text-[#cb6f4d]"}`}
+          >{number}</button>
+        ))}
+        <span className="px-2 text-xs text-[#9b9189]">of {pageCount} · {total} total</span>
+        <button
+          type="button"
+          onClick={() => navigate(Math.min(pageCount, page + 1))}
+          disabled={page >= pageCount}
+          className="rounded-lg border border-[#eadfd6] px-3 py-2 text-sm text-[#6b625d] transition hover:border-[#cb6f4d] hover:text-[#cb6f4d] disabled:cursor-not-allowed disabled:opacity-40"
+        >Next</button>
+      </nav>
+    );
+  };
+
   const renderList = () => {
     if (loading && (activeCategory === "Sold" || activeCategory === "Bought")) return <OrdersSkeleton />;
     if (offersLoading && activeCategory === "Offers") return <OrdersSkeleton />;
@@ -1594,7 +1698,7 @@ function OrdersInner() {
                   </button>
                 </div>
 
-                {/* Buyer: timer + buy button — hidden once order placed */}
+                {/* Buyer: timer + buy button â€” hidden once order placed */}
                 {canBuyAcceptedOffer && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between bg-[#fff8f5] border border-[#f0ddd3] rounded-xl px-3 py-2">
@@ -1629,12 +1733,13 @@ function OrdersInner() {
                 {(hasProductOwner ? !isProductOwner : !isSeller) && offer.status === "accepted" && hasOrderedAlready && (
                   <div className="flex items-center justify-center gap-2 rounded-full bg-[#edf7f0] border border-[#b8e0c8] px-4 py-2 text-xs font-semibold text-[#2e7d4f]">
                     <Check size={13} strokeWidth={2.5} />
-                    Order placed — offer fulfilled
+                    Order placed â€” offer fulfilled
                   </div>
                 )}
               </div>
             );
           })}
+          {renderPagination("offers")}
         </div>
       );
     }
@@ -1776,6 +1881,7 @@ function OrdersInner() {
             </div>
           );
         })}
+        {renderPagination("orders")}
       </div>
     );
   };
@@ -1794,7 +1900,7 @@ function OrdersInner() {
     </div>
   );
 
-  // ── Per-category loading state for sidebar counts ──────────────────────────
+  // â”€â”€ Per-category loading state for sidebar counts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getCategoryCountDisplay = (cat: Category) => {
     if ((cat === "Sold" || cat === "Bought") && loading) return <SidebarLoader />;
     if (cat === "Offers" && offersLoading) return <SidebarLoader />;
@@ -1921,7 +2027,7 @@ function OrdersInner() {
                 return (
                   <button
                     key={cat}
-                    onClick={() => setActiveCategory(cat)}
+                    onClick={() => changeCategory(cat)}
                     className={`flex shrink-0 items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition-all
                       ${active
                         ? "border-[#cb6f4d] bg-[#cb6f4d] text-white shadow-md shadow-[#cb6f4d]/30"
@@ -1952,7 +2058,7 @@ function OrdersInner() {
                   return (
                     <button
                       key={cat}
-                      onClick={() => setActiveCategory(cat)}
+                      onClick={() => changeCategory(cat)}
                       className={`group flex w-full items-center justify-between px-5 py-4 text-left transition-all
                         ${active ? "bg-[#fff7f4]" : "hover:bg-[#fdfbf9]"}`}
                     >
@@ -1973,7 +2079,7 @@ function OrdersInner() {
                           <span className="text-xs text-[#bbb]">
                             {isLoading ? (
                               <span className="inline-flex items-center gap-1">
-                                <BrandSpinner size={10} /> loading…
+                                <BrandSpinner size={10} /> loadingâ€¦
                               </span>
                             ) : (
                               `${getCategoryCount(cat)} ${cat === "Offers" ? "offers" : cat.startsWith("Disputes") ? "disputes" : "orders"}`

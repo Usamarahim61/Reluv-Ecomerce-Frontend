@@ -52,6 +52,7 @@ export type MessageItem = {
   id: number | string;
   content: string;
   createdAt?: string;
+  readAt?: string | null;
   sender: ConversationUser | null;
   attachments?: MessageAttachment[];
   metadata?: {

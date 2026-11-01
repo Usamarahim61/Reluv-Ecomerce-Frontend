@@ -1,5 +1,6 @@
-import EditOfferModal from "@/app/components/EditOfferModal";
 "use client";
+
+import EditOfferModal from "@/app/components/EditOfferModal";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,6 +24,7 @@ import {
   DollarSign,
   Loader2,
   Coins,
+  Pencil,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "@/context/AuthContext";
@@ -482,6 +484,9 @@ export default function MessagesClient() {
 
     const handleMessagesRead = () => {
       dispatch(markConversationRead(selectedId));
+      if (selectedId) {
+        dispatch(fetchMessages(selectedId));
+      }
     };
 
     const handleBlockChanged = (event: {
@@ -1149,14 +1154,19 @@ export default function MessagesClient() {
         throw new Error("Could not identify the seller of the offer being countered.");
       }
 
+      const productOwnerId = resolvedSellerId || Number(activeConversation?.seller?.id);
+      const isUserOwner = productOwnerId === Number(user?.id);
+      const targetBuyerId = counterOfferParentId
+        ? Number(user?.id)
+        : (isUserOwner ? Number(peerUser?.id) : Number(user?.id));
+      const targetSellerId = counterOfferParentId
+        ? (counterOfferSellerId || productOwnerId)
+        : productOwnerId;
+
       await createOfferViaSocket({
         productId: offeredProduct.id,
-        buyerId: counterOfferParentId
-          ? Number(user?.id)
-          : Number(activeConversation.buyer?.id),
-        sellerId: counterOfferParentId
-          ? (counterOfferSellerId || Number(peerUser?.id) || resolvedSellerId)
-          : Number(activeConversation.seller?.id ?? resolvedSellerId),
+        buyerId: targetBuyerId,
+        sellerId: targetSellerId,
         initiatorId: Number(user?.id),
         offerPrice: amount,
         message: offerMessage || undefined,
@@ -1915,6 +1925,11 @@ export default function MessagesClient() {
                                           Pending
                                         </span>
                                       )}
+                                      {(msg.offer?.editedAt || (msg.offer?.editCount ?? 0) > 0) && (
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                                          Edited
+                                        </span>
+                                      )}
                                       {offerStatus === "accepted" && (
                                         <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
                                           Accepted
@@ -1944,6 +1959,40 @@ export default function MessagesClient() {
                                     >
                                       Original Price: TBH{originalPrice}
                                     </p>
+
+                                    {/* Edit Offer button for sender if offer is pending and not seen */}
+                                    {isMine &&
+                                      offerStatus === "pending" &&
+                                      !msg.offer?.seenAt &&
+                                      !msg.readAt && (
+                                        <div className="mt-2.5 pt-2 border-t border-white/10 flex justify-end">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setEditingOffer({
+                                                offerId: Number(offerId),
+                                                currentOfferPrice: Number(offerAmount),
+                                                originalPrice: Number(originalPrice),
+                                                currency: "THB",
+                                                productTitle: msg.offer?.productTitle || msg.offer?.product?.title,
+                                                conversationId: Number(selectedId || activeConversation?.id),
+                                              })
+                                            }
+                                            className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                                          >
+                                            <Pencil size={12} /> Edit Offer
+                                          </button>
+                                        </div>
+                                      )}
+
+                                    {/* Visibility tracker for recipient */}
+                                    <OfferVisibilityTracker
+                                      offerId={Number(offerId)}
+                                      conversationId={Number(selectedId || activeConversation?.id)}
+                                      isRecipient={!isMine}
+                                      isPending={offerStatus === "pending"}
+                                      isSeen={!!msg.offer?.seenAt}
+                                    />
 
                                     {/* Offer Actions - Show to the person who should respond */}
                                     {!isMine &&
