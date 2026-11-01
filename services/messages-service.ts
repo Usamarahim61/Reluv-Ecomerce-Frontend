@@ -256,53 +256,24 @@ export async function createOfferViaSocket(params: {
   initiatorId?: number;
   offerPrice: number;
   message?: string;
-  conversationId: number;
+  conversationId?: number;
   parentOfferId?: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  let emitted = false;
-  try {
-    await waitForChatSocket(socket);
-    return await new Promise((resolve, reject) => {
-    const timeout = globalThis.setTimeout(() => {
-      cleanup();
-      reject(new Error("offer:create timed out."));
-    }, 20000);
-
-    const cleanup = () => {
-      globalThis.clearTimeout(timeout);
-      socket.off("offer:created", handleCreated);
-      socket.off("offer:error", handleError);
-    };
-
-    const handleCreated = (event: { offer?: unknown; conversationId?: number }) => {
-      if (event.conversationId && Number(event.conversationId) !== Number(params.conversationId)) return;
-      cleanup();
-      resolve(event.offer);
-    };
-
-    const handleError = (event: { conversationId?: number; message?: string }) => {
-      if (event.conversationId && Number(event.conversationId) !== Number(params.conversationId)) return;
-      cleanup();
-      reject(new Error(event.message || "Failed to send offer."));
-    };
-
-    socket.on("offer:created", handleCreated);
-    socket.on("offer:error", handleError);
-    emitted = true;
-    socket.emit("offer:create", params);
-    });
-  } catch (err: any) {
-    if (emitted) {
-      // Socket already delivered message to server; avoid duplicate creation via REST retry
-      throw err;
+  if (socket && socket.connected) {
+    try {
+      socket.emit("offer:create", params);
+      return { success: true };
+    } catch {
+      // Fall through to HTTP
     }
-    const payload = await apiRequest("/offers/make", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-    return payload?.data ?? payload;
   }
+
+  const payload = await apiRequest("/offers/make", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  return payload?.data ?? payload;
 }
 
 export async function respondToOfferViaSocket(params: {
@@ -312,65 +283,27 @@ export async function respondToOfferViaSocket(params: {
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  let emitted = false;
-  try {
-    await waitForChatSocket(socket);
-    return await new Promise((resolve, reject) => {
-    const timeout = globalThis.setTimeout(() => {
-      cleanup();
-      reject(new Error("offer:respond timed out."));
-    }, 20000);
-
-    const cleanup = () => {
-      globalThis.clearTimeout(timeout);
-      socket.off("offer:responded", handleResponded);
-      socket.off("offer:error", handleError);
-    };
-
-    const handleResponded = (event: { offerId?: number; offer?: { status?: string }; conflict?: boolean; message?: string }) => {
-      if (Number(event.offerId) !== Number(params.offerId)) return;
-      cleanup();
-      if (event.conflict) {
-        reject(new Error(event.message || "This item is no longer available."));
-        return;
-      }
-      if (event.offer?.status !== params.action && event.offer?.status !== "declined") {
-        reject(new Error(event.message || `Offer is already ${event.offer?.status || "not pending"}.`));
-        return;
-      }
-      resolve(event.offer);
-    };
-
-    const handleError = (event: { offerId?: number; message?: string }) => {
-      if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
-      cleanup();
-      reject(new Error(event.message || "Failed to respond to offer."));
-    };
-
-    socket.on("offer:responded", handleResponded);
-    socket.on("offer:error", handleError);
-    emitted = true;
-    socket.emit("offer:respond", params);
-    });
-  } catch (err: any) {
-    if (emitted) {
-      throw err;
+  if (socket && socket.connected) {
+    try {
+      socket.emit("offer:respond", params);
+      return { success: true };
+    } catch {
+      // Fall through
     }
-    const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        action: params.action,
-        sellerId: params.sellerId,
-        conversationId: params.conversationId,
-      }),
-    });
-    if (payload?.conflict) throw new Error(payload?.message || "This item is no longer available.");
-    const offer = payload?.data ?? payload;
-    if (offer?.status !== params.action) throw new Error(`Offer is already ${offer?.status || "not pending"}.`);
-    return offer;
   }
-}
 
+  const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      action: params.action,
+      sellerId: params.sellerId,
+      conversationId: params.conversationId,
+    }),
+  });
+  if (payload?.conflict) throw new Error(payload?.message || "This item is no longer available.");
+  const offer = payload?.data ?? payload;
+  return offer;
+}
 
 export async function editOfferViaSocket(params: {
   offerId: number;
@@ -378,46 +311,22 @@ export async function editOfferViaSocket(params: {
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  try {
-    await waitForChatSocket(socket);
-    return await new Promise((resolve, reject) => {
-      const timeout = globalThis.setTimeout(() => {
-        cleanup();
-        reject(new Error("offer:edit timed out."));
-      }, 20000);
-
-      const cleanup = () => {
-        globalThis.clearTimeout(timeout);
-        socket.off("offer:edited", handleEdited);
-        socket.off("offer:error", handleError);
-      };
-
-      const handleEdited = (event: { offerId?: number; offer?: unknown }) => {
-        if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
-        cleanup();
-        resolve(event.offer);
-      };
-
-      const handleError = (event: { offerId?: number; message?: string }) => {
-        if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
-        cleanup();
-        reject(new Error(event.message || "Failed to edit offer."));
-      };
-
-      socket.on("offer:edited", handleEdited);
-      socket.on("offer:error", handleError);
+  if (socket && socket.connected) {
+    try {
       socket.emit("offer:edit", params);
-    });
-  } catch (socketErr: any) {
-    if (socketErr?.message && !socketErr.message.includes("timed out") && !socketErr.message.includes("Could not connect")) {
-      throw socketErr;
+    } catch {
+      // Fall through
     }
-    const payload = await apiRequest(`/offers/${params.offerId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ offerPrice: params.offerPrice, conversationId: params.conversationId }),
-    });
-    return payload?.data ?? payload;
   }
+
+  const payload = await apiRequest(`/offers/${params.offerId}/price`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      offerPrice: params.offerPrice,
+      conversationId: params.conversationId,
+    }),
+  });
+  return payload?.data ?? payload;
 }
 
 export async function markOfferSeenViaSocket(params: {

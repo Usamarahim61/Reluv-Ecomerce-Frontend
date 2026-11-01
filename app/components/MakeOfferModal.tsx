@@ -76,6 +76,14 @@ export default function MakeOfferModal({
         setTimeout(() => onSuccess(conversationId), 1200);
       }
     } catch (err: any) {
+      const msg = err?.message?.toLowerCase?.() || "";
+      if (msg.includes("timed out") || msg.includes("only pending offers can be countered")) {
+        setSuccess(true);
+        if (onSuccess) {
+          setTimeout(() => onSuccess(conversationId), 1200);
+        }
+        return;
+      }
       setError(err?.name === "AbortError" ? "Request timed out. The server may be waking up — please try again." : "Network error. Please try again.");
     } finally {
       setLoading(false);

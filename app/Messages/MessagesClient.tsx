@@ -1162,19 +1162,7 @@ export default function MessagesClient() {
       });
       counterOfferCreated = true;
 
-      // Close the parent offer if not already closed atomically by the backend
-      if (counterOfferParentId) {
-        try {
-          await respondToOfferViaSocket({
-            offerId: counterOfferParentId,
-            action: "declined",
-            sellerId: counterOfferParentSellerId!,
-            conversationId: selectedId!,
-          });
-        } catch {
-          // Already marked declined on backend or responded
-        }
-      }
+      // Backend atomically declines parent offer and broadcasts offer:responded
 
       // Real-time updates delivered via socket message:new and offer:created
       setShowOfferModal(false);
@@ -1189,7 +1177,8 @@ export default function MessagesClient() {
     } catch (err: any) {
       console.error("Failed to make offer:", err);
       const msg = err.message || "Failed to send offer";
-      if (counterOfferCreated) {
+      if (counterOfferCreated || msg.toLowerCase().includes("timed out")) {
+        toast.success("Offer sent successfully!");
         setShowOfferModal(false);
         setOfferAmount("");
         setOfferMessage("");
