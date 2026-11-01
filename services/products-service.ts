@@ -20,6 +20,7 @@ export type ProductCardItem = {
   fav_products?: any;
   isVerifiedLuxury?: boolean;
   aiAssisted?: boolean;
+  productStatus?: string;
 };
 export type MemebersCardItem = {
   id: number | string;
@@ -215,6 +216,7 @@ const mapProductToCard = (entry: any): ProductCardItem => {
     likes,
     userId,
     isVerifiedLuxury: Boolean(entry.isVerifiedLuxury),
+    productStatus: entry.productStatus ?? attributes.productStatus ?? "active",
   };
 };
 
@@ -422,10 +424,24 @@ export async function fetchProductById(id: string | number): Promise<ProductDeta
   return mapProductToDetail(payload?.product);
 }
 
-export async function fetchProductsByUserId(userId: number | string): Promise<ProductCardItem[]> {
-  const payload = await apiRequest(`/products/user/${encodeURIComponent(String(userId))}`);
+export async function fetchProductsByUserId(
+  userId: number | string,
+  includeAll = false
+): Promise<ProductCardItem[]> {
+  const query = includeAll ? "?includeAll=true" : "";
+  const payload = await apiRequest(`/products/user/${encodeURIComponent(String(userId))}${query}`);
   const data = Array.isArray(payload?.products) ? payload.products : [];
   return data.map(mapProductToCard);
+}
+
+export async function relistProduct(
+  id: number | string,
+  userId: number | string
+): Promise<void> {
+  await apiRequest("/products/relist", {
+    method: "POST",
+    body: JSON.stringify({ id: Number(id), userId: Number(userId) }),
+  });
 }
 
 export function deleteMyProduct(id: number | string) {

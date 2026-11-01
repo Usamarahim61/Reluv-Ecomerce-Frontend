@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, ShieldCheck, Flame } from "lucide-react";
+import { Heart, ShieldCheck, Flame, Loader2 } from "lucide-react";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
@@ -56,7 +56,11 @@ export default function ProductCard({
   isVerifiedLuxury = false,
   variant = "default",
   isLiked: isLikedProp = false,
-  onFavChange,                    // ✅ from parent
+  onFavChange,
+  actionLabel,
+  onAction,
+  actionLoading = false,
+  productStatus,
 }: any) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(isLikedProp);
@@ -167,6 +171,15 @@ export default function ProductCard({
             </div>
           )}
 
+          {/* Sold Overlay */}
+          {productStatus === 'sold' && (
+            <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center pointer-events-none">
+              <span className="bg-red-600/90 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg">
+                Sold
+              </span>
+            </div>
+          )}
+
           {/* Like Button */}
           <button
             onClick={AddLike}
@@ -235,6 +248,24 @@ export default function ProductCard({
               </div>
             </div>
           </div>
+
+          {actionLabel && onAction && (
+            <div className="pt-3 border-t border-[#f0ede8] mt-2">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAction();
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-[#cb6f4d] hover:bg-[#b85f3d] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading && <Loader2 size={13} className="animate-spin" />}
+                {actionLabel}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Link>
