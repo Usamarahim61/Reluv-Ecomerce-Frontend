@@ -50,6 +50,7 @@ export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'com
 
 export type MessageItem = {
   id: number | string;
+  conversationId?: number;
   content: string;
   createdAt?: string;
   readAt?: string | null;
@@ -61,6 +62,8 @@ export type MessageItem = {
     productId?: number;
     amount?: number;
     status?: string;
+    message?: string | null;
+    [key: string]: any;
   };
   offer?: {
     id: number;

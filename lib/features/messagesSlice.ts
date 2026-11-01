@@ -201,6 +201,31 @@ const messagesSlice = createSlice({
         }
       }
 
+      // Reconcile optimistic offer messages (e.g. temp-offer-...)
+      const incomingOfferId = message.offer?.id ?? message.metadata?.offerId;
+      const incomingProdId = message.offer?.product?.id ?? message.metadata?.productId;
+      if (incomingOfferId || message.metadata?.type === 'offer') {
+        const tempOfferIndex = existing.findIndex(
+          (m) =>
+            String(m.id).startsWith('temp-offer') &&
+            (!incomingProdId || Number(m.offer?.product?.id ?? m.metadata?.productId) === Number(incomingProdId))
+        );
+        if (tempOfferIndex >= 0) {
+          const copy = [...existing];
+          copy[tempOfferIndex] = message;
+          state.messagesByConversation[key] = copy;
+          if (state.messagesStatusByConversation[key] === "loading") {
+            const duringFetch = state.messagesDuringFetchByConversation[key] ?? [];
+            const bufferedOptimisticIndex = duringFetch.findIndex((item) => String(item.id).startsWith('temp-offer'));
+            const nextDuringFetch = [...duringFetch];
+            if (bufferedOptimisticIndex >= 0) nextDuringFetch[bufferedOptimisticIndex] = message;
+            else if (!nextDuringFetch.some((item) => String(item.id) === String(message.id))) nextDuringFetch.push(message);
+            state.messagesDuringFetchByConversation[key] = nextDuringFetch;
+          }
+          return;
+        }
+      }
+
       const alreadyExists = existing.some((m) => String(m.id) === String(message.id));
       if (alreadyExists) return;
 

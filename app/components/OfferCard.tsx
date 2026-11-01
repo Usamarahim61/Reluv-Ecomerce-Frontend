@@ -390,6 +390,7 @@ export default function OfferCard({
       {/* Sender Action: Edit offer when pending & unread */}
       {isOfferSender &&
         isPending &&
+        Number(offer.id) > 0 &&
         !localSeenAt &&
         !readAt &&
         !offer.seenAt &&

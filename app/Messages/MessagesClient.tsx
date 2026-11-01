@@ -1150,21 +1150,50 @@ export default function MessagesClient() {
         ? counterOfferParentSellerId!
         : productOwnerId;
 
-      await createOfferViaSocket({
-        productId: offeredProduct.id,
-        buyerId: targetBuyerId,
-        sellerId: targetSellerId,
-        initiatorId: Number(user?.id),
-        offerPrice: amount,
-        message: offerMessage || undefined,
+      const optimisticOfferMessage: MessageItem = {
+        id: `temp-offer-${Date.now()}`,
         conversationId: selectedId,
-        parentOfferId: counterOfferParentId || undefined,
-      });
-      counterOfferCreated = true;
+        content: `Made an offer: THB${amount}${offerMessage ? ` - "${offerMessage}"` : ""}`,
+        createdAt: new Date().toISOString(),
+        sender: user ? { id: user.id, username: user.username } : null,
+        metadata: {
+          type: "offer",
+          amount,
+          status: "pending",
+          message: offerMessage || null,
+          productId: offeredProduct.id,
+          productTitle: offeredProduct.title,
+        },
+        offer: {
+          id: 0,
+          offerPrice: amount,
+          originalPrice: productPrice,
+          status: "pending",
+          message: offerMessage || null,
+          sender: user ? { id: user.id, username: user.username } : undefined,
+          product: { id: offeredProduct.id, title: offeredProduct.title },
+          productTitle: offeredProduct.title,
+          buyer: targetBuyerId,
+          seller: targetSellerId,
+        } as any,
+      };
 
-      // Backend atomically declines parent offer and broadcasts offer:responded
+      // Instantly render optimistic offer bubble in chat with zero lag
+      dispatch(
+        addOptimisticMessage({
+          conversationId: selectedId,
+          message: optimisticOfferMessage,
+        })
+      );
+      dispatch(
+        updateConversationPreview({
+          conversationId: selectedId,
+          lastMessagePreview: "Offer sent",
+          lastMessageAt: optimisticOfferMessage.createdAt,
+        })
+      );
 
-      // Real-time updates delivered via socket message:new and offer:created
+      // Close modal immediately
       setShowOfferModal(false);
       setOfferAmount("");
       setOfferMessage("");
@@ -1174,19 +1203,36 @@ export default function MessagesClient() {
       setCounterOfferParentBuyerId(null);
       setCounterOfferParentSellerId(null);
       toast.success("Offer sent successfully!");
+
+      try {
+        await createOfferViaSocket({
+          productId: offeredProduct.id,
+          buyerId: targetBuyerId,
+          sellerId: targetSellerId,
+          initiatorId: Number(user?.id),
+          offerPrice: amount,
+          message: offerMessage || undefined,
+          conversationId: selectedId,
+          parentOfferId: counterOfferParentId || undefined,
+        });
+        counterOfferCreated = true;
+      } catch (socketErr: any) {
+        console.warn("Socket offer creation warning:", socketErr);
+        // If error is not a harmless timeout or already-handled, remove optimistic message
+        const errMsg = socketErr?.message || "";
+        if (!errMsg.toLowerCase().includes("timed out") && !errMsg.toLowerCase().includes("pending")) {
+          dispatch(
+            removeMessage({
+              conversationId: selectedId,
+              messageId: optimisticOfferMessage.id,
+            })
+          );
+          throw socketErr;
+        }
+      }
     } catch (err: any) {
       console.error("Failed to make offer:", err);
       const msg = err.message || "Failed to send offer";
-      if (counterOfferCreated || msg.toLowerCase().includes("timed out")) {
-        toast.success("Offer sent successfully!");
-        setShowOfferModal(false);
-        setOfferAmount("");
-        setOfferMessage("");
-        setCounterOfferParentId(null);
-        setCounterOfferParentBuyerId(null);
-        setCounterOfferParentSellerId(null);
-        return;
-      }
       setOfferError(msg);
       toast.error(msg);
     } finally {
