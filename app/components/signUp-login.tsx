@@ -241,14 +241,27 @@ export default function SignUpLogin({
   const handleLineLogin = useCallback(async () => {
     setLoadingProvider("line");
     dismissError();
-    const state = createLineOAuthState();
+    const popup = openPopup("about:blank", "Line Sign-In");
+    if (!popup) {
+      showError({
+        kind: "unknown",
+        message:
+          "Popup was blocked. Please allow popups for this site and try again.",
+      });
+      setLoadingProvider(null);
+      return;
+    }
+
+    let state: string;
     let codeVerifier: string;
     let codeChallenge: string;
     try {
+      state = createLineOAuthState();
       ({ codeVerifier, codeChallenge } = await createLinePkcePair());
       sessionStorage.setItem("line_oauth_state", state);
       sessionStorage.setItem("line_oauth_verifier", codeVerifier);
     } catch (err: unknown) {
+      popup.close();
       showError(classifyError(err));
       setLoadingProvider(null);
       return;
@@ -262,21 +275,7 @@ export default function SignUpLogin({
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
     });
-    const popup = openPopup(
-      `https://access.line.me/oauth2/v2.1/authorize?${params}`,
-      "Line Sign-In",
-    );
-    if (!popup) {
-      showError({
-        kind: "unknown",
-        message:
-          "Popup was blocked. Please allow popups for this site and try again.",
-      });
-      setLoadingProvider(null);
-      sessionStorage.removeItem("line_oauth_state");
-      sessionStorage.removeItem("line_oauth_verifier");
-      return;
-    }
+    popup.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
     const handler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== "LINE_AUTH_SUCCESS" && event.data?.type !== "LINE_AUTH_ERROR") return;
