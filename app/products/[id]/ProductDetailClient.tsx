@@ -542,14 +542,26 @@ export default function ProductDetailPage() {
         productId: Number(product.id),
         otherUserId: Number(product.user.id),
       });
-      if (conversation?.id) {
-        setActiveConversationId(conversation.id);
+      if (!conversation?.id) {
+        throw new Error("Unable to start a conversation for this offer.");
       }
+      setActiveConversationId(conversation.id);
+      setShowOfferModal(true);
     } catch (err) {
       console.error("Failed to pre-fetch conversation for offer", err);
+      toast.error(err instanceof Error ? err.message : "Unable to start a conversation for this offer.");
+    } finally {
+      setIsFetchingConvForOffer(false);
     }
-    setShowOfferModal(true);
-    setIsFetchingConvForOffer(false);
+  };
+
+  const handleOfferSuccess = (createdConvId?: number) => {
+    setShowOfferModal(false);
+    const targetConvId = createdConvId || activeConversationId;
+    if (targetConvId) {
+      dispatch(fetchConversations());
+      router.push(`/Messages?conversationId=${targetConvId}`);
+    }
   };
 
   // ── wishlist handler for main product heart button ─────────────────────────
@@ -1496,9 +1508,10 @@ export default function ProductDetailPage() {
           productTitle={name}
           originalPrice={parseFloat(getPriceValue(price) || "0")}
           currency={getCurrencyCode(price) || "THB"}
-          sellerId={Number(product.user?.id)}
+          sellerId={Number(product.user?.id || (product as any)?.users_permissions_user?.id || (product as any)?.userId?.id || (product as any)?.owner?.id)}
           buyerId={Number(user.id)}
           conversationId={activeConversationId || undefined}
+          onSuccess={handleOfferSuccess}
         />
       )}
 

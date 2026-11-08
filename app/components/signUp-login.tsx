@@ -20,6 +20,8 @@ import {
   forgotPasswordReset,
   loginWithGoogle,
   loginWithLine, // Added Line service
+  createLinePkcePair,
+  createLineOAuthState,
 } from "../../services/auth-service";
 import { useAuth } from "../../context/AuthContext";
 import { NEXT_PUBLIC_GOOGLE_CLIENT_ID, NEXT_PUBLIC_LINE_CALLBACK_URL, NEXT_PUBLIC_LINE_CHANNEL_ID } from "@/constants";
@@ -236,20 +238,10 @@ export default function SignUpLogin({
   }, [setAuthLogin, onClose, showError, dismissError]);
 
   // ── Line Login ───────────────────────────────────────────────────────────
-  const handleLineLogin = useCallback(() => {
+  const handleLineLogin = useCallback(async () => {
     setLoadingProvider("line");
     dismissError();
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: LINE_CHANNEL_ID,
-      redirect_uri: `${NEXT_PUBLIC_LINE_CALLBACK_URL}`,
-      state: "line_auth_state", 
-      scope: "openid profile email",
-    });
-    const popup = openPopup(
-      `https://access.line.me/oauth2/v2.1/authorize?${params}`,
-      "Line Sign-In",
-    );
+    const popup = openPopup("about:blank", "Line Sign-In");
     if (!popup) {
       showError({
         kind: "unknown",
@@ -259,18 +251,67 @@ export default function SignUpLogin({
       setLoadingProvider(null);
       return;
     }
+
+    let state: string;
+    let codeVerifier: string;
+    let codeChallenge: string;
+    try {
+      state = createLineOAuthState();
+      ({ codeVerifier, codeChallenge } = await createLinePkcePair());
+      sessionStorage.setItem("line_oauth_state", state);
+      sessionStorage.setItem("line_oauth_verifier", codeVerifier);
+    } catch (err: unknown) {
+      popup.close();
+      showError(classifyError(err));
+      setLoadingProvider(null);
+      return;
+    }
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: LINE_CHANNEL_ID,
+      redirect_uri: `${NEXT_PUBLIC_LINE_CALLBACK_URL}`,
+      state,
+      scope: "openid profile",
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+    });
+    popup.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
     const handler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== "LINE_AUTH_SUCCESS") return;
+      if (event.data?.type !== "LINE_AUTH_SUCCESS" && event.data?.type !== "LINE_AUTH_ERROR") return;
       window.removeEventListener("message", handler);
       clearInterval(poll);
+      if (event.data.state !== state) {
+        popup.close();
+        sessionStorage.removeItem("line_oauth_state");
+        sessionStorage.removeItem("line_oauth_verifier");
+        showError({ kind: "auth", message: "LINE sign in could not be verified. Please try again." });
+        setLoadingProvider(null);
+        return;
+      }
+      if (event.data.type === "LINE_AUTH_ERROR") {
+        popup.close();
+        sessionStorage.removeItem("line_oauth_state");
+        sessionStorage.removeItem("line_oauth_verifier");
+        showError({ kind: "cancelled", message: event.data.error || "LINE sign in was cancelled." });
+        setLoadingProvider(null);
+        return;
+      }
       try {
         // Calls your backend/Strapi endpoint using the retrieved OAuth code
-        const data = await loginWithLine({ code: event.data.code });
+        const data = await loginWithLine({
+          code: event.data.code,
+          code_verifier: codeVerifier,
+          redirect_uri: NEXT_PUBLIC_LINE_CALLBACK_URL,
+        });
         setAuthLogin(data.jwt, data.user as any);
+        sessionStorage.removeItem("line_oauth_state");
+        sessionStorage.removeItem("line_oauth_verifier");
         popup.close();
         onClose();
       } catch (err: any) {
+        sessionStorage.removeItem("line_oauth_state");
+        sessionStorage.removeItem("line_oauth_verifier");
         showError(classifyError(err));
       } finally {
         setLoadingProvider(null);
@@ -281,6 +322,8 @@ export default function SignUpLogin({
       if (popup.closed) {
         clearInterval(poll);
         window.removeEventListener("message", handler);
+        sessionStorage.removeItem("line_oauth_state");
+        sessionStorage.removeItem("line_oauth_verifier");
         setLoadingProvider(() => null);
       }
     }, 500);

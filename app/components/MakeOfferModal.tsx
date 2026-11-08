@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { X, Tag, Info } from "lucide-react";
-import { API_BASE_URL } from "@/app/constants/api";
 import { getChatContentRejection } from "@/lib/chat-content-validation";
+import { createOfferViaSocket } from "@/services/messages-service";
 
 interface MakeOfferModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface MakeOfferModalProps {
   sellerId: number;
   buyerId: number;
   conversationId?: number;
+  onSuccess?: (conversationId?: number) => void;
 }
 
 const MIN_RATIO = 0.5;
@@ -30,6 +31,7 @@ export default function MakeOfferModal({
   sellerId,
   buyerId,
   conversationId,
+  onSuccess,
 }: MakeOfferModalProps) {
   const [offerPrice, setOfferPrice] = useState("");
   const [message, setMessage] = useState("");
@@ -60,33 +62,28 @@ export default function MakeOfferModal({
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("jwt");
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-      const res = await fetch(`${API_BASE_URL}/api/offers/make`, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          productId,
-          buyerId,
-          sellerId,
-          offerPrice: numericOffer,
-          message: trimmedMessage || null,
-          conversationId,
-        }),
+      if (!conversationId) throw new Error("Start the conversation before sending an offer.");
+      await createOfferViaSocket({
+        productId,
+        buyerId,
+        sellerId,
+        offerPrice: numericOffer,
+        message: trimmedMessage || undefined,
+        conversationId,
       });
-      clearTimeout(timeout);
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.error?.message ?? "Failed to submit offer.");
+      setSuccess(true);
+      if (onSuccess) {
+        setTimeout(() => onSuccess(conversationId), 1200);
+      }
+    } catch (err: any) {
+      const msg = err?.message?.toLowerCase?.() || "";
+      if (msg.includes("timed out") || msg.includes("only pending offers can be countered")) {
+        setSuccess(true);
+        if (onSuccess) {
+          setTimeout(() => onSuccess(conversationId), 1200);
+        }
         return;
       }
-      setSuccess(true);
-    } catch (err: any) {
       setError(err?.name === "AbortError" ? "Request timed out. The server may be waking up — please try again." : "Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -94,11 +91,15 @@ export default function MakeOfferModal({
   };
 
   const handleClose = () => {
+    const wasSuccess = success;
     setOfferPrice("");
     setMessage("");
     setError(null);
     setSuccess(false);
     onClose();
+    if (wasSuccess && onSuccess) {
+      onSuccess(conversationId);
+    }
   };
 
   if (!isOpen) return null;

@@ -476,6 +476,7 @@ const CheckOutInner: React.FC<InnerProps> = ({
 
       const payload = {
         productId: searchParams.get("productId"),
+        offerId: searchParams.get("offerId"),
         buyerId: userId,
         sellerId: searchParams.get("sellerId"),
         productImage: searchParams.get("imageUrl") || "",
@@ -497,7 +498,12 @@ const CheckOutInner: React.FC<InnerProps> = ({
 
       const res = await fetch(`${API_BASE_URL}/api/orders/place-order`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(localStorage.getItem("jwt")
+            ? { Authorization: `Bearer ${localStorage.getItem("jwt")}` }
+            : {}),
+        },
         body: JSON.stringify(payload),
       });
 

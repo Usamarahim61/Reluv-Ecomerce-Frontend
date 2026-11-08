@@ -31,6 +31,47 @@ export const makeOffer = async (payload: MakeOfferPayload) => {
   return res.json();
 };
 
+export const editOfferPrice = async (
+  offerId: number,
+  offerPrice: number,
+  conversationId?: number
+) => {
+  const jwt = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
+  const res = await fetch(`${API_BASE_URL}/api/offers/${offerId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({ offerPrice, conversationId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error?.message ?? data?.message ?? "Failed to update offer price");
+  }
+  return data;
+};
+
+export const markOfferSeen = async (
+  offerId: number,
+  conversationId?: number
+) => {
+  const jwt = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
+  const res = await fetch(`${API_BASE_URL}/api/offers/${offerId}/seen`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({ conversationId }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data?.error?.message ?? "Failed to mark offer as seen");
+  }
+  return res.json();
+};
+
 export const getOffersForSeller = async (sellerId: number) => {
   const jwt = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
   const res = await fetch(`${API_BASE_URL}/api/offers/seller/${sellerId}`, {

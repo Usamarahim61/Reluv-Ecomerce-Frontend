@@ -48,7 +48,7 @@ export const fetchMessages = createAsyncThunk(
   async (conversationId: number, { rejectWithValue }) => {
     try {
       const list = await fetchMessagesByConversation(conversationId);
-      return { conversationId, messages: list };
+      return { conversationId: Number(list.conversationId ?? conversationId), requestedConversationId: conversationId, messages: list };
     } catch (error) {
       return rejectWithValue({
         conversationId,
@@ -137,6 +137,25 @@ const messagesSlice = createSlice({
         }
       }
     },
+    removeMessage: (
+      state,
+      action: PayloadAction<{ conversationId: number; messageId: string | number }>
+    ) => {
+      const { conversationId, messageId } = action.payload;
+      const key = String(conversationId);
+      const existing = state.messagesByConversation[key];
+      if (existing) {
+        state.messagesByConversation[key] = existing.filter(
+          (message) => String(message.id) !== String(messageId),
+        );
+      }
+      const duringFetch = state.messagesDuringFetchByConversation[key];
+      if (duringFetch) {
+        state.messagesDuringFetchByConversation[key] = duringFetch.filter(
+          (message) => String(message.id) !== String(messageId),
+        );
+      }
+    },
     upsertMessage: (
       state,
       action: PayloadAction<{
@@ -182,6 +201,31 @@ const messagesSlice = createSlice({
         }
       }
 
+      // Reconcile optimistic offer messages (e.g. temp-offer-...)
+      const incomingOfferId = message.offer?.id ?? message.metadata?.offerId;
+      const incomingProdId = message.offer?.product?.id ?? message.metadata?.productId;
+      if (incomingOfferId || message.metadata?.type === 'offer') {
+        const tempOfferIndex = existing.findIndex(
+          (m) =>
+            String(m.id).startsWith('temp-offer') &&
+            (!incomingProdId || Number(m.offer?.product?.id ?? m.metadata?.productId) === Number(incomingProdId))
+        );
+        if (tempOfferIndex >= 0) {
+          const copy = [...existing];
+          copy[tempOfferIndex] = message;
+          state.messagesByConversation[key] = copy;
+          if (state.messagesStatusByConversation[key] === "loading") {
+            const duringFetch = state.messagesDuringFetchByConversation[key] ?? [];
+            const bufferedOptimisticIndex = duringFetch.findIndex((item) => String(item.id).startsWith('temp-offer'));
+            const nextDuringFetch = [...duringFetch];
+            if (bufferedOptimisticIndex >= 0) nextDuringFetch[bufferedOptimisticIndex] = message;
+            else if (!nextDuringFetch.some((item) => String(item.id) === String(message.id))) nextDuringFetch.push(message);
+            state.messagesDuringFetchByConversation[key] = nextDuringFetch;
+          }
+          return;
+        }
+      }
+
       const alreadyExists = existing.some((m) => String(m.id) === String(message.id));
       if (alreadyExists) return;
 
@@ -202,11 +246,119 @@ const messagesSlice = createSlice({
       }>
     ) => {
       const { conversationId, offerId, status } = action.payload;
-      const messages = state.messagesByConversation[String(conversationId)] ?? [];
-      for (const message of messages) {
-        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) continue;
-        if (message.offer) message.offer.status = status;
-        if (message.metadata) message.metadata.status = status;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
+        }
+        return {
+          ...message,
+          offer: message.offer ? { ...message.offer, status } : undefined,
+          metadata: message.metadata ? { ...message.metadata, status } : undefined,
+        };
+      });
+    },
+    updateOfferPrice: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offerId: number;
+        offerPrice: number;
+        editedAt?: string | null;
+        editCount?: number;
+      }>
+    ) => {
+      const { conversationId, offerId, offerPrice, editedAt, editCount } = action.payload;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
+        }
+        let content = message.content;
+        if (content?.startsWith("Made an offer:")) {
+          const suffixIndex = content.indexOf(' - "');
+          const suffix = suffixIndex !== -1 ? content.slice(suffixIndex) : '';
+          content = `Made an offer: THB${offerPrice}${suffix}`;
+        }
+        return {
+          ...message,
+          content,
+          offer: message.offer
+            ? {
+                ...message.offer,
+                offerPrice,
+                editedAt: editedAt ?? message.offer.editedAt,
+                editCount: editCount != null ? editCount : message.offer.editCount,
+              }
+            : undefined,
+          metadata: message.metadata
+            ? {
+                ...message.metadata,
+                amount: offerPrice,
+                offerPrice,
+                editedAt: editedAt ?? (message.metadata as any).editedAt,
+              }
+            : undefined,
+        };
+      });
+    },
+    updateOfferSeen: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offerId: number;
+        seenAt: string;
+      }>
+    ) => {
+      const { conversationId, offerId, seenAt } = action.payload;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offerId)) {
+          return message;
+        }
+        return {
+          ...message,
+          offer: message.offer ? { ...message.offer, seenAt } : undefined,
+        };
+      });
+    },
+    updateOfferInMessages: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        offer: any;
+      }>
+    ) => {
+      const { conversationId, offer } = action.payload;
+      if (!offer?.id) return;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key] ?? [];
+      state.messagesByConversation[key] = messages.map((message) => {
+        if (Number(message.offer?.id ?? message.metadata?.offerId) !== Number(offer.id)) {
+          return message;
+        }
+        return {
+          ...message,
+          offer: { ...(message.offer || {}), ...offer },
+          metadata: { ...(message.metadata || {}), offerId: offer.id, amount: offer.offerPrice, status: offer.status },
+        };
+      });
+    },
+    markMessagesRead: (
+      state,
+      action: PayloadAction<{ conversationId: number; readAt?: string }>
+    ) => {
+      const { conversationId, readAt } = action.payload;
+      const key = String(conversationId);
+      const messages = state.messagesByConversation[key];
+      if (messages) {
+        const timestamp = readAt || new Date().toISOString();
+        state.messagesByConversation[key] = messages.map((m) =>
+          m.readAt ? m : { ...m, readAt: timestamp }
+        );
       }
     },
   },
@@ -235,7 +387,15 @@ const messagesSlice = createSlice({
         state.messagesDuringFetchByConversation[String(conversationId)] = [];
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        const { conversationId, messages } = action.payload;
+        const { conversationId, requestedConversationId, messages } = action.payload;
+        if (state.selectedConversationId === requestedConversationId && conversationId !== requestedConversationId) {
+          state.selectedConversationId = conversationId;
+        }
+        if (conversationId !== requestedConversationId) {
+          delete state.messagesStatusByConversation[String(requestedConversationId)];
+          delete state.messagesErrorByConversation[String(requestedConversationId)];
+          delete state.messagesDuringFetchByConversation[String(requestedConversationId)];
+        }
         const key = String(conversationId);
         const duringFetch = state.messagesDuringFetchByConversation[key] ?? [];
         const cachedMessages = state.messagesByConversation[key] ?? [];
@@ -294,8 +454,13 @@ export const {
   updateConversationPreview,
   setMessagesForConversation,
   addOptimisticMessage,
+  removeMessage,
   upsertMessage,
   updateOfferStatus,
+  updateOfferPrice,
+  updateOfferSeen,
+  updateOfferInMessages,
+  markMessagesRead,
 } = messagesSlice.actions;
 
 export default messagesSlice.reducer;

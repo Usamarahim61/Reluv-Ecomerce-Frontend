@@ -1,5 +1,7 @@
 "use client";
 
+import EditOfferModal from "@/app/components/EditOfferModal";
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Info,
@@ -22,6 +24,7 @@ import {
   DollarSign,
   Loader2,
   Coins,
+  Pencil,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "@/context/AuthContext";
@@ -29,10 +32,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ConversationItem,
+  MessageAttachment,
   MessageItem,
-  OfferStatus,
   blockUser,
   createOfferViaSocket,
+  markOfferSeenViaSocket,
   deleteConversation,
   fetchBlockStatus,
   respondToOfferViaSocket,
@@ -44,6 +48,7 @@ import { getChatContentRejection } from "@/lib/chat-content-validation";
 import { getFirstImageUrl } from "@/services/products-service";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { useAndroidNative } from "@/app/components/useAndroidNative";
+import OfferCard from "@/app/components/OfferCard";
 import { API_BASE_URL } from "@/app/constants/api";
 import {
   addOptimisticMessage,
@@ -51,9 +56,14 @@ import {
   fetchMessages,
   markConversationRead,
   removeConversation,
+  removeMessage,
   setSelectedConversationId,
-  updateOfferStatus,
   updateConversationPreview,
+  updateOfferStatus,
+  updateOfferPrice,
+  updateOfferSeen,
+  updateOfferInMessages,
+  markMessagesRead,
   upsertMessage,
 } from "@/lib/features/messagesSlice";
 
@@ -92,8 +102,16 @@ const formatFullDateTime = (value?: string | null) => {
   }
 };
 
-// Unified conversations: one conversation can reference many products.
-// Product references arrive as `product_ref` messages (metadata.productRef).
+const resolveAvatarUrl = (avatar?: any) => {
+  if (!avatar) return null;
+  const raw = typeof avatar === "string" ? avatar : avatar?.url;
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("blob:") || raw.startsWith("data:")) {
+    return raw;
+  }
+  return `${API_BASE_URL}${raw.startsWith("/") ? "" : "/"}${raw}`;
+};
+
 type ProductRef = {
   id: number;
   documentId?: string | null;
@@ -141,17 +159,6 @@ const collectConversationProducts = (
   }
   for (const msg of messages) {
     push(getProductRefFromMessage(msg));
-    const offerProduct = msg.offer?.product;
-    if (offerProduct?.id != null && Number.isInteger(Number(offerProduct.id))) {
-      push({
-        id: Number(offerProduct.id),
-        documentId: offerProduct.documentId ?? null,
-        title: offerProduct.title ?? msg.offer?.productTitle ?? null,
-        price: offerProduct.price ?? msg.offer?.originalPrice ?? null,
-        image: msg.offer?.productImage ?? null,
-        productStatus: offerProduct.productStatus ?? null,
-      });
-    }
   }
   return products;
 };
@@ -198,6 +205,7 @@ function ProductRefCard({ ref_ }: { ref_: ProductRef }) {
   );
 }
 
+
 export default function MessagesClient() {
   const { user } = useAuth();
   const { isAndroid } = useAndroidNative();
@@ -238,7 +246,6 @@ export default function MessagesClient() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
-  const [counterOfferParentId, setCounterOfferParentId] = useState<number | null>(null);
   const [offerMessage, setOfferMessage] = useState("");
   const [offerError, setOfferError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -246,6 +253,8 @@ export default function MessagesClient() {
     null,
   );
   const [isSendingOffer, setIsSendingOffer] = useState(false);
+  const isSendingOfferRef = useRef(false);
+  const [editingOffer, setEditingOffer] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageModal, setImageModal] = useState<{
     url: string;
@@ -259,6 +268,9 @@ export default function MessagesClient() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const plusMenuRef = useRef<HTMLDivElement | null>(null);
   const lastParamIdRef = useRef<number | null>(null);
+  // Keep the original browser files until the socket confirms delivery so a
+  // failed send can restore the draft just like the mobile client does.
+  const pendingSendsRef = useRef<Record<string, { conversationId: number; text: string; files: File[]; objectUrls: string[] }>>({});
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === selectedId) || null,
@@ -300,6 +312,15 @@ export default function MessagesClient() {
       }
     }
   }, [dispatch, searchParams, selectedId]);
+
+  // Legacy IDs resolve to a retained canonical conversation. Keep copied and
+  // refreshed links on that canonical ID after the initial message fetch.
+  useEffect(() => {
+    const paramId = Number(searchParams.get("conversationId"));
+    if (!selectedId || !paramId || selectedId === paramId || lastParamIdRef.current !== paramId) return;
+    lastParamIdRef.current = selectedId;
+    router.replace(`/Messages?conversationId=${selectedId}`, { scroll: false });
+  }, [router, searchParams, selectedId]);
 
   useEffect(() => {
     if (!selectedId || !user?.id) return;
@@ -402,6 +423,13 @@ export default function MessagesClient() {
       },
     ) => {
       const msgConvId = message.conversationId ?? selectedId;
+      if (message.clientMessageId) {
+        const pending = pendingSendsRef.current[message.clientMessageId];
+        if (pending) {
+          pending.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+          delete pendingSendsRef.current[message.clientMessageId];
+        }
+      }
       // Always update the conversation preview regardless of which chat is open
       dispatch(
         updateConversationPreview({
@@ -410,12 +438,13 @@ export default function MessagesClient() {
           lastMessageAt: message.createdAt || new Date().toISOString(),
         }),
       );
-      // Only insert the bubble into the active thread
-      if (message.conversationId && message.conversationId !== selectedId) {
+      // The send echo can arrive after the user switches threads. Reconcile it
+      // into its own cache entry so it never remains as an optimistic bubble.
+      dispatch(upsertMessage({ conversationId: msgConvId, message }));
+      if (msgConvId !== selectedId) {
         dispatch(fetchConversations());
         return;
       }
-      dispatch(upsertMessage({ conversationId: msgConvId, message }));
       if (Number(message.sender?.id) !== Number(user.id)) {
         socket.emit("messages:mark-read", { conversationId: msgConvId });
         dispatch(fetchConversations());
@@ -423,7 +452,10 @@ export default function MessagesClient() {
     };
 
     const handleMessagesRead = () => {
-      dispatch(markConversationRead(selectedId));
+      if (selectedId) {
+        dispatch(markConversationRead(selectedId));
+        dispatch(markMessagesRead({ conversationId: selectedId }));
+      }
     };
 
     const handleBlockChanged = (event: {
@@ -463,29 +495,79 @@ export default function MessagesClient() {
 
     const handleMessageError = (event: {
       conversationId?: number;
+      clientMessageId?: string;
       message?: string;
     }) => {
-      if (event.conversationId && event.conversationId !== selectedId) return;
       const message = event.message || "Failed to send message.";
-      setError(message);
       toast.error(message);
-      dispatch(fetchMessages(selectedId));
+      const failedConversationId = Number(event.conversationId || selectedId);
+      const pending = event.clientMessageId
+        ? pendingSendsRef.current[event.clientMessageId]
+        : undefined;
+      if (pending && event.clientMessageId) {
+        pending.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        delete pendingSendsRef.current[event.clientMessageId];
+        dispatch(removeMessage({
+          conversationId: pending.conversationId,
+          messageId: `temp-${event.clientMessageId}`,
+        }));
+        if (pending.conversationId === selectedId) {
+          setError(message);
+          setInputValue((current) => current || pending.text);
+          setSelectedFiles((current) => current.length ? current : pending.files);
+        }
+      } else if (failedConversationId === selectedId) {
+        setError(message);
+      }
+      if (failedConversationId > 0) dispatch(fetchMessages(failedConversationId));
       dispatch(fetchConversations());
     };
 
-    const handleOfferResponded = (event: { conversationId?: number; offerId?: number; offer?: { id?: number; status?: OfferStatus } }) => {
-      const conversationId = Number(event.conversationId ?? selectedId);
-      const offerId = Number(event.offerId ?? event.offer?.id);
-      const status = event.offer?.status;
-      if (conversationId > 0 && offerId > 0 && status) {
-        dispatch(updateOfferStatus({ conversationId, offerId, status }));
+    const handleOfferChanged = (
+      event?: { conversationId?: number; offerId?: number; offer?: any },
+    ) => {
+      const eventOfferId = Number(event?.offerId ?? event?.offer?.id);
+      const eventConversationId = Number(
+        event?.conversationId ?? selectedId,
+      );
+      if (event?.offer && eventConversationId > 0) {
+        dispatch(
+          updateOfferInMessages({
+            conversationId: eventConversationId,
+            offer: event.offer,
+          }),
+        );
       }
+      if (
+        event?.offer?.status &&
+        eventOfferId > 0 &&
+        eventConversationId > 0
+      ) {
+        dispatch(
+          updateOfferStatus({
+            conversationId: eventConversationId,
+            offerId: eventOfferId,
+            status: event.offer.status as "pending" | "accepted" | "declined" | "expired" | "completed" | "unavailable",
+          }),
+        );
+      }
+      dispatch(fetchConversations());
     };
-    const handleOfferInvalidated = (event: { conversationId?: number; offerId?: number }) => {
+
+    // Product sold elsewhere: mark this offer unavailable without a refetch.
+    const handleOfferInvalidated = (
+      event: { conversationId?: number; offerId?: number },
+    ) => {
       const conversationId = Number(event.conversationId ?? selectedId);
       const offerId = Number(event.offerId);
       if (conversationId > 0 && offerId > 0) {
-        dispatch(updateOfferStatus({ conversationId, offerId, status: "unavailable" }));
+        dispatch(
+          updateOfferStatus({
+            conversationId,
+            offerId,
+            status: "unavailable",
+          }),
+        );
       }
     };
 
@@ -493,7 +575,64 @@ export default function MessagesClient() {
     socket.on("messages:read", handleMessagesRead);
     socket.on("block:changed", handleBlockChanged);
     socket.on("message:error", handleMessageError);
-    socket.on("offer:responded", handleOfferResponded);
+    socket.on("offer:created", handleOfferChanged);
+    socket.on("offer:responded", handleOfferChanged);
+    const handleOfferUpdated = (event?: {
+      conversationId?: number;
+      offerId?: number;
+      price?: number;
+      offerPrice?: number;
+      editedAt?: string | null;
+      editCount?: number;
+      offer?: any;
+    }) => {
+      const eventOfferId = Number(event?.offerId ?? event?.offer?.id);
+      const eventConversationId = Number(event?.conversationId ?? selectedId);
+      const newPrice = Number(event?.offerPrice ?? event?.price ?? event?.offer?.offerPrice);
+
+      if (event?.offer && eventConversationId > 0) {
+        dispatch(
+          updateOfferInMessages({
+            conversationId: eventConversationId,
+            offer: event.offer,
+          }),
+        );
+      }
+
+      if (eventOfferId > 0 && eventConversationId > 0 && Number.isFinite(newPrice)) {
+        dispatch(
+          updateOfferPrice({
+            conversationId: eventConversationId,
+            offerId: eventOfferId,
+            offerPrice: newPrice,
+            editedAt: event?.editedAt ?? event?.offer?.editedAt ?? new Date().toISOString(),
+            editCount: event?.editCount ?? event?.offer?.editCount,
+          }),
+        );
+      }
+      dispatch(fetchConversations());
+    };
+
+    const handleOfferSeen = (event?: {
+      conversationId?: number;
+      offerId?: number;
+      seenAt?: string;
+    }) => {
+      const eventOfferId = Number(event?.offerId);
+      const eventConversationId = Number(event?.conversationId ?? selectedId);
+      if (eventOfferId > 0 && eventConversationId > 0) {
+        dispatch(
+          updateOfferSeen({
+            conversationId: eventConversationId,
+            offerId: eventOfferId,
+            seenAt: event?.seenAt || new Date().toISOString(),
+          }),
+        );
+      }
+    };
+
+    socket.on("offer:updated", handleOfferUpdated);
+    socket.on("offer:seen", handleOfferSeen);
     socket.on("offer:invalidated", handleOfferInvalidated);
     return () => {
       socket.off("connect", joinSelectedConversation);
@@ -501,8 +640,11 @@ export default function MessagesClient() {
       socket.off("messages:read", handleMessagesRead);
       socket.off("block:changed", handleBlockChanged);
       socket.off("message:error", handleMessageError);
-      socket.off("offer:responded", handleOfferResponded);
+      socket.off("offer:created", handleOfferChanged);
+      socket.off("offer:responded", handleOfferChanged);
       socket.off("offer:invalidated", handleOfferInvalidated);
+      socket.off("offer:updated", handleOfferUpdated);
+      socket.off("offer:seen", handleOfferSeen);
     };
   }, [selectedId, user?.id, peerUser?.id, dispatch]);
 
@@ -592,13 +734,25 @@ export default function MessagesClient() {
     [conversations, searchConversation, user?.id],
   );
 
+  // Track whether the user is reading near the bottom. Only then do we
+  // auto-scroll on new messages — like the mobile app, scrolling up to read
+  // history must not get yanked back down (also preserves position when an
+  // attachment image loads or an offer-status refetch lands).
+  const isNearBottomRef = useRef(true);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (!selectedId) return; // Prevent scrolling jump when closing the chat
+    if (!isNearBottomRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeMessages, selectedId]);
 
   useEffect(() => {
     return () => {
+      Object.values(pendingSendsRef.current).forEach((pending) => {
+        pending.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      });
+      pendingSendsRef.current = {};
       disconnectChatSocket();
     };
   }, []);
@@ -641,11 +795,30 @@ export default function MessagesClient() {
 
       const socket = getChatSocket();
       const clientMessageId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      // Local object URLs so the optimistic bubble shows the actual image
+      // instantly, instead of a "📎 Sending file..." placeholder that later
+      // pops into an image.
+      const localAttachments: MessageAttachment[] = selectedFiles.map((file, index) => ({
+        id: `temp-${clientMessageId}-${index}`,
+        url: `local:${file.name}`,
+        localUrl: URL.createObjectURL(file),
+        name: file.name,
+        ext: `.${file.name.split(".").pop() || ""}`,
+        mime: file.type || "application/octet-stream",
+        size: file.size,
+      }));
+      pendingSendsRef.current[clientMessageId] = {
+        conversationId: selectedId,
+        text,
+        files: [...selectedFiles],
+        objectUrls: localAttachments.map((attachment) => attachment.localUrl!).filter(Boolean),
+      };
       const optimisticMessage: MessageItem = {
         id: `temp-${clientMessageId}`,
-        content: text || (selectedFiles.length > 0 ? "📎 Sending file..." : ""),
+        content: text || "",
         createdAt: new Date().toISOString(),
         sender: user ? { id: user.id, username: user.username } : null,
+        attachments: selectedFiles.length > 0 ? localAttachments : undefined,
       };
 
       dispatch(
@@ -704,6 +877,7 @@ export default function MessagesClient() {
   const handleOfferResponse = async (
     offerId: number,
     action: "accepted" | "declined",
+    offer?: any,
   ) => {
     if (!user?.id || !selectedId) return;
 
@@ -712,15 +886,43 @@ export default function MessagesClient() {
       await respondToOfferViaSocket({
         offerId,
         action,
-        sellerId: user.id,
+        sellerId:
+          typeof offer?.seller === "number"
+            ? offer.seller
+            : Number(offer?.seller?.id) || user.id,
         conversationId: selectedId,
       });
 
+      // Update offer status immediately in Redux; backend emits offer:responded & message:new
+      dispatch(
+        updateOfferStatus({
+          conversationId: selectedId,
+          offerId,
+          status: action,
+        }),
+      );
       toast.success(`Offer ${action}!`);
     } catch (err: any) {
       console.error("Failed to respond to offer:", err);
-      setError(err.message || "Failed to respond to offer");
-      toast.error(err.message || "Failed to respond to offer");
+      const rawMessage = err.message || "Failed to respond to offer";
+      // Match the mobile app: surface a sold-out conflict as the card's
+      // "unavailable" state plus a friendly banner instead of a raw error.
+      if (
+        rawMessage.toLowerCase().includes("no longer available") ||
+        rawMessage.toLowerCase().includes("already been purchased")
+      ) {
+        dispatch(
+          updateOfferStatus({
+            conversationId: selectedId,
+            offerId,
+            status: "unavailable",
+          }),
+        );
+        toast.info("This product has already been purchased and is no longer available.");
+      } else {
+        setError(rawMessage);
+        toast.error(rawMessage);
+      }
     } finally {
       setRespondingToOfferId(null);
     }
@@ -728,6 +930,16 @@ export default function MessagesClient() {
 
   const handleBuyWithOffer = (offer: any) => {
     if (!offer || !activeConversation) return;
+    const offerSellerId = Number(offer.product?.sellerId) ||
+      (typeof offer.seller === "number" ? Number(offer.seller) : Number(offer.seller?.id));
+    const buyerCandidates = [
+      typeof offer.buyer === "number" ? Number(offer.buyer) : Number(offer.buyer?.id),
+      typeof offer.seller === "number" ? Number(offer.seller) : Number(offer.seller?.id),
+      Number(activeConversation.buyer?.id),
+      Number(activeConversation.seller?.id),
+    ];
+    const buyerId = buyerCandidates.find((id) => Number.isInteger(id) && id > 0 && id !== offerSellerId);
+    if (!user?.id || buyerId !== Number(user.id)) return;
 
     // Offers carry their own product — with unified conversations the offer's
     // product is authoritative, never conversation.product.
@@ -745,7 +957,11 @@ export default function MessagesClient() {
           images: referenced.image ? [{ url: referenced.image }] : [],
         }
       : activeConversation.product;
-    const seller = activeConversation.seller;
+    const sellerId = offerSellerId;
+    if (!sellerId) {
+      toast.error("Could not identify the seller for this offer.");
+      return;
+    }
     const imageUrl =
       offer.productImage ||
       (referenced?.image ? referenced.image : "") ||
@@ -763,7 +979,7 @@ export default function MessagesClient() {
         imageUrl: imageUrl,
         buyerProtectionFee: "100",
         shippingFee: "100",
-        sellerId: String(seller?.id || ""),
+        sellerId: String(sellerId),
         offerId: String(offer.id),
       }).toString()}`,
     );
@@ -783,6 +999,11 @@ export default function MessagesClient() {
   // Unified conversations: pick which product the offer applies to when the
   // conversation references several products.
   const [offerProductId, setOfferProductId] = useState<number | null>(null);
+  // Counter-offer context: the parent offer being countered, plus its seller id
+  // (roles reverse — the counterer becomes the "buyer" of the new offer).
+  const [counterOfferParentId, setCounterOfferParentId] = useState<number | null>(null);
+  const [counterOfferParentBuyerId, setCounterOfferParentBuyerId] = useState<number | null>(null);
+  const [counterOfferParentSellerId, setCounterOfferParentSellerId] = useState<number | null>(null);
   const offeredProduct =
     conversationProducts.find((p) => p.id === offerProductId) ??
     conversationProducts[0] ??
@@ -794,13 +1015,63 @@ export default function MessagesClient() {
   const maxOffer = productPrice * 1.5;
 
   const handleMakeOffer = () => {
+    if (!activeConversation) return;
     setShowPlusMenu(false);
-    setOfferProductId(conversationProducts[0]?.id ?? null);
     setCounterOfferParentId(null);
+    setCounterOfferParentBuyerId(null);
+    setCounterOfferParentSellerId(null);
+    setOfferProductId(conversationProducts[0]?.id ?? null);
     setShowOfferModal(true);
     setOfferAmount("");
     setOfferMessage("");
     setOfferError(null);
+  };
+
+  // Opened from the "Counter Offer" button on a pending offer card: prefill
+  // the amount with the original offer and mark it as a counter.
+  // Warn the user that the previous pending offer will be declined (matches mobile).
+  const [showCounterOfferConfirm, setShowCounterOfferConfirm] = useState(false);
+  const [pendingCounterOffer, setPendingCounterOffer] = useState<any>(null);
+
+  const handleCounterOffer = (offer: any) => {
+    setPendingCounterOffer(offer);
+    setShowCounterOfferConfirm(true);
+  };
+
+  const confirmCounterOffer = () => {
+    const offer = pendingCounterOffer;
+    if (!offer) {
+      setShowCounterOfferConfirm(false);
+      return;
+    }
+    setShowCounterOfferConfirm(false);
+    setShowPlusMenu(false);
+    setCounterOfferParentId(Number(offer?.id) || null);
+    // Counter offers keep the original product buyer and seller roles.
+    const offerBuyerId =
+      typeof offer?.buyer === "number"
+        ? offer.buyer
+        : Number(offer?.buyer?.id);
+    const offerSellerId =
+      typeof offer?.seller === "number"
+        ? offer.seller
+        : Number(offer?.seller?.id);
+    setCounterOfferParentBuyerId(offerBuyerId || null);
+    setCounterOfferParentSellerId(offerSellerId || null);
+    const counterProductId = offer?.product?.id
+      ? Number(offer.product.id)
+      : Number(offer?.productId ?? 0) || null;
+    if (counterProductId) setOfferProductId(counterProductId);
+    setOfferAmount(String(offer?.offerPrice ?? ""));
+    setShowOfferModal(true);
+    setOfferMessage("");
+    setOfferError(null);
+    setPendingCounterOffer(null);
+  };
+
+  const cancelCounterOffer = () => {
+    setShowCounterOfferConfirm(false);
+    setPendingCounterOffer(null);
   };
 
   const handleQuickOffer = (percentage: number) => {
@@ -809,6 +1080,7 @@ export default function MessagesClient() {
   };
 
   const handleSendOffer = async () => {
+    if (isSendingOfferRef.current) return;
     const amount = parseFloat(offerAmount);
     setOfferError(null);
 
@@ -831,48 +1103,150 @@ export default function MessagesClient() {
     }
 
     if (amount < minOffer) {
-      const msg = `Offer is too low. Minimum offer is thb${minOffer.toFixed(2)}.`;
+      const msg = `Offer is too low. Minimum offer is THB ${minOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
     if (amount > maxOffer) {
-      const msg = `Offer is too high. Maximum offer is thb${maxOffer.toFixed(2)}.`;
+      const msg = `Offer is too high. Maximum offer is THB ${maxOffer.toFixed(2)}.`;
       setOfferError(msg);
       toast.error(msg);
       return;
     }
 
+    isSendingOfferRef.current = true;
     setIsSendingOffer(true);
+    let counterOfferCreated = false;
     try {
       if (!offeredProduct) {
         setOfferError("Product not found");
         return;
       }
 
-      await createOfferViaSocket({
-          productId: offeredProduct.id,
-          buyerId: Number(user?.id),
-          sellerId: Number(peerUser?.id),
-          offerPrice: amount,
-          message: offerMessage || undefined,
-          conversationId: selectedId,
-          ...(counterOfferParentId ? { parentOfferId: counterOfferParentId } : {}),
-        });
+      // Resolve the product's actual seller from the backend so the offer
+      // matches the product owner (important for unified conversations).
+      let resolvedSellerId = counterOfferParentId
+        ? counterOfferParentSellerId || 0
+        : Number(activeConversation?.seller?.id ?? peerUser?.id);
+      if (!counterOfferParentId) {
+        try {
+          const productPayload: any = await (await fetch(
+            `${API_BASE_URL}/api/products/getProductById/${encodeURIComponent(String(offeredProduct.id))}`,
+            { headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` } },
+          )).json();
+          const rawProduct = productPayload?.product ?? productPayload;
+          const owner =
+            rawProduct?.users_permissions_user?.id ??
+            rawProduct?.users_permissions_user ??
+            rawProduct?.userId?.id ??
+            rawProduct?.owner?.id;
+          if (owner) resolvedSellerId = Number(owner);
+        } catch {
+          // Fall back to conversation seller
+        }
+      }
 
+      if (counterOfferParentId && (!counterOfferParentBuyerId || !counterOfferParentSellerId)) {
+        throw new Error("Could not identify the buyer and seller of the offer being countered.");
+      }
+
+      const productOwnerId = resolvedSellerId || Number(activeConversation?.seller?.id);
+      const isUserOwner = productOwnerId === Number(user?.id);
+      const targetBuyerId = counterOfferParentId
+        ? counterOfferParentBuyerId!
+        : (isUserOwner ? Number(peerUser?.id) : Number(user?.id));
+      const targetSellerId = counterOfferParentId
+        ? counterOfferParentSellerId!
+        : productOwnerId;
+
+      const optimisticOfferMessage: MessageItem = {
+        id: `temp-offer-${Date.now()}`,
+        conversationId: selectedId,
+        content: `Made an offer: THB${amount}${offerMessage ? ` - "${offerMessage}"` : ""}`,
+        createdAt: new Date().toISOString(),
+        sender: user ? { id: user.id, username: user.username } : null,
+        metadata: {
+          type: "offer",
+          amount,
+          status: "pending",
+          message: offerMessage || null,
+          productId: offeredProduct.id,
+          productTitle: offeredProduct.title,
+        },
+        offer: {
+          id: 0,
+          offerPrice: amount,
+          originalPrice: productPrice,
+          status: "pending",
+          message: offerMessage || null,
+          sender: user ? { id: user.id, username: user.username } : undefined,
+          product: { id: offeredProduct.id, title: offeredProduct.title },
+          productTitle: offeredProduct.title,
+          buyer: targetBuyerId,
+          seller: targetSellerId,
+        } as any,
+      };
+
+      // Instantly render optimistic offer bubble in chat with zero lag
+      dispatch(
+        addOptimisticMessage({
+          conversationId: selectedId,
+          message: optimisticOfferMessage,
+        })
+      );
+      dispatch(
+        updateConversationPreview({
+          conversationId: selectedId,
+          lastMessagePreview: "Offer sent",
+          lastMessageAt: optimisticOfferMessage.createdAt,
+        })
+      );
+
+      // Close modal immediately
       setShowOfferModal(false);
-      setCounterOfferParentId(null);
       setOfferAmount("");
       setOfferMessage("");
       setOfferError(null);
       setError(null);
+      setCounterOfferParentId(null);
+      setCounterOfferParentBuyerId(null);
+      setCounterOfferParentSellerId(null);
       toast.success("Offer sent successfully!");
+
+      try {
+        await createOfferViaSocket({
+          productId: offeredProduct.id,
+          buyerId: targetBuyerId,
+          sellerId: targetSellerId,
+          initiatorId: Number(user?.id),
+          offerPrice: amount,
+          message: offerMessage || undefined,
+          conversationId: selectedId,
+          parentOfferId: counterOfferParentId || undefined,
+        });
+        counterOfferCreated = true;
+      } catch (socketErr: any) {
+        console.warn("Socket offer creation warning:", socketErr);
+        // If error is not a harmless timeout or already-handled, remove optimistic message
+        const errMsg = socketErr?.message || "";
+        if (!errMsg.toLowerCase().includes("timed out") && !errMsg.toLowerCase().includes("pending")) {
+          dispatch(
+            removeMessage({
+              conversationId: selectedId,
+              messageId: optimisticOfferMessage.id,
+            })
+          );
+          throw socketErr;
+        }
+      }
     } catch (err: any) {
       console.error("Failed to make offer:", err);
       const msg = err.message || "Failed to send offer";
       setOfferError(msg);
       toast.error(msg);
     } finally {
+      isSendingOfferRef.current = false;
       setIsSendingOffer(false);
     }
   };
@@ -1139,35 +1513,22 @@ export default function MessagesClient() {
                       ←
                     </button>
 
-                    {/* A conversation belongs to the two participants, not its
-                        legacy primary product. */}
+                    {/* Peer avatar - Clickable */}
                     <Link
-                      href={peerUser?.id ? `/member/${peerUser.id}` : "#"}
-                      className="w-12 h-12 bg-[#f0ede8] rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8] hover:border-[#cb6f4d] transition-colors"
-                      aria-label={`View ${peerUser?.username || "user"}'s profile`}
+                      href={`/member/${peerUser?.id}`}
+                      className="w-14 h-14 bg-[#f0ede8] rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-[#e0ddd8] hover:border-[#cb6f4d] transition-all cursor-pointer group"
                     >
-                      {peerUser?.avatar?.url ? (
-                        <img
-                          src={peerUser.avatar.url.startsWith("http") ? peerUser.avatar.url : `${API_BASE_URL}${peerUser.avatar.url}`}
-                          alt={peerUser.username || "User"}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[#cb6f4d] font-semibold text-lg">
-                          {peerUser?.username?.[0]?.toUpperCase() || "U"}
-                        </span>
-                      )}
+                      <span className="font-bold text-white text-lg bg-linear-to-br from-[#cb6f4d] to-[#a55840] w-full h-full flex items-center justify-center">
+                        {peerUser?.username?.[0]?.toUpperCase() || "U"}
+                      </span>
                     </Link>
 
-                    {/* Header Info - Clickable */}
+                    {/* Header Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={peerUser?.id ? `/member/${peerUser.id}` : "#"}
-                          className="font-semibold text-[#1a1a1a] text-sm truncate hover:text-[#cb6f4d]"
-                        >
+                        <span className="font-semibold text-[#1a1a1a] text-sm">
                           {peerUser?.username || "User"}
-                        </Link>
+                        </span>
                         <CheckCircle2
                           size={14}
                           className="text-[#cb6f4d] shrink-0"
@@ -1422,7 +1783,14 @@ export default function MessagesClient() {
                 </div>
               )}
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#fafaf8]">
+              <div
+                className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-[#fafaf8]"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  isNearBottomRef.current =
+                    el.scrollHeight - (el.scrollTop + el.clientHeight) < 200;
+                }}
+              >
                 {loadingMessages && activeMessages.length === 0 ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-pulse space-y-3">
@@ -1450,7 +1818,39 @@ export default function MessagesClient() {
                   </div>
                 ) : (
                   activeMessages.map((msg, idx) => {
-                    const isMine = Number(msg.sender?.id) === Number(user?.id);
+                    const messageSenderId = Number(msg.sender?.id);
+                    const offerSenderId =
+                      typeof msg.offer?.sender === "number"
+                        ? Number(msg.offer.sender)
+                        : Number(msg.offer?.sender?.id);
+                    const offerBuyerId =
+                      typeof msg.offer?.buyer === "number"
+                        ? Number(msg.offer.buyer)
+                        : Number(msg.offer?.buyer?.id);
+                    const offerSellerId =
+                      typeof msg.offer?.seller === "number"
+                        ? Number(msg.offer.seller)
+                        : Number(msg.offer?.seller?.id);
+                    const productOwnerId = Number(msg.offer?.product?.sellerId);
+                    const actualSellerId = Number.isInteger(productOwnerId) && productOwnerId > 0
+                      ? productOwnerId
+                      : offerSellerId;
+                    const buyerCandidates = [
+                      offerBuyerId,
+                      offerSellerId,
+                      Number(activeConversation?.buyer?.id),
+                      Number(activeConversation?.seller?.id),
+                    ];
+                    const actualBuyerId = buyerCandidates.find(
+                      (id) => Number.isInteger(id) && id > 0 && id !== actualSellerId,
+                    );
+                    const hasOfferSender = Number.isInteger(offerSenderId) && offerSenderId > 0;
+                    // The offer record is authoritative for offer ownership.
+                    // Chat sender data can be absent on older or partial payloads.
+                    const isMine =
+                      msg.metadata?.type !== "offer_response" && offerSenderId
+                        ? offerSenderId === Number(user?.id)
+                        : messageSenderId === Number(user?.id);
 
                     // Unified offer data extraction
                     const isOffer =
@@ -1462,6 +1862,15 @@ export default function MessagesClient() {
                       msg.offer?.offerPrice ?? msg.metadata?.amount;
                     const offerStatus =
                       msg.offer?.status || msg.metadata?.status;
+                    const isOfferParticipant =
+                      actualBuyerId === Number(user?.id) ||
+                      actualSellerId === Number(user?.id);
+                    const canRespondToOffer =
+                      msg.metadata?.type !== "offer_response" &&
+                      offerStatus === "pending" &&
+                      isOfferParticipant &&
+                      (hasOfferSender ? offerSenderId : messageSenderId) !== Number(user?.id) &&
+                      (hasOfferSender || Number.isInteger(messageSenderId));
                     const originalPrice =
                       msg.offer?.originalPrice ||
                       (msg.offer?.product?.price
@@ -1471,14 +1880,160 @@ export default function MessagesClient() {
                         ? parseFloat(String(activeConversation.product.price))
                         : 0);
 
+                    const isOfferSender = hasOfferSender ? offerSenderId === Number(user?.id) : isMine;
+                    const senderIsMe = isOffer ? isOfferSender : isMine;
+                    const peerAvatarUrl = resolveAvatarUrl(peerUser?.avatar || (msg.sender && !senderIsMe ? (msg.sender as any).avatar : null));
+                    const myAvatarUrl = resolveAvatarUrl(user?.avatar || (msg.sender && senderIsMe ? (msg.sender as any).avatar : null));
+                    const peerInitial = (peerUser?.username?.[0] || msg.sender?.username?.[0] || "U").toUpperCase();
+                    const myInitial = (user?.username?.[0] || "Y").toUpperCase();
+                    const senderDisplayName = senderIsMe ? "You" : null;
+
                     return (
                       <div
                         key={msg.id}
-                        className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                        className={`flex items-end gap-2.5 my-2.5 ${senderIsMe ? "justify-end" : "justify-start"}`}
                       >
-                        {/* Product reference card (unified conversations) */}
-                        {getProductRefFromMessage(msg) ? (
+                        {/* Peer Avatar (left side for incoming message) */}
+                        {!senderIsMe && (
+                          <div
+                            className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white text-xs bg-linear-to-br from-[#cb6f4d] to-[#a55840] mb-5 shadow-xs border border-[#e0ddd8]"
+                            title={peerUser?.username || "Other user"}
+                          >
+                            {peerAvatarUrl ? (
+                              <img
+                                src={peerAvatarUrl}
+                                alt={peerUser?.username || "User"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span>{peerInitial}</span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className={`flex flex-col max-w-xs md:max-w-md ${senderIsMe ? "items-end" : "items-start"}`}>
+                          <span className={`text-[11px] font-semibold mb-1 px-1 ${senderIsMe ? "text-[#cb6f4d]" : "text-[#777]"}`}>
+                            {senderDisplayName}
+                          </span>
+                        {/* Offer response bubble — matches mobile's compact
+                            accepted/declined card instead of a chat bubble. */}
+                        {msg.metadata?.type === "offer_response" && offerId ? (
+                          <div className="flex flex-col max-w-xs">
+                            <div
+                              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border ${
+                                ((msg.metadata as any)?.action || msg.metadata?.status) === "accepted"
+                                  ? "bg-green-50 border-green-200"
+                                  : "bg-red-50 border-red-200"
+                              }`}
+                            >
+                              {((msg.metadata as any)?.action || msg.metadata?.status) === "accepted" ? (
+                                <CheckCircle size={18} className="text-green-600 shrink-0" />
+                              ) : (
+                                <XCircle size={18} className="text-red-600 shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-xs font-bold ${
+                                    ((msg.metadata as any)?.action || msg.metadata?.status) === "accepted"
+                                      ? "text-green-700"
+                                      : "text-red-700"
+                                  }`}
+                                >
+                                  {((msg.metadata as any)?.action || msg.metadata?.status) === "accepted"
+                                    ? "Offer accepted"
+                                    : "Offer declined"}
+                                </p>
+                                <p className="text-[11px] text-[#888] truncate">
+                                  {offerAmount != null && `THB ${Number(offerAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                  {msg.offer?.productTitle && ` for ${msg.offer.productTitle}`}
+                                  {((msg.metadata as any)?.action || msg.metadata?.status) === "accepted"
+                                    ? ". Buyer can continue to checkout."
+                                    : ". This offer is no longer active."}
+                                </p>
+                              </div>
+                            </div>
+                            <span className={`text-xs mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}>
+                              {formatFullDateTime(msg.createdAt)}
+                            </span>
+                          </div>
+                        ) : getProductRefFromMessage(msg) ? (
                           <ProductRefCard ref_={getProductRefFromMessage(msg)!} />
+                        ) : (isOffer && offerId) || msg.offer ? (
+                          <div className={`flex flex-col max-w-xs ${isMine ? "items-end" : "items-start"}`}>
+                            <OfferCard
+                              offer={{
+                                ...(msg.offer || {}),
+                                id: offerId,
+                                offerPrice: offerAmount,
+                                status: offerStatus,
+                                originalPrice,
+                                message:
+                                  msg.offer?.message ||
+                                  (msg.metadata as any)?.message ||
+                                  (msg.metadata as any)?.offerMessage ||
+                                  (msg.content && msg.content.includes(' - "')
+                                    ? msg.content.substring(msg.content.indexOf(' - "') + 4).replace(/"$/, "").trim()
+                                    : undefined),
+                                productTitle: msg.offer?.productTitle || activeConversation?.product?.title,
+                                product: msg.offer?.product || activeConversation?.product,
+                                seller: actualSellerId,
+                                buyer: actualBuyerId,
+                                sender: offerSenderId,
+                              }}
+                              isRecipient={canRespondToOffer}
+                              isOfferSender={isMine}
+                              conversationId={Number(selectedId || activeConversation?.id)}
+                              currency="THB"
+                              onOfferUpdate={(updatedOffer) => {
+                                dispatch(
+                                  updateOfferInMessages({
+                                    conversationId: Number(selectedId || activeConversation?.id),
+                                    offer: updatedOffer,
+                                  }),
+                                );
+                                if (updatedOffer.status) {
+                                  dispatch(
+                                    updateOfferStatus({
+                                      conversationId: Number(selectedId || activeConversation?.id),
+                                      offerId: Number(updatedOffer.id),
+                                      status: updatedOffer.status,
+                                    }),
+                                  );
+                                }
+                              }}
+                              onOfferResponded={(action) => {
+                                dispatch(
+                                  updateOfferStatus({
+                                    conversationId: Number(selectedId || activeConversation?.id),
+                                    offerId: Number(offerId),
+                                    status: action,
+                                  }),
+                                );
+                              }}
+                              onCounterOffer={(off) => handleCounterOffer(off)}
+                              canCheckout={actualBuyerId === Number(user?.id) && actualSellerId > 0}
+                              onCheckout={(off) => handleBuyWithOffer(off)}
+                              onEditOffer={(off) => {
+                                setEditingOffer({
+                                  offerId: Number(off.id),
+                                  currentOfferPrice: Number(off.offerPrice),
+                                  originalPrice: Number(off.originalPrice || originalPrice),
+                                  currency: "THB",
+                                  productTitle:
+                                    off.productTitle ||
+                                    (msg.offer as any)?.productTitle ||
+                                    (msg.offer as any)?.product?.title,
+                                  conversationId: Number(selectedId || activeConversation?.id),
+                                });
+                              }}
+                              readAt={msg.readAt}
+                            />
+                            <span
+                              className={`text-[11px] mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}
+                            >
+                              {formatFullDateTime(msg.createdAt)}
+                            </span>
+                          </div>
                         ) : (
                         <div className="flex flex-col max-w-xs">
                           <div
@@ -1494,207 +2049,18 @@ export default function MessagesClient() {
                               </p>
                             )}
 
-                            {/* Offer Card */}
-                            {isOffer && offerId && (
-                              <div
-                                className={`mt-2 p-3 rounded-xl ${
-                                  isMine ? "bg-white/10" : "bg-[#faf9f7]"
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                      isMine ? "bg-white/20" : "bg-[#cb6f4d]/10"
-                                    }`}
-                                  >
-                                    <Coins
-                                      size={20}
-                                      className={
-                                        isMine ? "text-white" : "text-[#cb6f4d]"
-                                      }
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span
-                                        className={`text-xs font-bold ${
-                                          isMine
-                                            ? "text-white"
-                                            : "text-[#1a1a1a]"
-                                        }`}
-                                      >
-                                        Offer: thb
-                                        {typeof offerAmount === "number"
-                                          ? offerAmount.toFixed(2)
-                                          : offerAmount}
-                                      </span>
-                                      {/* Identify the product this offer applies to */}
-                                      {(msg.offer?.product?.title ||
-                                        msg.offer?.productTitle) && (
-                                        <span
-                                          className={`text-xs truncate max-w-[120px] ${
-                                            isMine
-                                              ? "text-white/80"
-                                              : "text-[#888]"
-                                          }`}
-                                        >
-                                          for{" "}
-                                          {msg.offer?.product?.title ||
-                                            msg.offer?.productTitle}
-                                        </span>
-                                      )}
-                                      {offerStatus === "pending" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">
-                                          Pending
-                                        </span>
-                                      )}
-                                      {offerStatus === "accepted" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
-                                          Accepted
-                                        </span>
-                                      )}
-                                      {offerStatus === "declined" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-semibold">
-                                          Declined
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p
-                                      className={`text-xs ${isMine ? "text-white/70" : "text-[#888]"}`}
-                                    >
-                                      Original Price: thb{originalPrice}
-                                    </p>
-
-                                    {/* Offer Actions - Show to the person who should respond */}
-                                    {!isMine &&
-                                      offerStatus === "pending" && (() => {
-                                        // Check if current user is the offer seller
-                                        // (who should respond to the offer)
-                                        const offerSellerId = typeof msg.offer?.seller === 'number' ? msg.offer.seller : msg.offer?.seller?.id;
-                                        const offerBuyerId = typeof msg.offer?.buyer === 'number' ? msg.offer.buyer : msg.offer?.buyer?.id;
-                                        const isOfferSeller = offerSellerId && Number(offerSellerId) === Number(user?.id);
-                                        const isOfferBuyer = offerBuyerId && Number(offerBuyerId) === Number(user?.id);
-                                        
-                                        // If offer has full data, use it directly
-                                        if (offerSellerId) {
-                                          return isOfferSeller;
-                                        }
-                                        // Fallback: receiver of the message should respond
-                                        return !isMine;
-                                      })() && (
-                                        <div className="flex flex-wrap gap-2 mt-3">
-                                          <button
-                                            onClick={() =>
-                                              handleOfferResponse(
-                                                Number(offerId),
-                                                "accepted",
-                                              )
-                                            }
-                                            disabled={
-                                              respondingToOfferId ===
-                                              Number(offerId)
-                                            }
-                                            className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            {respondingToOfferId ===
-                                            Number(offerId) ? (
-                                              <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                              />
-                                            ) : (
-                                              <>
-                                                <CheckCircle size={14} /> Accept
-                                              </>
-                                            )}
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              handleOfferResponse(
-                                                Number(offerId),
-                                                "declined",
-                                              )
-                                            }
-                                            disabled={
-                                              respondingToOfferId ===
-                                              Number(offerId)
-                                            }
-                                            className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            {respondingToOfferId ===
-                                            Number(offerId) ? (
-                                              <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                              />
-                                            ) : (
-                                              <>
-                                                <XCircle size={14} /> Decline
-                                              </>
-                                            )}
-                                          </button>
-                                          <button
-                                            onClick={async () => {
-                                              const parentId = Number(offerId);
-                                              const parentProductId = Number(msg.offer?.product?.id ?? msg.metadata?.productId ?? 0);
-                                              const parentProduct = conversationProducts.find(
-                                                (product) => Number(product.id) === parentProductId,
-                                              );
-                                              if (!parentId || !parentProduct || !selectedId || !user?.id) {
-                                                toast.error("The product for this offer could not be found.");
-                                                return;
-                                              }
-                                              if (!window.confirm("Decline this offer and continue to a counter offer?")) return;
-
-                                              try {
-                                                await respondToOfferViaSocket({
-                                                  offerId: parentId,
-                                                  action: "declined",
-                                                  sellerId: Number(user.id),
-                                                  conversationId: selectedId,
-                                                });
-                                                setOfferProductId(parentProduct.id);
-                                                setCounterOfferParentId(parentId);
-                                                setOfferAmount(String(msg.offer?.offerPrice ?? ""));
-                                                setOfferMessage("");
-                                                setShowOfferModal(true);
-                                              } catch (err: any) {
-                                                toast.error(err?.message || "Could not decline the original offer.");
-                                              }
-                                            }}
-                                            className="w-full px-3 py-2 bg-white border border-[#cb6f4d] text-[#cb6f4d] hover:bg-orange-50 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
-                                          >
-                                            <Tag size={14} />
-                                            Counter Offer
-                                          </button>
-                                        </div>
-                                      )}
-
-                                    {/* Checkout button for accepted offers */}
-                                    {offerStatus === "accepted" &&
-                                      Number(activeConversation?.buyer?.id) ===
-                                        Number(user?.id) && (
-                                        <button
-                                          onClick={() =>
-                                            handleBuyWithOffer(msg.offer)
-                                          }
-                                          className="block w-full mt-3 px-3 py-2 bg-[#cb6f4d] hover:bg-[#b85f3d] text-white rounded-lg text-xs font-semibold transition-colors text-center cursor-pointer"
-                                        >
-                                          Proceed to Checkout
-                                        </button>
-                                      )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
                             {/* Display Attachments */}
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div
                                 className={`space-y-2 ${msg.content ? "mt-2" : ""}`}
                               >
                                 {msg.attachments.map((att) => {
-                                  const fullUrl = `${API_BASE_URL}${att.url}`;
+                                  // Optimistic bubbles carry a browser object URL
+                                  // (localUrl); server messages carry a real path.
+                                  const displayUrl = att.localUrl || `${API_BASE_URL}${att.url}`;
+                                  const fullUrl = att.localUrl
+                                    ? displayUrl
+                                    : `${API_BASE_URL}${att.url}`;
 
                                   return (
                                     <div key={att.id}>
@@ -1709,7 +2075,7 @@ export default function MessagesClient() {
                                           className="cursor-pointer group relative"
                                         >
                                           <img
-                                            src={fullUrl}
+                                            src={displayUrl}
                                             alt={att.name}
                                             className="rounded-xl max-w-full h-auto shadow-md"
                                             style={{
@@ -1771,11 +2137,30 @@ export default function MessagesClient() {
                             )}
                           </div>
                           <span
-                            className={`text-xs mt-1 ${isMine ? "text-right" : "text-left"} text-[#aaa]`}
+                            className={`text-xs mt-1 ${senderIsMe ? "text-right" : "text-left"} text-[#aaa]`}
                           >
                             {formatFullDateTime(msg.createdAt)}
                           </span>
                         </div>
+                        )}
+                        </div>
+
+                        {/* My Avatar (right side for current user) */}
+                        {senderIsMe && (
+                          <div
+                            className="w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white text-xs bg-[#2e7d4f] mb-5 shadow-xs border border-white"
+                            title="You"
+                          >
+                            {myAvatarUrl ? (
+                              <img
+                                src={myAvatarUrl}
+                                alt="You"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span>{myInitial}</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -1879,7 +2264,6 @@ export default function MessagesClient() {
                             </div>
                           </button>
 
-                          {/* Make an Offer Option */}
                           <button
                             onClick={handleMakeOffer}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#faf9f7] transition-colors text-left border-t border-[#f0ede8] group"
@@ -2052,6 +2436,22 @@ export default function MessagesClient() {
       )}
 
       {/* Make an Offer Modal */}
+      {editingOffer && (
+        <EditOfferModal
+          isOpen={!!editingOffer}
+          onClose={() => setEditingOffer(null)}
+          offerId={editingOffer.offerId}
+          currentOfferPrice={editingOffer.currentOfferPrice}
+          originalPrice={editingOffer.originalPrice}
+          currency={editingOffer.currency}
+          productTitle={editingOffer.productTitle}
+          conversationId={editingOffer.conversationId}
+          onSuccess={() => {
+            dispatch(fetchConversations());
+          }}
+        />
+      )}
+
       {showOfferModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
@@ -2072,7 +2472,6 @@ export default function MessagesClient() {
                 onClick={() => {
                   setShowOfferModal(false);
                   setOfferAmount("");
-                  setCounterOfferParentId(null);
                   setError(null);
                 }}
                 className="w-8 h-8 rounded-full hover:bg-[#f0ede8] flex items-center justify-center transition-colors"
@@ -2089,7 +2488,6 @@ export default function MessagesClient() {
                 </label>
                 <select
                   value={offeredProduct?.id ?? ""}
-                  disabled={Boolean(counterOfferParentId)}
                   onChange={(e) => setOfferProductId(Number(e.target.value))}
                   className="w-full border border-[#e0ddd8] rounded-xl px-4 py-3 text-sm text-[#1a1a1a] bg-white focus:outline-none focus:border-[#cb6f4d]"
                 >
@@ -2129,7 +2527,7 @@ export default function MessagesClient() {
                     <p className="text-xs text-[#888] mt-1">
                       Listed price:{" "}
                       <span className="font-semibold text-[#cb6f4d]">
-                        TBH{offeredProduct.price}
+                        THB {offeredProduct.price}
                       </span>
                     </p>
                   )}
@@ -2165,8 +2563,8 @@ export default function MessagesClient() {
               )}
               {offeredProduct?.price != null && (
                 <p className="text-xs text-[#888] mt-2">
-                  💡 Tip: Listed price is TBH{offeredProduct.price}.
-                  Range: TBH{minOffer.toFixed(2)} - TBH{maxOffer.toFixed(2)}.
+                  💡 Tip: Listed price is THB {offeredProduct.price}.
+                  Range: THB {minOffer.toFixed(2)} - THB {maxOffer.toFixed(2)}.
                 </p>
               )}
             </div>
@@ -2191,7 +2589,6 @@ export default function MessagesClient() {
                 onClick={() => {
                   setShowOfferModal(false);
                   setOfferAmount("");
-                  setCounterOfferParentId(null);
                   setError(null);
                 }}
                 className="flex-1 px-4 py-3 border border-[#e0ddd8] text-[#888] rounded-xl font-semibold hover:bg-[#f0ede8] transition-colors"
@@ -2205,6 +2602,44 @@ export default function MessagesClient() {
               >
                 {isSendingOffer && <Loader2 size={18} className="animate-spin" />}
                 {isSendingOffer ? "Sending..." : "Send Offer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Counter Offer Confirmation Dialog */}
+      {showCounterOfferConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={cancelCounterOffer}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl bg-white overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.18)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-5">
+              <h3 className="text-lg font-serif font-bold text-[#1a1a1a] mb-2">
+                Send a counter offer?
+              </h3>
+              <p className="text-sm text-[#666] leading-relaxed">
+                The current offer will be declined after your counter offer is
+                successfully sent. Continue?
+              </p>
+            </div>
+            <div className="flex border-t border-[#ede8e3]">
+              <button
+                onClick={cancelCounterOffer}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-[#666] hover:bg-[#f7f4f0] transition-colors"
+              >
+                Cancel
+              </button>
+              <div className="w-px bg-[#ede8e3]" />
+              <button
+                onClick={confirmCounterOffer}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-[#cb6f4d] hover:bg-[#fdf5f0] transition-colors"
+              >
+                Continue
               </button>
             </div>
           </div>

@@ -50,8 +50,10 @@ export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'com
 
 export type MessageItem = {
   id: number | string;
+  conversationId?: number;
   content: string;
   createdAt?: string;
+  readAt?: string | null;
   sender: ConversationUser | null;
   attachments?: MessageAttachment[];
   metadata?: {
@@ -60,12 +62,18 @@ export type MessageItem = {
     productId?: number;
     amount?: number;
     status?: string;
+    message?: string | null;
+    [key: string]: any;
   };
   offer?: {
     id: number;
     offerPrice: number;
     originalPrice: number;
     status: OfferStatus;
+    editedAt?: string;
+    editCount?: number;
+    seenAt?: string;
+    sender?: ConversationUser | number;
     message?: string;
     expiresAt?: string;
     buyer?: ConversationUser | number;
@@ -81,6 +89,7 @@ export type MessageItem = {
       size?: string;
       price?: number | string;
       productStatus?: string;
+      sellerId?: number | string | null;
     } | null;
     currency?: string; // e.g., "THB"
     buyerProtectionFee?: number;
@@ -113,6 +122,31 @@ async function socketRequest<T>(
       }
       resolve(response as T);
     });
+  });
+}
+
+async function waitForChatSocket(socket: ReturnType<typeof getChatSocket>, timeoutMs = 10000) {
+  if (socket.connected) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      globalThis.clearTimeout(timeout);
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onError);
+    };
+    const onConnect = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Could not connect to chat. Please try again."));
+    };
+    const timeout = globalThis.setTimeout(() => {
+      cleanup();
+      reject(new Error("Chat connection timed out. Please try again."));
+    }, timeoutMs);
+    socket.once("connect", onConnect);
+    socket.once("connect_error", onError);
   });
 }
 
@@ -149,19 +183,25 @@ export async function createConversationForProduct(params: {
   return payload?.conversation ?? null;
 }
 
-export async function fetchMessagesByConversation(conversationId: number): Promise<MessageItem[]> {
+export type MessageList = MessageItem[] & { conversationId?: number };
+
+export async function fetchMessagesByConversation(conversationId: number): Promise<MessageList> {
   try {
-    const payload = await socketRequest<{ messages?: MessageItem[] }>("messages:list", {
+    const payload = await socketRequest<{ messages?: MessageItem[]; conversationId?: number }>("messages:list", {
       conversationId,
     });
-    return Array.isArray(payload?.messages) ? payload.messages : [];
+    return Object.assign(Array.isArray(payload?.messages) ? payload.messages : [], {
+      conversationId: Number(payload?.conversationId ?? conversationId),
+    });
   } catch {
     // HTTP fallback keeps the web app compatible with older backend deployments.
   }
 
   const payload = await apiRequest(`/messages/by-conversation/${conversationId}`);
   console.log('Raw API response for messages:', payload);
-  return Array.isArray(payload?.messages) ? payload.messages : [];
+  return Object.assign(Array.isArray(payload?.messages) ? payload.messages : [], {
+    conversationId: Number(payload?.conversationId ?? conversationId),
+  });
 }
 
 export async function sendMessage(params: {
@@ -216,84 +256,95 @@ export async function createOfferViaSocket(params: {
   productId: number;
   buyerId: number;
   sellerId: number;
+  initiatorId?: number;
   offerPrice: number;
   message?: string;
-  conversationId: number;
+  conversationId?: number;
   parentOfferId?: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
-  const clientOfferId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (socket && socket.connected) {
+    try {
+      socket.emit("offer:create", params);
+      return { success: true };
+    } catch {
+      // Fall through to HTTP
+    }
+  }
 
-  return new Promise((resolve, reject) => {
-    const timeout = globalThis.setTimeout(() => {
-      cleanup();
-      reject(new Error("offer:create timed out."));
-    }, 20000);
-
-    const cleanup = () => {
-      globalThis.clearTimeout(timeout);
-      socket.off("offer:created", handleCreated);
-      socket.off("offer:error", handleError);
-    };
-
-    const handleCreated = (event: { clientOfferId?: string; offer?: unknown }) => {
-      if (event.clientOfferId !== clientOfferId) return;
-      cleanup();
-      resolve(event.offer);
-    };
-
-    const handleError = (event: { clientOfferId?: string; message?: string }) => {
-      if (event.clientOfferId !== clientOfferId) return;
-      cleanup();
-      reject(new Error(event.message || "Failed to send offer."));
-    };
-
-    socket.on("offer:created", handleCreated);
-    socket.on("offer:error", handleError);
-    socket.emit("offer:create", { ...params, clientOfferId });
+  const payload = await apiRequest("/offers/make", {
+    method: "POST",
+    body: JSON.stringify(params),
   });
+  return payload?.data ?? payload;
 }
 
 export async function respondToOfferViaSocket(params: {
   offerId: number;
   action: "accepted" | "declined";
-  sellerId: number;
+  sellerId?: number;
   conversationId: number;
 }): Promise<unknown> {
   const socket = getChatSocket();
+  if (socket && socket.connected) {
+    try {
+      socket.emit("offer:respond", params);
+      return { success: true };
+    } catch {
+      // Fall through
+    }
+  }
 
-  return new Promise((resolve, reject) => {
-    const timeout = globalThis.setTimeout(() => {
-      cleanup();
-      reject(new Error("offer:respond timed out."));
-    }, 20000);
-
-    const cleanup = () => {
-      globalThis.clearTimeout(timeout);
-      socket.off("offer:responded", handleResponded);
-      socket.off("offer:error", handleError);
-    };
-
-    const handleResponded = (event: { offerId?: number; offer?: unknown; conflict?: boolean; message?: string }) => {
-      if (Number(event.offerId) !== Number(params.offerId)) return;
-      cleanup();
-      if (event.conflict) {
-        reject(new Error(event.message || "This item is no longer available."));
-        return;
-      }
-      resolve(event.offer);
-    };
-
-    const handleError = (event: { offerId?: number; message?: string }) => {
-      if (event.offerId != null && Number(event.offerId) !== Number(params.offerId)) return;
-      cleanup();
-      reject(new Error(event.message || "Failed to respond to offer."));
-    };
-
-    socket.on("offer:responded", handleResponded);
-    socket.on("offer:error", handleError);
-    socket.emit("offer:respond", params);
+  const payload = await apiRequest(`/offers/${params.offerId}/respond`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      action: params.action,
+      sellerId: params.sellerId,
+      conversationId: params.conversationId,
+    }),
   });
+  if (payload?.conflict) throw new Error(payload?.message || "This item is no longer available.");
+  const offer = payload?.data ?? payload;
+  return offer;
+}
+
+export async function editOfferViaSocket(params: {
+  offerId: number;
+  offerPrice: number;
+  conversationId: number;
+}): Promise<unknown> {
+  const socket = getChatSocket();
+  if (socket && socket.connected) {
+    try {
+      socket.emit("offer:edit", params);
+    } catch {
+      // Fall through
+    }
+  }
+
+  const payload = await apiRequest(`/offers/${params.offerId}/price`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      offerPrice: params.offerPrice,
+      conversationId: params.conversationId,
+    }),
+  });
+  return payload?.data ?? payload;
+}
+
+export async function markOfferSeenViaSocket(params: {
+  offerId: number;
+  conversationId: number;
+}): Promise<void> {
+  const socket = getChatSocket();
+  try {
+    socket.emit("offer:seen", params);
+  } catch {
+    apiRequest(`/offers/${params.offerId}/seen`, {
+      method: "PATCH",
+      body: JSON.stringify({ conversationId: params.conversationId }),
+    }).catch(() => {});
+  }
 }
 
 export async function deleteConversation(conversationId: number): Promise<void> {

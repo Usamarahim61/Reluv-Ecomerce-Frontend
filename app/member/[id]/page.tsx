@@ -16,6 +16,7 @@ import {
   Loader2,
   Check,
   User,
+  RefreshCw,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,19 +28,26 @@ import {
   getFirstImageUrl,
   fetchProductsByUserId,
   deleteMyProduct,
+  relistProduct,
 } from "@/services/products-service";
 import { getUserAvatarUrl } from "@/lib/user-profile";
 import { API_BASE_URL } from "@/app/constants/api";
+import ConfirmDialog from "@/app/components/ConfirmDialog";
+import { toast } from "react-toastify";
 
 // ── Owner product card ────────────────────────────────────────────────────
 function OwnerProductCard({
   product,
   onEdit,
   onDelete,
+  onRelist,
+  relisting,
 }: {
   product: any;
   onEdit: (p: any) => void;
   onDelete: (id: number) => void;
+  onRelist?: (p: any) => void;
+  relisting?: boolean;
 }) {
   const imageUrl = product.imageUrl
     ? product.imageUrl.startsWith("http")
@@ -53,11 +61,20 @@ function OwnerProductCard({
       <Link href={`/products/${product.id}`}>
         <div className="aspect-square bg-gray-100 overflow-hidden">
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={product.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+            <div className="relative w-full h-full">
+              <img
+                src={imageUrl}
+                alt={product.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              {product.productStatus === "sold" && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md">
+                    Sold
+                  </span>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
               No image
@@ -94,6 +111,15 @@ function OwnerProductCard({
           className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-blue-500 hover:bg-blue-50 transition-colors border-x border-gray-100">
           <Pencil size={13} /> Edit
         </button> */}
+        {product.productStatus === "sold" && onRelist && (
+          <button
+            onClick={() => onRelist(product)}
+            disabled={relisting}
+            className="flex-1 flex items-center justify-center gap-1 py-2 text-xs text-[#cb6f4d] hover:bg-orange-50 font-bold transition-colors border-x border-gray-100 disabled:opacity-50"
+          >
+            {relisting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Relist
+          </button>
+        )}
         <button
           onClick={() => onDelete(product.id)}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-400 hover:bg-red-50 transition-colors"
@@ -123,6 +149,9 @@ const ProfilePage = () => {
   // Edit / delete state
   const [editProduct, setEditProduct] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [relistingId, setRelistingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [relistConfirmItem, setRelistConfirmItem] = useState<any | null>(null);
 
   // Follow state
   const [isFollowing, setIsFollowing] = useState(false);
@@ -188,16 +217,16 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!sellerId || !userData || activeTab !== "Listings") return;
-    if (userData.products?.length > 0) {
+    if (userData.products?.length > 0 && !isOwner) {
       setListings(userData.products.map(mapProductToCard));
       return;
     }
     setProductsLoading(true);
-    fetchProductsByUserId(Number(sellerId))
+    fetchProductsByUserId(Number(sellerId), Boolean(isOwner))
       .then(setListings)
       .catch(console.error)
       .finally(() => setProductsLoading(false));
-  }, [sellerId, userData, activeTab]);
+  }, [sellerId, userData, activeTab, isOwner]);
   useEffect(() => {
     if (!user || !userData) return;
     const alreadyFollowing = (userData.followers || []).some(
@@ -219,17 +248,47 @@ const ProfilePage = () => {
       imageUrl: getFirstImageUrl(entry.images),
       likes: Number(entry.likeCount ?? 0),
       description: entry.description ?? "",
+      productStatus: entry.productStatus ?? "active",
     };
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("Delete this listing? This cannot be undone.")) return;
+  function handleRelist(product: any) {
+    if (!user?.id) return;
+    setRelistConfirmItem(product);
+  }
+
+  async function confirmRelist() {
+    if (!relistConfirmItem || !user?.id) return;
+    const product = relistConfirmItem;
+    setRelistingId(String(product.id));
+    try {
+      await relistProduct(product.id, user.id);
+      const updated = await fetchProductsByUserId(Number(sellerId), true);
+      setListings(updated);
+      toast.success(`"${product.title || product.brand || "Item"}" relisted successfully!`);
+      setRelistConfirmItem(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not relist item.");
+    } finally {
+      setRelistingId(null);
+    }
+  }
+
+  function handleDelete(id: number) {
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmId) return;
+    const id = deleteConfirmId;
     setDeletingId(id);
     try {
       await deleteMyProduct(id);
       setListings((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Listing deleted successfully.");
+      setDeleteConfirmId(null);
     } catch (err: any) {
-      alert(err?.message || "Failed to delete.");
+      toast.error(err?.message || "Failed to delete listing.");
     } finally {
       setDeletingId(null);
     }
@@ -288,7 +347,7 @@ const ProfilePage = () => {
         };
       });
     } catch (err: any) {
-      alert(err?.message || "Something went wrong.");
+      toast.error(err?.message || "Something went wrong.");
     } finally {
       setFollowLoading(false);
     }
@@ -552,6 +611,8 @@ const ProfilePage = () => {
                           product={product}
                           onEdit={setEditProduct}
                           onDelete={handleDelete}
+                          onRelist={handleRelist}
+                          relisting={relistingId === String(product.id)}
                         />
                       </div>
                     ) : (
@@ -640,6 +701,40 @@ const ProfilePage = () => {
       {/* {editProduct && (
         <EditModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={handleSaved} />
       )} */}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteConfirmId)}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Delete this listing?"
+        message="This action cannot be undone. Are you sure you want to permanently delete this listing?"
+        confirmText="Delete"
+        variant="danger"
+        loading={Boolean(deletingId)}
+      />
+
+      {/* Relist Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(relistConfirmItem)}
+        onClose={() => setRelistConfirmItem(null)}
+        onConfirm={confirmRelist}
+        title="Relist this item?"
+        message={
+          relistConfirmItem ? (
+            <span>
+              This will make{" "}
+              <strong className="text-gray-900 font-bold">
+                {relistConfirmItem.title || relistConfirmItem.brand || "this item"}
+              </strong>{" "}
+              available to buyers again at its listed price.
+            </span>
+          ) : null
+        }
+        confirmText="Relist"
+        variant="primary"
+        loading={Boolean(relistingId)}
+      />
     </>
   );
 };

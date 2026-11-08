@@ -646,6 +646,11 @@ const unreadMessagesCount = useMemo(() => {
                           <span>Profile</span>
                         </div>
                       </Link>
+                      <Link href="/my-listings">
+                        <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
+                          <span>My listings</span>
+                        </div>
+                      </Link>
                       <Link href={`/Referrals`}>
                         <div className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex items-center gap-2" onClick={() => { setProfileOpen(false); setMobileMenuOpen(false); }}>
                           <span>Invite friends</span>
