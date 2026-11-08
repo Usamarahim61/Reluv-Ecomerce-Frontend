@@ -2,8 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import {
-  getUser,
-  getUserAvatr,
+  getUserProfile,
   updateUserProfile,
 } from "@/services/auth-service";
 import { useEffect, useState, useRef } from "react";
@@ -135,10 +134,8 @@ export default function ProfileSetting() {
       hasFetched.current = true;
       try {
         setLoading(true);
-        const data = await getUser(Number(user.id));
-        const userAvatar = await getUserAvatr(Number(user.id));
-        const mergedUser = { ...data, ...userAvatar };
-        const googleAddress = getGoogleAddress(mergedUser);
+        const data = await getUserProfile(Number(user.id));
+        const googleAddress = getGoogleAddress(data);
 
         setFormData({
           username: data.username || "",
@@ -153,7 +150,7 @@ export default function ProfileSetting() {
           language: data.language || "",
         });
 
-        const avatarUrl = getUserAvatarUrl(mergedUser);
+        const avatarUrl = getUserAvatarUrl(data);
         if (avatarUrl) {
           setAvatarPreview(avatarUrl);
           avatarPreviewRef.current = avatarUrl;

@@ -60,6 +60,12 @@ export function getUser(id: any) {
     { method: "GET" }
   );
 }
+export function getUserProfile(id: number | string) {
+  return apiRequest(
+    `/users/${encodeURIComponent(String(id))}?populate[avatar][fields][0]=url`,
+    { method: "GET" }
+  );
+}
 export function getUserAddress(id: any) {
   return apiRequest(
     `/users/${id}`,

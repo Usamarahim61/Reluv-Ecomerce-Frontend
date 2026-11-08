@@ -24,7 +24,7 @@ export function getUserAvatarUrl(user?: any) {
     return toAbsoluteImageUrl(avatar.data.attributes.url);
   }
 
-  return user?.googlePicture || user?.googleProfile?.picture || "";
+  return user?.linePicture || user?.googlePicture || user?.googleProfile?.picture || "";
 }
 
 export function getGoogleAddress(user?: any): GoogleAddress {
