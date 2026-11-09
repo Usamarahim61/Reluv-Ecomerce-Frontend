@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import {
@@ -16,6 +16,7 @@ import {
   Shield,
   ChevronDown,
   RotateCcw,
+  MessageCircle,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -45,8 +46,6 @@ type DisputeStatus =
   | "OPEN"
   | "UNDER_REVIEW"
   | "AWAITING_INFORMATION"
-  | "RESOLVED_REFUND"
-  | "RESOLVED_RELEASE"
   | "RESOLVED"
   | "RESOLVED_REFUND"
   | "RESOLVED_RELEASE"
@@ -93,16 +92,6 @@ const DISPUTE_STATUS_STYLES: Record<
     pill: "bg-[#fffbeb] text-[#d97706] border border-[#fde68a]",
     dot: "bg-[#d97706]",
     label: "Awaiting Info",
-  },
-  RESOLVED_REFUND: {
-    pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
-    dot: "bg-[#2e7d4f]",
-    label: "Refund Approved",
-  },
-  RESOLVED_RELEASE: {
-    pill: "bg-[#f0f4ff] text-[#3b5bdb] border border-[#c5d0fa]",
-    dot: "bg-[#3b5bdb]",
-    label: "Funds Released",
   },
   RESOLVED: {
     pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
