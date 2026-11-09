@@ -975,7 +975,7 @@ export default function MessagesClient() {
         brand: (offer.product as any)?.brand || "Reluv",
         size: (offer.product as any)?.size || "One Size",
         price: String(offer.offerPrice),
-        currency: "TBH",
+        currency: "thb",
         imageUrl: imageUrl,
         buyerProtectionFee: "100",
         shippingFee: "100",
@@ -2543,7 +2543,7 @@ export default function MessagesClient() {
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888] font-semibold">
-                  THB
+                  thb
                 </span>
                 <input
                   type="number"

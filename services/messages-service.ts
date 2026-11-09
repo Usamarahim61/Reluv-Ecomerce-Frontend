@@ -91,7 +91,7 @@ export type MessageItem = {
       productStatus?: string;
       sellerId?: number | string | null;
     } | null;
-    currency?: string; // e.g., "TBH"
+    currency?: string; // e.g., "THB"
     buyerProtectionFee?: number;
     shippingFee?: number;
   };
