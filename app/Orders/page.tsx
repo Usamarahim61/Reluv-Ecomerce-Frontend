@@ -17,6 +17,10 @@ import {
   ChevronDown,
   RotateCcw,
   MessageCircle,
+  UploadCloud,
+  Trash2,
+  ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -394,9 +398,32 @@ function DisputeModal({ order, onClose, onSubmit }: DisputeModalProps) {
 }
 
 // â”€â”€ Dispute Status Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function parseDisputeEvidenceUrls(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((u) => String(u || "").trim()).filter(Boolean);
+  }
+  const trimmed = String(raw).trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((u) => String(u || "").trim()).filter(Boolean);
+      }
+    } catch {}
+  }
+  return trimmed
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 interface DisputeStatusModalProps {
   order: any;
   dispute: any;
+  canSubmitInfo?: boolean;
+  onInfoSubmitted?: () => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -430,14 +457,23 @@ const DISPUTE_STATUS_CONFIG: Record<
     border: "border-[#c5d0fa]",
     desc: "Our team is actively reviewing your case and gathering information.",
   },
+  AWAITING_INFORMATION: {
+    label: "Awaiting Info",
+    pill: "bg-[#fffbeb] text-[#d97706] border-[#fde68a]",
+    icon: HelpCircle,
+    iconColor: "text-[#d97706]",
+    bg: "from-[#fffbeb] to-[#fef3c7]",
+    border: "border-[#fde68a]",
+    desc: "Admin requested additional explanation or image evidence from you. Please submit your response below.",
+  },
   RESOLVED: {
     label: "Resolved",
-    pill: "bg-[#edf7f0] text-[#2e7d4f] border-[#b8e0c8]",
+    pill: "bg-[#edf7f0] text-[#2e7d4f] border border-[#b8e0c8]",
     icon: Check,
     iconColor: "text-[#2e7d4f]",
     bg: "from-[#edf7f0] to-[#d4f0e0]",
     border: "border-[#b8e0c8]",
-    desc: "Your dispute has been resolved. Please check your email for the outcome details.",
+    desc: "Your dispute has been resolved. Please check the resolution details below.",
   },
   RESOLVED_REFUND: {
     label: "Resolved with Refund",
@@ -446,7 +482,7 @@ const DISPUTE_STATUS_CONFIG: Record<
     iconColor: "text-[#2e7d4f]",
     bg: "from-[#edf7f0] to-[#d4f0e0]",
     border: "border-[#b8e0c8]",
-    desc: "Your dispute was resolved with a refund.",
+    desc: "Your dispute was resolved and a refund was issued to your original payment method via Stripe.",
   },
   RESOLVED_RELEASE: {
     label: "Resolved (Release)",
@@ -455,7 +491,7 @@ const DISPUTE_STATUS_CONFIG: Record<
     iconColor: "text-[#2e7d4f]",
     bg: "from-[#edf7f0] to-[#d4f0e0]",
     border: "border-[#b8e0c8]",
-    desc: "Your dispute was resolved with the release outcome.",
+    desc: "Your dispute was resolved with funds released to the seller.",
   },
   REJECTED: {
     label: "Rejected",
@@ -464,7 +500,7 @@ const DISPUTE_STATUS_CONFIG: Record<
     iconColor: "text-[#b33333]",
     bg: "from-[#fdf2f2] to-[#fde8e8]",
     border: "border-[#f0c8c8]",
-    desc: "Unfortunately, your dispute was not upheld after review. Contact support for more details.",
+    desc: "Unfortunately, your dispute claim was not upheld after review.",
   },
   CLOSED: {
     label: "Closed",
@@ -480,15 +516,30 @@ const DISPUTE_STATUS_CONFIG: Record<
 function DisputeStatusModal({
   order,
   dispute,
+  canSubmitInfo = true,
+  onInfoSubmitted,
   onClose,
 }: DisputeStatusModalProps) {
-  const statusKey = (
-    dispute?.disputeStatus ||
-    dispute?.status ||
-    "OPEN"
-  ).toUpperCase();
+  const [localStatus, setLocalStatus] = useState<string>(
+    (dispute?.disputeStatus || dispute?.status || "OPEN").toUpperCase(),
+  );
+  const [localDetails, setLocalDetails] = useState<string>(
+    dispute?.details || dispute?.description || "",
+  );
+  const [localEvidence, setLocalEvidence] = useState<string>(
+    dispute?.evidence || "",
+  );
+  const [additionalText, setAdditionalText] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [submittingInfo, setSubmittingInfo] = useState(false);
+
+  const statusKey = localStatus;
   const cfg = DISPUTE_STATUS_CONFIG[statusKey] || DISPUTE_STATUS_CONFIG["OPEN"];
   const StatusIcon = cfg.icon;
+  const evidenceUrls = parseDisputeEvidenceUrls(localEvidence);
+  const adminNoteText = dispute?.adminNotes || dispute?.adminNote || "";
+  const resolutionText = dispute?.resolution || "";
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -497,24 +548,138 @@ function DisputeStatusModal({
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      previews.forEach((p) => URL.revokeObjectURL(p));
+    };
+  }, [previews]);
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    const valid: File[] = [];
+    for (const f of selected) {
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`${f.name} exceeds 10MB limit.`);
+        continue;
+      }
+      valid.push(f);
+    }
+    const nextFiles = [...files, ...valid].slice(0, 5);
+    const nextPreviews = nextFiles.map((f) => URL.createObjectURL(f));
+    previews.forEach((p) => URL.revokeObjectURL(p));
+    setFiles(nextFiles);
+    setPreviews(nextPreviews);
+  };
+
+  const removeSelectedFile = (index: number) => {
+    if (previews[index]) URL.revokeObjectURL(previews[index]);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitBuyerInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!additionalText.trim() && files.length === 0) {
+      toast.error("Please provide an explanation or attach at least one image.");
+      return;
+    }
+
+    const disputeId = dispute?.id || dispute?.disputeId || dispute?.documentId;
+    if (!disputeId) {
+      toast.error("Dispute identifier not found.");
+      return;
+    }
+
+    setSubmittingInfo(true);
+    try {
+      const jwt = localStorage.getItem("jwt") || "";
+      const uploadedUrls: string[] = [];
+      if (files.length > 0) {
+        const formData = new FormData();
+        files.forEach((file) => formData.append("files", file));
+        const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${jwt}` },
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload image evidence.");
+        }
+        const uploadJson = await uploadRes.json();
+        if (Array.isArray(uploadJson)) {
+          for (const item of uploadJson) {
+            if (item?.url) {
+              uploadedUrls.push(
+                item.url.startsWith("http") ? item.url : `${API_BASE_URL}${item.url}`,
+              );
+            }
+          }
+        }
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/submit-information`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          message: additionalText.trim(),
+          evidenceUrls: uploadedUrls,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error?.message || json?.message || "Failed to submit information.");
+      }
+
+      setLocalStatus("UNDER_REVIEW");
+      if (json.data?.description) setLocalDetails(json.data.description);
+      if (json.data?.evidence) setLocalEvidence(json.data.evidence);
+      setAdditionalText("");
+      setFiles([]);
+      setPreviews([]);
+      toast.success("Additional information submitted! Your dispute is now Under Review.");
+      await onInfoSubmitted?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Could not submit additional information.");
+    } finally {
+      setSubmittingInfo(false);
+    }
+  };
+
   const submittedOn = dispute?.createdAt
     ? new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
       })
-    : "â€”";
+    : "—";
 
   const timelineSteps = [
     { label: "Dispute submitted", done: true, date: submittedOn },
     {
-      label: "Under review by support team",
-      done: ["UNDER_REVIEW", "RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"].includes(statusKey),
+      label:
+        statusKey === "AWAITING_INFORMATION"
+          ? "More information / images requested"
+          : "Under review by support team",
+      done: [
+        "UNDER_REVIEW",
+        "AWAITING_INFORMATION",
+        "RESOLVED",
+        "RESOLVED_REFUND",
+        "RESOLVED_RELEASE",
+        "REJECTED",
+        "CLOSED",
+      ].includes(statusKey),
       date: null,
     },
     {
       label: "Resolution reached",
-      done: ["RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"].includes(statusKey),
+      done: ["RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"].includes(
+        statusKey,
+      ),
       date: null,
     },
   ];
@@ -570,14 +735,14 @@ function DisputeStatusModal({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[#1a1a1a]">
-                {order?.title || "â€”"}
+                {order?.title || "—"}
               </p>
               <p className="mt-0.5 text-xs text-[#bbb]">
-                Order Â· {order?.date || "â€”"}
+                Order · {order?.date || "—"}
               </p>
             </div>
             <span className="shrink-0 text-sm font-bold text-[#1a1a1a]">
-              {order?.price || "â€”"}
+              {order?.price || "—"}
             </span>
           </div>
 
@@ -596,17 +761,92 @@ function DisputeStatusModal({
               </span>
             </div>
             <p className="text-sm leading-relaxed text-[#555]">{cfg.desc}</p>
-            {dispute?.adminNote && (
-              <div className="mt-3 rounded-xl bg-white/70 border border-white/80 px-3 py-2">
+            {adminNoteText && (
+              <div className="mt-3 rounded-xl bg-white/80 border border-white px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[#aaa] mb-1">
                   Admin Note
                 </p>
-                <p className="text-xs text-[#444] leading-relaxed">
-                  {dispute.adminNote}
+                <p className="text-xs text-[#444] leading-relaxed whitespace-pre-wrap">
+                  {adminNoteText}
+                </p>
+              </div>
+            )}
+            {resolutionText && (
+              <div className="mt-2 rounded-xl bg-white/80 border border-white px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#aaa] mb-1">
+                  Resolution / Decision
+                </p>
+                <p className="text-xs text-[#2d3748] leading-relaxed whitespace-pre-wrap">
+                  {resolutionText}
                 </p>
               </div>
             )}
           </div>
+
+          {/* Buyer Response Form when Admin Requests More Info */}
+          {statusKey === "AWAITING_INFORMATION" && canSubmitInfo && (
+            <form
+              onSubmit={handleSubmitBuyerInfo}
+              className="mb-5 rounded-2xl border border-[#fde68a] bg-[#fffbeb] p-4 space-y-3"
+            >
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#b45309]">
+                  Action Required: Submit Additional Info / Image Evidence
+                </h3>
+                <p className="mt-1 text-xs text-[#78350f]">
+                  Upload clear photos or write a reply to move your dispute back to Under Review.
+                </p>
+              </div>
+
+              <textarea
+                value={additionalText}
+                onChange={(e) => setAdditionalText(e.target.value)}
+                rows={3}
+                maxLength={800}
+                placeholder="Write your reply to admin here..."
+                className="w-full rounded-xl border border-[#fcd34d] bg-white px-3 py-2 text-xs text-[#333] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30"
+              />
+
+              <div>
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#f59e0b] bg-white px-3 py-3 text-xs font-semibold text-[#b45309] hover:bg-[#fef3c7]/50 transition">
+                  <UploadCloud size={16} />
+                  <span>Upload Image Evidence (up to 5 photos, max 10MB each)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFilesSelected}
+                    className="hidden"
+                  />
+                </label>
+
+                {previews.length > 0 && (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {previews.map((src, idx) => (
+                      <div key={src} className="relative rounded-lg overflow-hidden border border-[#fde68a] bg-white">
+                        <img src={src} alt={`Upload ${idx + 1}`} className="h-16 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedFile(idx)}
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-rose-600"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingInfo}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#d97706] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#b45309] disabled:opacity-50"
+              >
+                {submittingInfo ? "Submitting..." : "Submit Response & Evidence"}
+              </button>
+            </form>
+          )}
 
           <div className="mb-5 space-y-3">
             <div className="rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-4">
@@ -614,17 +854,41 @@ function DisputeStatusModal({
                 Reason
               </p>
               <p className="text-sm font-medium text-[#333]">
-                {dispute?.reason || "â€”"}
+                {dispute?.reason || "—"}
               </p>
             </div>
-            {dispute?.details && (
+            {localDetails && (
               <div className="rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-4">
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#aaa]">
-                  Description
+                  Description &amp; Updates
                 </p>
-                <p className="text-sm leading-relaxed text-[#555] italic">
-                  "{dispute.details}"
+                <p className="text-sm leading-relaxed text-[#555] whitespace-pre-wrap">
+                  {localDetails}
                 </p>
+              </div>
+            )}
+            {evidenceUrls.length > 0 && (
+              <div className="rounded-2xl border border-[#f0ebe4] bg-[#fdfbf9] p-4">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#aaa]">
+                  Uploaded Evidence ({evidenceUrls.length})
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {evidenceUrls.map((url, idx) => (
+                    <a
+                      key={`${url}-${idx}`}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group block overflow-hidden rounded-xl border border-[#ece9e4] bg-white"
+                    >
+                      <img src={url} alt={`Evidence ${idx + 1}`} className="h-20 w-full object-cover" />
+                      <span className="flex items-center justify-between px-2 py-1 text-[10px] font-semibold text-[#cb6f4d]">
+                        <span>Photo #{idx + 1}</span>
+                        <ExternalLink size={10} />
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1099,12 +1363,26 @@ function OrdersInner() {
   const [disputeOrder, setDisputeOrder] = useState<any | null>(null);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
   const [refundOrder, setRefundOrder] = useState<any | null>(null);
-  const [viewDisputeData, setViewDisputeData] = useState<{ order: any; dispute: any } | null>(null);
+  const [viewDisputeData, setViewDisputeData] = useState<{
+    order: any;
+    dispute: any;
+    canSubmitInfo?: boolean;
+  } | null>(null);
 
   const categories: Category[] = ["Sold", "Bought", "Offers", "Disputes_Recieved", "Disputes_Raised"];
   const statuses: Status[] = ["All", "Placed", "In Progress", "Completed", "Cancelled"];
   const offerStatuses: OfferStatus[] = ["All", "pending", "accepted", "declined"];
-  const disputeStatuses: (DisputeStatus | "All")[] = ["All", "OPEN", "UNDER_REVIEW", "RESOLVED", "RESOLVED_REFUND", "RESOLVED_RELEASE", "REJECTED", "CLOSED"];
+  const disputeStatuses: (DisputeStatus | "All")[] = [
+    "All",
+    "OPEN",
+    "UNDER_REVIEW",
+    "AWAITING_INFORMATION",
+    "RESOLVED",
+    "RESOLVED_REFUND",
+    "RESOLVED_RELEASE",
+    "REJECTED",
+    "CLOSED",
+  ];
 
   const changeCategory = (category: Category) => {
     setActiveCategory(category);
@@ -1116,6 +1394,7 @@ function OrdersInner() {
     const tab = searchParams?.get("tab");
     if (tab === "offers") setActiveCategory("Offers");
     else if (tab === "disputes" || tab === "Disputes_Raised") setActiveCategory("Disputes_Raised");
+    else if (tab === "Disputes_Recieved") setActiveCategory("Disputes_Recieved");
 
     const orderId = searchParams?.get("orderId");
     if (orderId && ordersData.length > 0) {
@@ -1390,8 +1669,10 @@ function OrdersInner() {
             order: order?.id,
             raisedBy: Number(user.id),
             sellerId: Number(sellerID),
+            requestType: "DISPUTE",
             reason: backendReason,
             details: formattedDetails,
+            evidence: evidenceUrl || null,
           },
         }),
       });
@@ -1442,8 +1723,10 @@ function OrdersInner() {
             order: order?.id,
             raisedBy: Number(user.id),
             sellerId: Number(sellerID),
+            requestType: "REFUND_REQUEST",
             reason: backendReason,
             details: formattedDetails,
+            evidence: evidenceUrl || null,
             refundAmount: targetOrder?.totalAmount || targetOrder?.productPrice,
           },
         }),
@@ -1530,20 +1813,27 @@ function OrdersInner() {
       id: dispute.id,
       documentId: dispute.documentId,
       disputeId: dispute.id,
-      title: product.title || "No title",
+      title: product.title || order.productTitle || "No title",
       imageUrl: product.images?.[0]?.url
         ? `${API_BASE_URL}${product.images[0].url}`
         : order.productImage || "",
-      price: order.totalAmount ? `${order.totalAmount} THB` : "â€”",
+      price: order.totalAmount ? `${order.totalAmount} THB` : "—",
       date: new Date(dispute.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
       }),
       status,
-      reason: dispute.reason || "â€”",
-      details: dispute.details || "",
-      adminNote: dispute.adminNote || "",
+      reason: dispute.reason || "—",
+      details: dispute.description ?? dispute.details ?? "",
+      description: dispute.description ?? dispute.details ?? "",
+      adminNotes: dispute.adminNotes ?? dispute.adminNote ?? "",
+      adminNote: dispute.adminNotes ?? dispute.adminNote ?? "",
+      resolution: dispute.resolution ?? "",
+      evidence: dispute.evidence ?? "",
+      refundAmount: dispute.refundAmount ?? null,
+      stripeRefundId: dispute.stripeRefundId ?? "",
+      refundStatus: dispute.refundStatus ?? "NONE",
       raisedBy: dispute.raisedBy,
       createdAt: dispute.createdAt,
       orderId: order.id,
@@ -1580,15 +1870,24 @@ function OrdersInner() {
   const getOrderDispute = (orderId: any) =>
     disputesData.find((d) => d.order?.id === orderId || d.order === orderId);
 
-  const openViewDisputeModal = (card: any) =>
+  const openViewDisputeModal = (card: any, canSubmitInfo = true) =>
     setViewDisputeData({
       order: card,
+      canSubmitInfo,
       dispute: {
-        id: card.disputeId,
+        id: card.disputeId || card.id,
+        documentId: card.documentId,
         disputeStatus: card.status,
         reason: card.reason,
         details: card.details,
+        description: card.description,
         adminNote: card.adminNote,
+        adminNotes: card.adminNotes,
+        resolution: card.resolution,
+        evidence: card.evidence,
+        refundAmount: card.refundAmount,
+        stripeRefundId: card.stripeRefundId,
+        refundStatus: card.refundStatus,
         createdAt: card.createdAt,
       },
     });
@@ -1759,7 +2058,7 @@ function OrdersInner() {
                   ),
                 );
               }}
-              onViewDetails={openViewDisputeModal}
+              onViewDetails={(c) => openViewDisputeModal(c, false)}
             />
           ))}
         </div>
@@ -2179,10 +2478,38 @@ function OrdersInner() {
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       {disputeOrder && (
-        <DisputeModal
+        <RaiseDisputeModal
           order={disputeOrder}
           onClose={() => setDisputeOrder(null)}
           onSubmit={handleDisputeSubmit}
+        />
+      )}
+
+      {refundOrder && (
+        <RequestRefundModal
+          order={refundOrder}
+          onClose={() => setRefundOrder(null)}
+          onSubmit={handleRefundSubmit}
+        />
+      )}
+
+      {selectedOrderDetail && (
+        <BuyerOrderDetailModal
+          order={selectedOrderDetail}
+          existingDispute={getOrderDispute(selectedOrderDetail.id)}
+          onClose={() => setSelectedOrderDetail(null)}
+          onRaiseDispute={(ord) => {
+            setSelectedOrderDetail(null);
+            setDisputeOrder(ord);
+          }}
+          onRequestRefund={(ord) => {
+            setSelectedOrderDetail(null);
+            setRefundOrder(ord);
+          }}
+          onViewDispute={(_ord, disp) => {
+            setSelectedOrderDetail(null);
+            openViewDisputeModal(mapDisputeToCard(disp), true);
+          }}
         />
       )}
 
@@ -2190,6 +2517,10 @@ function OrdersInner() {
         <DisputeStatusModal
           order={viewDisputeData.order}
           dispute={viewDisputeData.dispute}
+          canSubmitInfo={viewDisputeData.canSubmitInfo ?? true}
+          onInfoSubmitted={async () => {
+            await fetchDisputesRaised();
+          }}
           onClose={() => setViewDisputeData(null)}
         />
       )}

@@ -152,6 +152,7 @@ export default function BuyerOrderDetailModal({
   onClose,
   onRaiseDispute,
   onRequestRefund,
+  onViewDispute,
 }: BuyerOrderDetailModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -195,7 +196,22 @@ export default function BuyerOrderDetailModal({
   const disputeStatusRaw = (existingDispute?.status || existingDispute?.disputeStatus || "OPEN").toUpperCase();
   const disputeReason = existingDispute?.reason || "—";
   const disputeDescription = existingDispute?.description || existingDispute?.details || "";
-  const adminResolution = existingDispute?.resolution || existingDispute?.adminNote || null;
+  const adminNotesText = existingDispute?.adminNotes || existingDispute?.adminNote || null;
+  const adminResolution = existingDispute?.resolution || null;
+  const disputeEvidenceList: string[] = (() => {
+    const raw = existingDispute?.evidence;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map((u) => String(u || "").trim()).filter(Boolean);
+    const trimmed = String(raw).trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map((u) => String(u || "").trim()).filter(Boolean);
+      } catch {}
+    }
+    return trimmed.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  })();
   const isRefundRequest =
     Boolean(existingDispute?.refundAmount) ||
     disputeDescription.includes("[Type: Refund Request]") ||
@@ -686,13 +702,52 @@ export default function BuyerOrderDetailModal({
                     </p>
                   </div>
                 )}
+                {disputeEvidenceList.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-[10px] uppercase font-bold text-[#aaa] tracking-wider block mb-1.5">
+                      Uploaded Evidence ({disputeEvidenceList.length})
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {disputeEvidenceList.map((url, idx) => (
+                        <a
+                          key={`${url}-${idx}`}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block h-14 w-14 rounded-lg overflow-hidden border border-[#dde5fa]"
+                        >
+                          <img src={url} alt={`Evidence ${idx + 1}`} className="h-full w-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {adminNotesText && (
+                  <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+                    <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider block mb-0.5">
+                      Admin Note
+                    </span>
+                    <p className="text-amber-900 font-medium whitespace-pre-wrap">{adminNotesText}</p>
+                  </div>
+                )}
                 {adminResolution && (
                   <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5">
                     <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block mb-0.5">
                       Admin Decision Note (Buyer Visible)
                     </span>
-                    <p className="text-emerald-900 font-medium">{adminResolution}</p>
+                    <p className="text-emerald-900 font-medium whitespace-pre-wrap">{adminResolution}</p>
                   </div>
+                )}
+                {disputeStatusRaw === "AWAITING_INFORMATION" && onViewDispute && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onViewDispute(order, existingDispute);
+                    }}
+                    className="mt-2 w-full rounded-full bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white transition-all"
+                  >
+                    Provide Requested Info &amp; Image Evidence
+                  </button>
                 )}
               </div>
 

@@ -6,7 +6,7 @@ import CardDetailsModal from "./AddCard";
 import AddBankAccount, { BankAccountPayload } from "./AddBankAccount";
 import { API_BASE_URL } from "../constants/api";
 import { useAuth } from "@/context/AuthContext";
-import { Trash2 } from "lucide-react";
+import { Trash2, CheckCircle2, Clock, ExternalLink, Landmark } from "lucide-react";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const MAX_CARDS = 2;
@@ -49,31 +49,99 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
 
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [savedBanks, setSavedBanks] = useState<SavedBank[]>([]);
+  const [stripeConnect, setStripeConnect] = useState<{
+    connected: boolean;
+    payoutsEnabled: boolean;
+    detailsSubmitted: boolean;
+    status: string;
+    stripeAccountId: string | null;
+    bankName: string | null;
+    bankAccountLast4: string | null;
+  } | null>(null);
+  const [connectingStripe, setConnectingStripe] = useState(false);
 
   const [loading, setLoading] = useState(true);
+
+  const fetchStripeConnectStatus = async (jwt: string | null) => {
+    if (!jwt) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/stripe-connect/status`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.ok) {
+        setStripeConnect({
+          connected: Boolean(data.connected),
+          payoutsEnabled: Boolean(data.payoutsEnabled),
+          detailsSubmitted: Boolean(data.detailsSubmitted),
+          status: data.status || "Not connected",
+          stripeAccountId: data.stripeAccountId || null,
+          bankName: data.bankName || null,
+          bankAccountLast4: data.bankAccountLast4 || null,
+        });
+      }
+    } catch {
+      // Non-fatal: Stripe Connect card stays ready for setup
+    }
+  };
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user?.id) return;
     const storedJwt = localStorage.getItem("jwt");
-    fetch(`${API_BASE_URL}/api/users/${user.id}`, {
-      headers: { Authorization: `Bearer ${storedJwt}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("Could not fetch payment methods");
-        return r.json();
+    Promise.all([
+      fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+        headers: { Authorization: `Bearer ${storedJwt}` },
       })
-      .then((data) => {
-        setSavedCards(Array.isArray(data.savedCards) ? data.savedCards : []);
-        setSavedBanks(Array.isArray(data.savedBanks) ? data.savedBanks : []);
-      })
+        .then((r) => {
+          if (!r.ok) throw new Error("Could not fetch payment methods");
+          return r.json();
+        })
+        .then((data) => {
+          setSavedCards(Array.isArray(data.savedCards) ? data.savedCards : []);
+          setSavedBanks(Array.isArray(data.savedBanks) ? data.savedBanks : []);
+        }),
+      fetchStripeConnectStatus(storedJwt),
+    ])
       .catch((err) => {
         console.error("Failed to fetch payment methods:", err);
         toast.error("Could not load payment methods.");
       })
       .finally(() => setLoading(false));
   }, [user?.id]);
+
+  const handleStripeConnectOnboard = async () => {
+    const storedJwt = localStorage.getItem("jwt");
+    if (!storedJwt) {
+      toast.error("Please log in again to connect your Stripe payout account.");
+      return;
+    }
+    setConnectingStripe(true);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const res = await fetch(`${API_BASE_URL}/api/stripe-connect/onboard`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedJwt}`,
+        },
+        body: JSON.stringify({
+          returnUrl: `${origin}/setting?tab=payments&stripe_connect=return`,
+          refreshUrl: `${origin}/setting?tab=payments&stripe_connect=refresh`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.url) {
+        throw new Error(json?.error?.message || json?.message || "Could not start Stripe Connect setup.");
+      }
+      window.location.href = json.url;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to connect Stripe payout account.");
+      setConnectingStripe(false);
+    }
+  };
 
   // ── Modal helpers ───────────────────────────────────────────────────────────
 
@@ -291,8 +359,67 @@ export default function Payments({ userId }: PaymentsProps): JSX.Element {
         </section>
 
         {/* Withdrawal Options */}
-        <section className="space-y-2">
+        <section className="space-y-3">
           <h3 className="text-xs text-gray-500 font-medium ml-1">Withdrawal options</h3>
+
+          {/* Seller Stripe Connect Payout Setup */}
+          <div className="w-full p-4 bg-[#faf8f5] border border-[#f0ddd3] rounded-lg shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-lg bg-[#fff0e8] border border-[#f5d5c0] flex items-center justify-center shrink-0">
+                  <Landmark className="w-4 h-4 text-[#cb6f4d]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-gray-900 text-sm">
+                      Stripe Connect Seller Payouts
+                    </span>
+                    {stripeConnect?.payoutsEnabled ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Connected
+                      </span>
+                    ) : stripeConnect?.stripeAccountId ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                        <Clock className="w-3 h-3" />
+                        {stripeConnect.status || "Verification Pending"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 border border-gray-200 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
+                        Not connected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Connect your Stripe account to receive automated order payouts and dispute release transfers.
+                  </p>
+                  {stripeConnect?.stripeAccountId && (
+                    <p className="text-[11px] text-gray-500 font-mono mt-1">
+                      Account: {stripeConnect.stripeAccountId}
+                      {stripeConnect.bankAccountLast4 ? ` • Bank •••• ${stripeConnect.bankAccountLast4}` : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleStripeConnectOnboard}
+                disabled={connectingStripe}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#cb6f4d] text-white text-xs font-semibold rounded-md hover:bg-[#b05e3f] transition-colors disabled:opacity-50 shrink-0"
+              >
+                <span>
+                  {connectingStripe
+                    ? "Redirecting..."
+                    : stripeConnect?.payoutsEnabled
+                    ? "Manage Stripe Account"
+                    : stripeConnect?.stripeAccountId
+                    ? "Complete Stripe Setup"
+                    : "Connect Stripe Account"}
+                </span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
           <div className="space-y-3">
             {savedBanks.map((bank) => (

@@ -493,7 +493,7 @@ export default function ProductDetailPage() {
     brand,
     price: getPriceValue(price) || 0,
     currency: getCurrencyCode(price) || "THB",
-    imageUrl: productImages,
+    imageUrl: productImages[0] ?? "",
     buyerProtectionFee: buyerProtectionFee,
     shippingFee:  0,
     sellerId: seller?.id,

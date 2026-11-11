@@ -130,13 +130,16 @@ const CheckOutContent: React.FC = () => {
 
   const searchParams = useSearchParams();
 
+  const rawImageUrl = searchParams.get("imageUrl") || "";
+  const primaryImageUrl = rawImageUrl.split(/,(?=https?:\/\/|\/)/i)[0]?.trim() || "";
+
   const data: ProductData = {
     title: searchParams.get("title") || "",
     brand: searchParams.get("brand") || "",
     size: searchParams.get("size") || "",
     price: Number(searchParams.get("price")) || 0,
     currency: searchParams.get("currency") || "thb",
-    imageUrl: searchParams.get("imageUrl") || "",
+    imageUrl: primaryImageUrl,
     buyerProtectionFee: Number(searchParams.get("buyerProtectionFee")) || 0,
     shippingFee: Number(searchParams.get("shippingFee")) || 0,
   };
@@ -479,7 +482,7 @@ const CheckOutInner: React.FC<InnerProps> = ({
         offerId: searchParams.get("offerId"),
         buyerId: userId,
         sellerId: searchParams.get("sellerId"),
-        productImage: searchParams.get("imageUrl") || "",
+        productImage: data.imageUrl,
         productPrice: data.price,
         productTitle: searchParams.get("title"),
         username,
